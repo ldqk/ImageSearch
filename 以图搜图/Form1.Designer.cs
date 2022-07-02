@@ -49,6 +49,8 @@
             this.lbSrcInfo = new System.Windows.Forms.Label();
             this.lbSpeed = new System.Windows.Forms.Label();
             this.numLike = new System.Windows.Forms.NumericUpDown();
+            this.cbRotate = new System.Windows.Forms.CheckBox();
+            this.cbFlip = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.picSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.picDest)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResult)).BeginInit();
@@ -109,7 +111,7 @@
             // 
             // btnSearch
             // 
-            this.btnSearch.Location = new System.Drawing.Point(162, 67);
+            this.btnSearch.Location = new System.Drawing.Point(408, 66);
             this.btnSearch.Name = "btnSearch";
             this.btnSearch.Size = new System.Drawing.Size(75, 23);
             this.btnSearch.TabIndex = 6;
@@ -192,7 +194,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(241, 71);
+            this.label5.Location = new System.Drawing.Point(487, 70);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(68, 17);
             this.label5.TabIndex = 16;
@@ -201,7 +203,7 @@
             // lbElpased
             // 
             this.lbElpased.AutoSize = true;
-            this.lbElpased.Location = new System.Drawing.Point(315, 70);
+            this.lbElpased.Location = new System.Drawing.Point(561, 69);
             this.lbElpased.Name = "lbElpased";
             this.lbElpased.Size = new System.Drawing.Size(0, 17);
             this.lbElpased.TabIndex = 17;
@@ -248,11 +250,33 @@
             0,
             0});
             // 
+            // cbRotate
+            // 
+            this.cbRotate.AutoSize = true;
+            this.cbRotate.Location = new System.Drawing.Point(171, 69);
+            this.cbRotate.Name = "cbRotate";
+            this.cbRotate.Size = new System.Drawing.Size(87, 21);
+            this.cbRotate.TabIndex = 22;
+            this.cbRotate.Text = "查找已旋转";
+            this.cbRotate.UseVisualStyleBackColor = true;
+            // 
+            // cbFlip
+            // 
+            this.cbFlip.AutoSize = true;
+            this.cbFlip.Location = new System.Drawing.Point(278, 69);
+            this.cbFlip.Name = "cbFlip";
+            this.cbFlip.Size = new System.Drawing.Size(87, 21);
+            this.cbFlip.TabIndex = 23;
+            this.cbFlip.Text = "查找已翻转";
+            this.cbFlip.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(902, 491);
+            this.Controls.Add(this.cbFlip);
+            this.Controls.Add(this.cbRotate);
             this.Controls.Add(this.numLike);
             this.Controls.Add(this.lbSpeed);
             this.Controls.Add(this.lbSrcInfo);
@@ -311,5 +335,7 @@
         private Label lbSrcInfo;
         private Label lbSpeed;
         private NumericUpDown numLike;
+        private CheckBox cbRotate;
+        private CheckBox cbFlip;
     }
 }
