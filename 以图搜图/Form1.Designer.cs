@@ -51,6 +51,8 @@
             this.numLike = new System.Windows.Forms.NumericUpDown();
             this.cbRotate = new System.Windows.Forms.CheckBox();
             this.cbFlip = new System.Windows.Forms.CheckBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.textBox1 = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.picSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.picDest)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResult)).BeginInit();
@@ -270,11 +272,30 @@
             this.cbFlip.Text = "查找已翻转";
             this.cbFlip.UseVisualStyleBackColor = true;
             // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(31, 484);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(68, 17);
+            this.label6.TabIndex = 25;
+            this.label6.Text = "项目地址：";
+            // 
+            // textBox1
+            // 
+            this.textBox1.Location = new System.Drawing.Point(105, 481);
+            this.textBox1.Name = "textBox1";
+            this.textBox1.Size = new System.Drawing.Size(290, 23);
+            this.textBox1.TabIndex = 26;
+            this.textBox1.Text = "https://github.com/ldqk/ImageSearch";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(902, 491);
+            this.ClientSize = new System.Drawing.Size(902, 506);
+            this.Controls.Add(this.textBox1);
+            this.Controls.Add(this.label6);
             this.Controls.Add(this.cbFlip);
             this.Controls.Add(this.cbRotate);
             this.Controls.Add(this.numLike);
@@ -337,5 +358,7 @@
         private NumericUpDown numLike;
         private CheckBox cbRotate;
         private CheckBox cbFlip;
+        private Label label6;
+        private TextBox textBox1;
     }
 }
