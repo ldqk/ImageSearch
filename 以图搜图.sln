@@ -5,6 +5,8 @@ VisualStudioVersion = 17.2.32616.157
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "以图搜图", "以图搜图\以图搜图.csproj", "{03CE1696-1839-4019-B580-CA4CCE415563}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Straper", "Straper\Straper.csproj", "{5C17B0E6-08E5-4833-B2B8-C03F6437275F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{03CE1696-1839-4019-B580-CA4CCE415563}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{03CE1696-1839-4019-B580-CA4CCE415563}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{03CE1696-1839-4019-B580-CA4CCE415563}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C17B0E6-08E5-4833-B2B8-C03F6437275F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C17B0E6-08E5-4833-B2B8-C03F6437275F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C17B0E6-08E5-4833-B2B8-C03F6437275F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C17B0E6-08E5-4833-B2B8-C03F6437275F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
