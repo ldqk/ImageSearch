@@ -46,31 +46,35 @@ namespace 以图搜图
                 return;
             }
 
-            var imageHasher = new ImageHasher(new ImageSharpTransformer());
-            var files = Directory.GetFiles(txtDirectory.Text, "*", SearchOption.AllDirectories);
-            var sw = Stopwatch.StartNew();
-            int pro = 1;
-            files.Chunk(32).AsParallel().ForAll(g =>
+            await Task.Run(() =>
             {
-                foreach (var s in g)
+                var imageHasher = new ImageHasher(new ImageSharpTransformer());
+                var files = Directory.GetFiles(txtDirectory.Text, "*", SearchOption.AllDirectories);
+                var sw = Stopwatch.StartNew();
+                int pro = 1;
+                files.Chunk(32).AsParallel().ForAll(g =>
                 {
-                    Console.WriteLine("正在生成：" + pro++ + "/" + files.Length);
-                    try
+                    foreach (var s in g)
                     {
-                        _index.GetOrAdd(s, _ => imageHasher.DifferenceHash256(s));
+                        lblProcess.Text = pro++ + "/" + files.Length;
+                        try
+                        {
+                            _index.GetOrAdd(s, _ => imageHasher.DifferenceHash256(s));
+                        }
+                        catch (Exception exception)
+                        {
+                            Console.WriteLine(s + "格式不正确");
+                            Console.WriteLine(exception);
+                        }
                     }
-                    catch (Exception exception)
-                    {
-                        Console.WriteLine(s + "格式不正确");
-                        Console.WriteLine(exception);
-                    }
-                }
-            });
-            lbIndexCount.Text = _index.Count + "文件";
-            lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
+                });
+                lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
+                MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
+                _index.Keys.AsParallel().Where(s => !File.Exists(s)).ForAll(s => _index.TryRemove(s, out _));
+                lbIndexCount.Text = _index.Count + "文件";
+            }).ConfigureAwait(false);
             var json = JsonSerializer.Serialize(_index);
-            await File.WriteAllTextAsync("index.json", json, Encoding.UTF8);
-            MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
+            await File.WriteAllTextAsync("index.json", json, Encoding.UTF8).ConfigureAwait(false);
         }
 
         private void btnSearch_Click(object sender, EventArgs e)

@@ -53,6 +53,7 @@
             this.cbFlip = new System.Windows.Forms.CheckBox();
             this.label6 = new System.Windows.Forms.Label();
             this.textBox1 = new System.Windows.Forms.TextBox();
+            this.lblProcess = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.picSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.picDest)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResult)).BeginInit();
@@ -289,11 +290,21 @@
             this.textBox1.TabIndex = 26;
             this.textBox1.Text = "https://github.com/ldqk/ImageSearch";
             // 
+            // lblProcess
+            // 
+            this.lblProcess.AutoSize = true;
+            this.lblProcess.Location = new System.Drawing.Point(793, 8);
+            this.lblProcess.Name = "lblProcess";
+            this.lblProcess.Size = new System.Drawing.Size(12, 17);
+            this.lblProcess.TabIndex = 27;
+            this.lblProcess.Text = " ";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(902, 506);
+            this.Controls.Add(this.lblProcess);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.cbFlip);
@@ -360,5 +371,6 @@
         private CheckBox cbFlip;
         private Label label6;
         private TextBox textBox1;
+        private Label lblProcess;
     }
 }
