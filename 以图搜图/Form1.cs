@@ -1,11 +1,12 @@
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Text;
-using System.Text.Json;
 using Masuit.Tools;
 using Masuit.Tools.Media;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Image = SixLabors.ImageSharp.Image;
 
 namespace 以图搜图
@@ -48,15 +49,16 @@ namespace 以图搜图
 
             await Task.Run(() =>
             {
+                cbRemoveInvalidIndex.Hide();
                 var imageHasher = new ImageHasher(new ImageSharpTransformer());
-                var files = Directory.GetFiles(txtDirectory.Text, "*", SearchOption.AllDirectories);
+                var files = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$")).ToList();
                 var sw = Stopwatch.StartNew();
                 int pro = 1;
                 files.Chunk(32).AsParallel().ForAll(g =>
                 {
                     foreach (var s in g)
                     {
-                        lblProcess.Text = pro++ + "/" + files.Length;
+                        lblProcess.Text = pro++ + "/" + files.Count;
                         try
                         {
                             _index.GetOrAdd(s, _ => imageHasher.DifferenceHash256(s));
@@ -70,8 +72,13 @@ namespace 以图搜图
                 });
                 lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
                 MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
-                _index.Keys.AsParallel().Where(s => !File.Exists(s)).ForAll(s => _index.TryRemove(s, out _));
+                if (cbRemoveInvalidIndex.Checked)
+                {
+                    _index.Keys.AsParallel().Where(s => !File.Exists(s)).ForAll(s => _index.TryRemove(s, out _));
+                }
+
                 lbIndexCount.Text = _index.Count + "文件";
+                cbRemoveInvalidIndex.Show();
             }).ConfigureAwait(false);
             var json = JsonSerializer.Serialize(_index);
             await File.WriteAllTextAsync("index.json", json, Encoding.UTF8).ConfigureAwait(false);
@@ -127,8 +134,12 @@ namespace 以图搜图
                 匹配度 = a.匹配度.Max()
             }).OrderByDescending(a => a.匹配度).ToList();
             lbElpased.Text = sw.ElapsedMilliseconds + "ms";
-            picSource.ImageLocation = txtPic.Text;
-            picSource.Refresh();
+            if (list.Count > 0)
+            {
+                picSource.ImageLocation = txtPic.Text;
+                picSource.Refresh();
+            }
+
             dgvResult.DataSource = list;
         }
 

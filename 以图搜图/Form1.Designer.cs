@@ -54,6 +54,7 @@
             this.label6 = new System.Windows.Forms.Label();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.lblProcess = new System.Windows.Forms.Label();
+            this.cbRemoveInvalidIndex = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.picSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.picDest)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResult)).BeginInit();
@@ -136,7 +137,7 @@
             // 
             this.picSource.Location = new System.Drawing.Point(618, 93);
             this.picSource.Name = "picSource";
-            this.picSource.Size = new System.Drawing.Size(272, 146);
+            this.picSource.Size = new System.Drawing.Size(272, 167);
             this.picSource.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picSource.TabIndex = 9;
             this.picSource.TabStop = false;
@@ -144,7 +145,7 @@
             // 
             // picDest
             // 
-            this.picDest.Location = new System.Drawing.Point(618, 266);
+            this.picDest.Location = new System.Drawing.Point(618, 288);
             this.picDest.Name = "picDest";
             this.picDest.Size = new System.Drawing.Size(272, 189);
             this.picDest.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
@@ -299,11 +300,22 @@
             this.lblProcess.TabIndex = 27;
             this.lblProcess.Text = " ";
             // 
+            // cbRemoveInvalidIndex
+            // 
+            this.cbRemoveInvalidIndex.AutoSize = true;
+            this.cbRemoveInvalidIndex.Location = new System.Drawing.Point(793, 9);
+            this.cbRemoveInvalidIndex.Name = "cbRemoveInvalidIndex";
+            this.cbRemoveInvalidIndex.Size = new System.Drawing.Size(99, 21);
+            this.cbRemoveInvalidIndex.TabIndex = 28;
+            this.cbRemoveInvalidIndex.Text = "移除无效索引";
+            this.cbRemoveInvalidIndex.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(902, 506);
+            this.Controls.Add(this.cbRemoveInvalidIndex);
             this.Controls.Add(this.lblProcess);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.label6);
@@ -372,5 +384,6 @@
         private Label label6;
         private TextBox textBox1;
         private Label lblProcess;
+        private CheckBox cbRemoveInvalidIndex;
     }
 }
