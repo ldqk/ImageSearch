@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -15,7 +15,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Masuit.Tools.Abstractions" Version="2.5.3-beta" />
+    <PackageReference Include="Masuit.Tools.Abstractions" Version="2.5.4.3" />
   </ItemGroup>
 
 </Project>
