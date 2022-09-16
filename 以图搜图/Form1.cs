@@ -16,6 +16,7 @@ namespace 以图搜图
         public Form1()
         {
             InitializeComponent();
+            CheckForIllegalCrossThreadCalls = false;
         }
 
         private void btnDirectory_Click(object sender, EventArgs e)
