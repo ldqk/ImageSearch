@@ -32,7 +32,7 @@ else
 }
 
 Console.WriteLine("正在读取文件目录树......");
-dirs.SelectMany(dir => Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)).Where(s => Regex.IsMatch(s, "(jpg|jpeg|bmp)$")).Chunk(32).AsParallel().ForAll(files =>
+dirs.SelectMany(dir => Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)).Where(s => Regex.IsMatch(s, "(jpg|jpeg|bmp)$", RegexOptions.IgnoreCase)).Chunk(32).AsParallel().ForAll(files =>
 {
     foreach (var file in files)
     {

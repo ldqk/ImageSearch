@@ -52,7 +52,7 @@ namespace 以图搜图
             {
                 cbRemoveInvalidIndex.Hide();
                 var imageHasher = new ImageHasher(new ImageSharpTransformer());
-                var files = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$")).ToList();
+                var files = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).ToList();
                 var sw = Stopwatch.StartNew();
                 int pro = 1;
                 files.Chunk(32).AsParallel().ForAll(g =>
