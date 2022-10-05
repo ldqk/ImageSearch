@@ -27,21 +27,35 @@ dirs.SelectMany(dir => Directory.GetFiles(dir, "*", SearchOption.AllDirectories)
         Console.WriteLine("正在处理：" + file);
         try
         {
+            bool modified = false;
             using var image = Image.Load<Rgba64>(file);
             if (image.Metadata.ExifProfile != null)
             {
                 foreach (var exifValue in image.Metadata.ExifProfile.Values)
                 {
-                    if (exifValue.Tag is ExifTag<string>)
+                    if (exifValue.Tag is ExifTag<string> && exifValue.TrySetValue(null))
                     {
-                        exifValue.TrySetValue(null);
+                        modified = true;
                     }
                 }
             }
 
-            image.Metadata.IptcProfile = null;
-            image.Metadata.XmpProfile = null;
-            image.Save(file);
+            if (image.Metadata.IptcProfile != null)
+            {
+                image.Metadata.IptcProfile = null;
+                modified = true;
+            }
+
+            if (image.Metadata.XmpProfile != null)
+            {
+                image.Metadata.XmpProfile = null;
+                modified = true;
+            }
+
+            if (modified)
+            {
+                image.Save(file);
+            }
         }
         catch (Exception e)
         {
