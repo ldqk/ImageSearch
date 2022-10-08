@@ -43,12 +43,58 @@ dirs.SelectMany(dir => Directory.EnumerateFiles(dir, "*", SearchOption.AllDirect
             using var image = Image.Load<Rgba64>(file);
             if (image.Metadata.ExifProfile != null)
             {
-                foreach (var exifValue in image.Metadata.ExifProfile.Values)
+                if (args.Contains("-a"))
                 {
-                    if (exifValue.Tag is ExifTag<string> && exifValue.TrySetValue(null))
+                    foreach (var exifValue in image.Metadata.ExifProfile.Values)
                     {
-                        modified = true;
+                        if (exifValue.DataType is ExifDataType.Ascii or ExifDataType.Byte or ExifDataType.Undefined or ExifDataType.Unknown && image.Metadata.ExifProfile.RemoveValue(exifValue.Tag))
+                        {
+                            modified = true;
+                        }
                     }
+                }
+                else
+                {
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.ImageDescription);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.Artist);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.Copyright);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.XPTitle);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.XPComment);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.XPAuthor);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.XPSubject);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.XPKeywords);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSAltitude);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSAltitudeRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSAreaInformation);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDateStamp);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestBearing);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestBearingRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestDistance);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestDistanceRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLatitude);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLatitudeRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLongitude);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLongitudeRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDifferential);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSIFDOffset);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSImgDirection);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSImgDirectionRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSMapDatum);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLatitude);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLatitudeRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLongitude);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLongitudeRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSMeasureMode);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSProcessingMethod);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSSatellites);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSSpeed);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSSpeedRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSStatus);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSTimestamp);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSTrack);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSTrackRef);
+                    image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSVersionID);
+                    modified = true;
                 }
             }
 
