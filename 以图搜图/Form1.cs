@@ -48,39 +48,50 @@ namespace 以图搜图
                 return;
             }
 
-            await Task.Run(() =>
+            cbRemoveInvalidIndex.Hide();
+            var imageHasher = new ImageHasher(new ImageSharpTransformer());
+            var files = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).ToList();
+            var sw = Stopwatch.StartNew();
+            int pro = 1;
+            await files.ForeachAsync(s =>
             {
-                cbRemoveInvalidIndex.Hide();
-                var imageHasher = new ImageHasher(new ImageSharpTransformer());
-                var files = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).ToList();
-                var sw = Stopwatch.StartNew();
-                int pro = 1;
-                files.Chunk(32).AsParallel().ForAll(g =>
+                lblProcess.Text = pro++ + "/" + files.Count;
+                try
                 {
-                    foreach (var s in g)
-                    {
-                        lblProcess.Text = pro++ + "/" + files.Count;
-                        try
-                        {
-                            _index.GetOrAdd(s, _ => imageHasher.DifferenceHash256(s));
-                        }
-                        catch (Exception exception)
-                        {
-                            Console.WriteLine(s + "格式不正确");
-                            Console.WriteLine(exception);
-                        }
-                    }
-                });
-                lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
-                MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
-                if (cbRemoveInvalidIndex.Checked)
-                {
-                    _index.Keys.AsParallel().Where(s => !File.Exists(s)).ForAll(s => _index.TryRemove(s, out _));
+                    return _index.GetOrAddAsync(s, () => Task.Run(() => imageHasher.DifferenceHash256(s)));
                 }
+                catch (Exception exception)
+                {
+                    Console.WriteLine(s + "格式不正确");
+                    Console.WriteLine(exception);
+                }
+                return Task.CompletedTask;
+            }, 32);
+            //files.Chunk(32).AsParallel().ForAll(g =>
+            //{
+            //    foreach (var s in g)
+            //    {
+            //        lblProcess.Text = pro++ + "/" + files.Count;
+            //        try
+            //        {
+            //            _index.GetOrAdd(s, _ => imageHasher.DifferenceHash256(s));
+            //        }
+            //        catch (Exception exception)
+            //        {
+            //            Console.WriteLine(s + "格式不正确");
+            //            Console.WriteLine(exception);
+            //        }
+            //    }
+            //});
+            lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
+            MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
+            if (cbRemoveInvalidIndex.Checked)
+            {
+                _index.Keys.AsParallel().Where(s => !File.Exists(s)).ForAll(s => _index.TryRemove(s, out _));
+            }
 
-                lbIndexCount.Text = _index.Count + "文件";
-                cbRemoveInvalidIndex.Show();
-            }).ConfigureAwait(false);
+            lbIndexCount.Text = _index.Count + "文件";
+            cbRemoveInvalidIndex.Show();
             var json = JsonSerializer.Serialize(_index);
             await File.WriteAllTextAsync("index.json", json, Encoding.UTF8).ConfigureAwait(false);
         }
