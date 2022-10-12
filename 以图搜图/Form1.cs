@@ -53,36 +53,25 @@ namespace 以图搜图
             var files = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).ToList();
             var sw = Stopwatch.StartNew();
             int pro = 1;
-            await files.ForeachAsync(s =>
+            await Task.Run(() =>
             {
-                lblProcess.Text = pro++ + "/" + files.Count;
-                try
+                files.Chunk(32).AsParallel().ForAll(g =>
                 {
-                    return _index.GetOrAddAsync(s, () => Task.Run(() => imageHasher.DifferenceHash256(s)));
-                }
-                catch (Exception exception)
-                {
-                    Console.WriteLine(s + "格式不正确");
-                    Console.WriteLine(exception);
-                }
-                return Task.CompletedTask;
-            }, 32);
-            //files.Chunk(32).AsParallel().ForAll(g =>
-            //{
-            //    foreach (var s in g)
-            //    {
-            //        lblProcess.Text = pro++ + "/" + files.Count;
-            //        try
-            //        {
-            //            _index.GetOrAdd(s, _ => imageHasher.DifferenceHash256(s));
-            //        }
-            //        catch (Exception exception)
-            //        {
-            //            Console.WriteLine(s + "格式不正确");
-            //            Console.WriteLine(exception);
-            //        }
-            //    }
-            //});
+                    foreach (var s in g)
+                    {
+                        lblProcess.Text = pro++ + "/" + files.Count;
+                        try
+                        {
+                            _index.GetOrAdd(s, _ => imageHasher.DifferenceHash256(s));
+                        }
+                        catch (Exception exception)
+                        {
+                            Console.WriteLine(s + "格式不正确");
+                            Console.WriteLine(exception);
+                        }
+                    }
+                });
+            });
             lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
             MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
             if (cbRemoveInvalidIndex.Checked)
