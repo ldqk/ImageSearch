@@ -51,11 +51,11 @@ namespace 以图搜图
 
 			cbRemoveInvalidIndex.Hide();
 			var imageHasher = new ImageHasher(new ImageSharpTransformer());
-			var files = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).ToList();
-			var sw = Stopwatch.StartNew();
-			int pro = 1;
 			await Task.Run(() =>
 			{
+				var files = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).ToList();
+				var sw = Stopwatch.StartNew();
+				int pro = 1;
 				files.Chunk(Environment.ProcessorCount * 2).AsParallel().ForAll(g =>
 				{
 					foreach (var s in g)
@@ -74,18 +74,18 @@ namespace 以图搜图
 						}
 					}
 				});
-			});
-			lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
-			MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
-			if (cbRemoveInvalidIndex.Checked)
-			{
-				_index.Keys.AsParallel().Where(s => !File.Exists(s)).ForAll(s => _index.TryRemove(s, out _));
-			}
+				lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
+				MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
+				if (cbRemoveInvalidIndex.Checked)
+				{
+					_index.Keys.AsParallel().Where(s => !File.Exists(s)).ForAll(s => _index.TryRemove(s, out _));
+				}
 
-			lbIndexCount.Text = _index.Count + "文件";
-			cbRemoveInvalidIndex.Show();
-			var json = JsonSerializer.Serialize(_index);
-			await File.WriteAllTextAsync("index.json", json, Encoding.UTF8).ConfigureAwait(false);
+				lbIndexCount.Text = _index.Count + "文件";
+				cbRemoveInvalidIndex.Show();
+				var json = JsonSerializer.Serialize(_index);
+				File.WriteAllText("index.json", json, Encoding.UTF8);
+			}).ConfigureAwait(false);
 		}
 
 		private void btnSearch_Click(object sender, EventArgs e)
@@ -102,33 +102,50 @@ namespace 以图搜图
 				return;
 			}
 
-			var sim = numLike.Value.ConvertTo<float>() / 100;
+			var sim = (float)numLike.Value / 100;
 			var hasher = new ImageHasher();
 			var sw = Stopwatch.StartNew();
 			var hash = hasher.DifferenceHash256(txtPic.Text);
-			var hashs = new List<ulong[]> { hash };
+			var hashs = new ConcurrentBag<ulong[]> { hash };
 			using (var image = Image.Load<Rgba32>(txtPic.Text))
 			{
+				var actions = new List<Action>();
 				if (cbRotate.Checked)
 				{
-					var rotate90 = image.Clone(c => c.Rotate(90)).DifferenceHash256();
-					var rotate180 = image.Clone(c => c.Rotate(180)).DifferenceHash256();
-					var rotate270 = image.Clone(c => c.Rotate(270)).DifferenceHash256();
-					hashs.Add(rotate90);
-					hashs.Add(rotate180);
-					hashs.Add(rotate270);
+					actions.Add(() =>
+					{
+						var rotate90 = image.Clone(c => c.Rotate(90)).DifferenceHash256();
+						hashs.Add(rotate90);
+					});
+					actions.Add(() =>
+					{
+						var rotate180 = image.Clone(c => c.Rotate(180)).DifferenceHash256();
+						hashs.Add(rotate180);
+					});
+					actions.Add(() =>
+					{
+						var rotate270 = image.Clone(c => c.Rotate(270)).DifferenceHash256();
+						hashs.Add(rotate270);
+					});
 				}
 
 				if (cbFlip.Checked)
 				{
-					var flipH = image.Clone(c => c.Flip(FlipMode.Horizontal)).DifferenceHash256();
-					var flipV = image.Clone(c => c.Flip(FlipMode.Horizontal)).DifferenceHash256();
-					hashs.Add(flipH);
-					hashs.Add(flipV);
+					actions.Add(() =>
+					{
+						var flipH = image.Clone(c => c.Flip(FlipMode.Horizontal)).DifferenceHash256();
+						hashs.Add(flipH);
+					});
+					actions.Add(() =>
+					{
+						var flipV = image.Clone(c => c.Flip(FlipMode.Horizontal)).DifferenceHash256();
+						hashs.Add(flipV);
+					});
 				}
+				Parallel.Invoke(actions.ToArray());
 			}
 
-			var list = _index.Select(x => new
+			var list = _index.AsParallel().Select(x => new
 			{
 				路径 = x.Key,
 				匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).ToArray()
