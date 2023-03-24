@@ -1,4 +1,3 @@
-using Masuit.Tools;
 using Masuit.Tools.Logging;
 using Masuit.Tools.Media;
 using SixLabors.ImageSharp.PixelFormats;
@@ -168,7 +167,7 @@ namespace 以图搜图
 		{
 			if (File.Exists("index.json"))
 			{
-				_index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(File.OpenRead("index.json"));
+				_index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(File.OpenRead("index.json")).ConfigureAwait(false);
 				lbIndexCount.Text = _index.Count + "文件";
 			}
 		}
