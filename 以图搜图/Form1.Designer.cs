@@ -55,6 +55,7 @@
             lblProcess = new Label();
             cbRemoveInvalidIndex = new CheckBox();
             lblGithub = new LinkLabel();
+            buttonClipSearch = new Button();
             ((System.ComponentModel.ISupportInitialize)picSource).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picDest).BeginInit();
             ((System.ComponentModel.ISupportInitialize)dgvResult).BeginInit();
@@ -82,9 +83,9 @@
             // 
             // btnDirectory
             // 
-            btnDirectory.Location = new Point(633, 6);
+            btnDirectory.Location = new Point(620, 6);
             btnDirectory.Name = "btnDirectory";
-            btnDirectory.Size = new Size(75, 23);
+            btnDirectory.Size = new Size(64, 23);
             btnDirectory.TabIndex = 2;
             btnDirectory.Text = "选择";
             btnDirectory.UseVisualStyleBackColor = true;
@@ -92,9 +93,9 @@
             // 
             // btnPic
             // 
-            btnPic.Location = new Point(633, 39);
+            btnPic.Location = new Point(620, 39);
             btnPic.Name = "btnPic";
-            btnPic.Size = new Size(75, 23);
+            btnPic.Size = new Size(64, 23);
             btnPic.TabIndex = 5;
             btnPic.Text = "选择";
             btnPic.UseVisualStyleBackColor = true;
@@ -121,9 +122,9 @@
             // 
             // btnSearch
             // 
-            btnSearch.Location = new Point(408, 66);
+            btnSearch.Location = new Point(371, 66);
             btnSearch.Name = "btnSearch";
-            btnSearch.Size = new Size(75, 23);
+            btnSearch.Size = new Size(51, 23);
             btnSearch.TabIndex = 6;
             btnSearch.Text = "搜索";
             btnSearch.UseVisualStyleBackColor = true;
@@ -131,7 +132,7 @@
             // 
             // btnIndex
             // 
-            btnIndex.Location = new Point(712, 6);
+            btnIndex.Location = new Point(690, 6);
             btnIndex.Name = "btnIndex";
             btnIndex.Size = new Size(75, 23);
             btnIndex.TabIndex = 7;
@@ -187,7 +188,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(717, 42);
+            label4.Location = new Point(697, 42);
             label4.Name = "label4";
             label4.Size = new Size(80, 17);
             label4.TabIndex = 14;
@@ -196,7 +197,7 @@
             // lbIndexCount
             // 
             lbIndexCount.AutoSize = true;
-            lbIndexCount.Location = new Point(789, 42);
+            lbIndexCount.Location = new Point(782, 42);
             lbIndexCount.Name = "lbIndexCount";
             lbIndexCount.Size = new Size(0, 17);
             lbIndexCount.TabIndex = 15;
@@ -204,7 +205,7 @@
             // label5
             // 
             label5.AutoSize = true;
-            label5.Location = new Point(487, 70);
+            label5.Location = new Point(529, 70);
             label5.Name = "label5";
             label5.Size = new Size(68, 17);
             label5.TabIndex = 16;
@@ -213,7 +214,7 @@
             // lbElpased
             // 
             lbElpased.AutoSize = true;
-            lbElpased.Location = new Point(561, 69);
+            lbElpased.Location = new Point(603, 69);
             lbElpased.Name = "lbElpased";
             lbElpased.Size = new Size(0, 17);
             lbElpased.TabIndex = 17;
@@ -265,7 +266,7 @@
             // cbFlip
             // 
             cbFlip.AutoSize = true;
-            cbFlip.Location = new Point(278, 69);
+            cbFlip.Location = new Point(275, 69);
             cbFlip.Name = "cbFlip";
             cbFlip.Size = new Size(87, 21);
             cbFlip.TabIndex = 23;
@@ -293,7 +294,7 @@
             // cbRemoveInvalidIndex
             // 
             cbRemoveInvalidIndex.AutoSize = true;
-            cbRemoveInvalidIndex.Location = new Point(793, 9);
+            cbRemoveInvalidIndex.Location = new Point(770, 9);
             cbRemoveInvalidIndex.Name = "cbRemoveInvalidIndex";
             cbRemoveInvalidIndex.Size = new Size(99, 21);
             cbRemoveInvalidIndex.TabIndex = 28;
@@ -311,11 +312,22 @@
             lblGithub.Text = "https://github.com/ldqk/ImageSearch";
             lblGithub.LinkClicked += lblGithub_LinkClicked;
             // 
+            // buttonClipSearch
+            // 
+            buttonClipSearch.Location = new Point(427, 66);
+            buttonClipSearch.Name = "buttonClipSearch";
+            buttonClipSearch.Size = new Size(96, 23);
+            buttonClipSearch.TabIndex = 30;
+            buttonClipSearch.Text = "从剪切板搜索";
+            buttonClipSearch.UseVisualStyleBackColor = true;
+            buttonClipSearch.Click += buttonClipSearch_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(902, 506);
+            Controls.Add(buttonClipSearch);
             Controls.Add(lblGithub);
             Controls.Add(cbRemoveInvalidIndex);
             Controls.Add(lblProcess);
@@ -385,5 +397,6 @@
         private Label lblProcess;
         private CheckBox cbRemoveInvalidIndex;
         private LinkLabel lblGithub;
+        private Button buttonClipSearch;
     }
 }
