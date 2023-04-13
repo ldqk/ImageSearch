@@ -116,6 +116,7 @@ namespace 以图搜图
                 MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
             }).ConfigureAwait(false);
             IndexRunning = false;
+            btnIndex.Text = "更新索引";
         }
 
         private void btnSearch_Click(object sender, EventArgs e)
