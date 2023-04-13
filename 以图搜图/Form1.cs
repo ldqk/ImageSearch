@@ -1,12 +1,19 @@
+using System;
 using Masuit.Tools.Logging;
 using Masuit.Tools.Media;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 using Masuit.Tools.Files.FileDetector;
 using Masuit.Tools.Systems;
 using Image = SixLabors.ImageSharp.Image;
@@ -174,15 +181,11 @@ namespace 以图搜图
                 Parallel.Invoke(actions.ToArray());
             }
 
-            var list = _index.AsParallel().Select(x => new
+            var list = _index.Select(x => new
             {
                 路径 = x.Key,
-                匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).ToArray()
-            }).Where(x => x.匹配度.Any(f => f >= sim)).Select(a => new
-            {
-                a.路径,
-                匹配度 = a.匹配度.Max()
-            }).OrderByDescending(a => a.匹配度).ToList();
+                匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
+            }).Where(x => x.匹配度 >= sim).OrderByDescending(a => a.匹配度).ToList();
             lbElpased.Text = sw.ElapsedMilliseconds + "ms";
             if (list.Count > 0)
             {
