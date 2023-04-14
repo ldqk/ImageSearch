@@ -1,23 +1,15 @@
-using System;
 using Masuit.Tools.Logging;
 using Masuit.Tools.Media;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using Masuit.Tools.Files.FileDetector;
 using Masuit.Tools.Systems;
 using Image = SixLabors.ImageSharp.Image;
-using SharpCompress.Common;
 using ImageFormat = System.Drawing.Imaging.ImageFormat;
 
 namespace 以图搜图
@@ -78,7 +70,7 @@ namespace 以图搜图
             {
                 var sw = Stopwatch.StartNew();
                 int pro = 1;
-                Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).Chunk(Environment.ProcessorCount * 2).AsParallel().ForAll(g =>
+                Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
                 {
                     foreach (var s in g)
                     {
@@ -106,7 +98,10 @@ namespace 以图搜图
                 lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
                 if (cbRemoveInvalidIndex.Checked)
                 {
-                    _index.Keys.AsParallel().Where(s => !File.Exists(s)).ForAll(s => _index.TryRemove(s, out _));
+                    foreach (var s in _index.Keys.Where(s => !File.Exists(s)))
+                    {
+                        _index.TryRemove(s, out _);
+                    }
                 }
 
                 lbIndexCount.Text = _index.Count + "文件";
@@ -151,17 +146,20 @@ namespace 以图搜图
                 {
                     actions.Add(() =>
                     {
-                        var rotate90 = image.Clone(c => c.Rotate(90)).DifferenceHash256();
+                        using var clone = image.Clone(c => c.Rotate(90));
+                        var rotate90 = clone.DifferenceHash256();
                         hashs.Add(rotate90);
                     });
                     actions.Add(() =>
                     {
-                        var rotate180 = image.Clone(c => c.Rotate(180)).DifferenceHash256();
+                        using var clone = image.Clone(c => c.Rotate(180));
+                        var rotate180 = clone.DifferenceHash256();
                         hashs.Add(rotate180);
                     });
                     actions.Add(() =>
                     {
-                        var rotate270 = image.Clone(c => c.Rotate(270)).DifferenceHash256();
+                        using var clone = image.Clone(c => c.Rotate(270));
+                        var rotate270 = clone.DifferenceHash256();
                         hashs.Add(rotate270);
                     });
                 }
@@ -170,12 +168,14 @@ namespace 以图搜图
                 {
                     actions.Add(() =>
                     {
-                        var flipH = image.Clone(c => c.Flip(FlipMode.Horizontal)).DifferenceHash256();
+                        using var clone = image.Clone(c => c.Flip(FlipMode.Horizontal));
+                        var flipH = clone.DifferenceHash256();
                         hashs.Add(flipH);
                     });
                     actions.Add(() =>
                     {
-                        var flipV = image.Clone(c => c.Flip(FlipMode.Horizontal)).DifferenceHash256();
+                        using var clone = image.Clone(c => c.Flip(FlipMode.Vertical));
+                        var flipV = clone.DifferenceHash256();
                         hashs.Add(flipV);
                     });
                 }
@@ -292,17 +292,20 @@ namespace 以图搜图
                     {
                         actions.Add(() =>
                         {
-                            var rotate90 = image.Clone(c => c.Rotate(90)).DifferenceHash256();
+                            using var clone = image.Clone(c => c.Rotate(90));
+                            var rotate90 = clone.DifferenceHash256();
                             hashs.Add(rotate90);
                         });
                         actions.Add(() =>
                         {
-                            var rotate180 = image.Clone(c => c.Rotate(180)).DifferenceHash256();
+                            using var clone = image.Clone(c => c.Rotate(180));
+                            var rotate180 = clone.DifferenceHash256();
                             hashs.Add(rotate180);
                         });
                         actions.Add(() =>
                         {
-                            var rotate270 = image.Clone(c => c.Rotate(270)).DifferenceHash256();
+                            using var clone = image.Clone(c => c.Rotate(270));
+                            var rotate270 = clone.DifferenceHash256();
                             hashs.Add(rotate270);
                         });
                     }
@@ -311,27 +314,25 @@ namespace 以图搜图
                     {
                         actions.Add(() =>
                         {
-                            var flipH = image.Clone(c => c.Flip(FlipMode.Horizontal)).DifferenceHash256();
+                            using var clone = image.Clone(c => c.Flip(FlipMode.Horizontal));
+                            var flipH = clone.DifferenceHash256();
                             hashs.Add(flipH);
                         });
                         actions.Add(() =>
                         {
-                            var flipV = image.Clone(c => c.Flip(FlipMode.Horizontal)).DifferenceHash256();
+                            using var clone = image.Clone(c => c.Flip(FlipMode.Vertical));
+                            var flipV = clone.DifferenceHash256();
                             hashs.Add(flipV);
                         });
                     }
                     Parallel.Invoke(actions.ToArray());
                 }
 
-                var list = _index.AsParallel().Select(x => new
+                var list = _index.Select(x => new
                 {
                     路径 = x.Key,
-                    匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).ToArray()
-                }).Where(x => x.匹配度.Any(f => f >= sim)).Select(a => new
-                {
-                    a.路径,
-                    匹配度 = a.匹配度.Max()
-                }).OrderByDescending(a => a.匹配度).ToList();
+                    匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
+                }).Where(x => x.匹配度 >= sim).OrderByDescending(a => a.匹配度).ToList();
                 lbElpased.Text = sw.ElapsedMilliseconds + "ms";
                 if (list.Count > 0)
                 {
