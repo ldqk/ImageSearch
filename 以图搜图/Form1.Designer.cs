@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             label1 = new Label();
             txtDirectory = new TextBox();
@@ -41,6 +42,8 @@
             picDest = new PictureBox();
             label3 = new Label();
             dgvResult = new DataGridView();
+            dgvContextMenuStrip = new ContextMenuStrip(components);
+            打开所在文件夹 = new ToolStripMenuItem();
             label4 = new Label();
             lbIndexCount = new Label();
             label5 = new Label();
@@ -59,6 +62,7 @@
             ((System.ComponentModel.ISupportInitialize)picSource).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picDest).BeginInit();
             ((System.ComponentModel.ISupportInitialize)dgvResult).BeginInit();
+            dgvContextMenuStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)numLike).BeginInit();
             SuspendLayout();
             // 
@@ -107,7 +111,7 @@
             txtPic.Location = new Point(113, 39);
             txtPic.Name = "txtPic";
             txtPic.Size = new Size(504, 23);
-            txtPic.TabIndex = 4;
+            txtPic.TabIndex = 0;
             txtPic.DragDrop += txtPic_DragDrop;
             txtPic.DragEnter += txtPic_DragEnter;
             // 
@@ -184,6 +188,21 @@
             dgvResult.TabIndex = 13;
             dgvResult.CellClick += dgvResult_CellClick;
             dgvResult.CellContentClick += dgvResult_CellContentClick;
+            dgvResult.CellDoubleClick += dgvResult_CellDoubleClick;
+            dgvResult.CellMouseDown += dgvResult_CellMouseDown;
+            // 
+            // dgvContextMenuStrip
+            // 
+            dgvContextMenuStrip.Items.AddRange(new ToolStripItem[] { 打开所在文件夹 });
+            dgvContextMenuStrip.Name = "dgvContextMenuStrip";
+            dgvContextMenuStrip.Size = new Size(161, 26);
+            // 
+            // 打开所在文件夹
+            // 
+            打开所在文件夹.Name = "打开所在文件夹";
+            打开所在文件夹.Size = new Size(160, 22);
+            打开所在文件夹.Text = "打开所在文件夹";
+            打开所在文件夹.Click += 打开所在文件夹_Click;
             // 
             // label4
             // 
@@ -364,6 +383,7 @@
             ((System.ComponentModel.ISupportInitialize)picSource).EndInit();
             ((System.ComponentModel.ISupportInitialize)picDest).EndInit();
             ((System.ComponentModel.ISupportInitialize)dgvResult).EndInit();
+            dgvContextMenuStrip.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)numLike).EndInit();
             ResumeLayout(false);
             PerformLayout();
@@ -398,5 +418,7 @@
         private CheckBox cbRemoveInvalidIndex;
         private LinkLabel lblGithub;
         private Button buttonClipSearch;
+        private ContextMenuStrip dgvContextMenuStrip;
+        private ToolStripMenuItem 打开所在文件夹;
     }
 }
