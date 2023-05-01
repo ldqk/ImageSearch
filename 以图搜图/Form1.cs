@@ -99,9 +99,9 @@ namespace 以图搜图
                 lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
                 if (cbRemoveInvalidIndex.Checked)
                 {
-                    foreach (var s in _index.Keys.Where(s => !File.Exists(s)))
+                    foreach (var (key, _) in _index.AsParallel().WithDegreeOfParallelism(32).Where(s => !File.Exists(s.Key)))
                     {
-                        _index.TryRemove(s, out _);
+                        _index.TryRemove(key, out _);
                     }
                 }
 
