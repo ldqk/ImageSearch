@@ -257,7 +257,7 @@
             // lbSpeed
             // 
             lbSpeed.AutoSize = true;
-            lbSpeed.Location = new Point(717, 67);
+            lbSpeed.Location = new Point(697, 67);
             lbSpeed.Name = "lbSpeed";
             lbSpeed.Size = new Size(16, 17);
             lbSpeed.TabIndex = 20;

@@ -66,37 +66,40 @@ namespace 以图搜图
             cbRemoveInvalidIndex.Hide();
             var imageHasher = new ImageHasher(new ImageSharpTransformer());
             int? filesCount = null;
-            Task.Run(() => filesCount = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Count(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)));
+            var dir = new DirectoryInfo(txtDirectory.Text);
+            Task.Run(() => filesCount = dir.EnumerateFiles("*", SearchOption.AllDirectories).Count(s => Regex.IsMatch(s.Name, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)));
             await Task.Run(() =>
             {
                 var sw = Stopwatch.StartNew();
                 int pro = 1;
-                Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
-                {
-                    foreach (var s in g)
-                    {
-                        if (IndexRunning)
-                        {
-                            if (lblProcess.InvokeRequired)
-                            {
-                                lblProcess.Invoke(() => lblProcess.Text = pro++ + "/" + filesCount);
-                            }
-                            try
-                            {
-                                _index.GetOrAdd(s, _ => imageHasher.DifferenceHash256(s));
-                            }
-                            catch
-                            {
-                                LogManager.Info(s + "格式不正确");
-                            }
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                });
-                lbSpeed.Text = "索引速度:" + Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds) + "/s";
+                long size = 0;
+                dir.EnumerateFiles("*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s.Name, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
+                 {
+                     foreach (var s in g)
+                     {
+                         if (IndexRunning)
+                         {
+                             if (lblProcess.InvokeRequired)
+                             {
+                                 lblProcess.Invoke(() => lblProcess.Text = $"{pro++}/{filesCount}");
+                             }
+                             try
+                             {
+                                 _index.GetOrAdd(s.FullName, _ => imageHasher.DifferenceHash256(s.FullName));
+                                 size += s.Length;
+                             }
+                             catch
+                             {
+                                 LogManager.Info(s + "格式不正确");
+                             }
+                         }
+                         else
+                         {
+                             break;
+                         }
+                     }
+                 });
+                lbSpeed.Text = $"索引速度: {Math.Round(pro * 1.0 / sw.Elapsed.TotalSeconds)} items/s({size * 1f / 1048576 / sw.Elapsed.TotalSeconds:N}MB/s)";
                 if (cbRemoveInvalidIndex.Checked)
                 {
                     foreach (var (key, _) in _index.AsParallel().WithDegreeOfParallelism(32).Where(s => !File.Exists(s.Key)))
