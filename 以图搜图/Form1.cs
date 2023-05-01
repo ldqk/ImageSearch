@@ -200,10 +200,15 @@ namespace 以图搜图
 
         private async void Form1_Load(object sender, EventArgs e)
         {
+            lbIndexCount.Text = "正在加载索引...";
             if (File.Exists("index.json"))
             {
                 _index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(File.OpenRead("index.json")).ConfigureAwait(false);
                 lbIndexCount.Text = _index.Count + "文件";
+            }
+            else
+            {
+                lbIndexCount.Text = "请先创建索引";
             }
         }
 
