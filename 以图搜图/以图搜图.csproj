@@ -15,7 +15,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Masuit.Tools.Abstractions" Version="2.6.2.3" />
+    <PackageReference Include="Masuit.Tools.Abstractions" Version="2.6.2.8" />
   </ItemGroup>
 
 </Project>
