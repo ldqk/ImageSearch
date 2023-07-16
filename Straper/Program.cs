@@ -5,6 +5,11 @@ using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using System.Text.RegularExpressions;
 using SearchOption = System.IO.SearchOption;
 
+AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) =>
+{
+    Console.Error.WriteLine("发生未处理异常：" + eventArgs.ExceptionObject);
+};
+
 Console.WriteLine("欢迎使用清除图像exif信息小工具——ExifStraper by 懒得勤快\n\n");
 var dirs = new List<string>();
 if (args.Length > 0)
@@ -33,90 +38,98 @@ else
 }
 
 Console.WriteLine("正在读取文件目录树......");
-dirs.SelectMany(dir => Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)).Where(s => Regex.IsMatch(s, "(jpg|jpeg|bmp)$", RegexOptions.IgnoreCase)).AsParallel().WithDegreeOfParallelism(32).ForAll(file =>
+var temp = dirs.SelectMany(dir => Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)).Where(s => Regex.IsMatch(s, "(jpg|jpeg|bmp)$", RegexOptions.IgnoreCase)).ToList();
+var count = temp.Count;
+int index = 1;
+temp.Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(files =>
 {
-    Console.WriteLine("正在处理：" + file);
-    try
+    foreach (var file in files)
     {
-        bool modified = false;
-        using var image = Image.Load<Rgba64>(file);
-        if (image.Metadata.ExifProfile != null)
+        Console.WriteLine($"正在处理[{index++}/{count}]：{file}");
+        try
         {
-            if (args.Contains("-a"))
+            bool modified = false;
+            using var image = Image.Load<Rgba64>(file);
+            if (image.Metadata.ExifProfile != null)
             {
-                foreach (var exifValue in image.Metadata.ExifProfile.Values)
+                if (args.Contains("-a"))
                 {
-                    if (exifValue.DataType is ExifDataType.Ascii or ExifDataType.Byte or ExifDataType.Undefined or ExifDataType.Unknown && image.Metadata.ExifProfile.RemoveValue(exifValue.Tag))
+                    foreach (var exifValue in image.Metadata.ExifProfile.Values)
+                    {
+                        if (exifValue.DataType is ExifDataType.Ascii or ExifDataType.Byte or ExifDataType.Undefined or ExifDataType.Unknown && image.Metadata.ExifProfile.RemoveValue(exifValue.Tag))
+                        {
+                            modified = true;
+                        }
+                    }
+                }
+                else
+                {
+                    if (image.Metadata.ExifProfile.RemoveValue(ExifTag.ImageDescription) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.Artist) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.Copyright) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.XPTitle) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.XPComment) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.XPAuthor) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.XPSubject) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.XPKeywords) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSAltitude) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSAltitudeRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSAreaInformation) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDateStamp) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestBearing) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestBearingRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestDistance) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestDistanceRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLatitude) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLatitudeRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLongitude) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLongitudeRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDifferential) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSIFDOffset) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSImgDirection) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSImgDirectionRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSMapDatum) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLatitude) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLatitudeRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLongitude) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLongitudeRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSMeasureMode) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSProcessingMethod) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSSatellites) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSSpeed) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSSpeedRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSStatus) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSTimestamp) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSTrack) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSTrackRef) ||
+                        image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSVersionID))
                     {
                         modified = true;
                     }
                 }
             }
-            else
+
+            if (image.Metadata.IptcProfile != null)
             {
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.ImageDescription);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.Artist);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.Copyright);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.XPTitle);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.XPComment);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.XPAuthor);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.XPSubject);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.XPKeywords);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSAltitude);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSAltitudeRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSAreaInformation);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDateStamp);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestBearing);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestBearingRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestDistance);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestDistanceRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLatitude);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLatitudeRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLongitude);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDestLongitudeRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSDifferential);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSIFDOffset);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSImgDirection);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSImgDirectionRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSMapDatum);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLatitude);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLatitudeRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLongitude);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSLongitudeRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSMeasureMode);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSProcessingMethod);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSSatellites);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSSpeed);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSSpeedRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSStatus);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSTimestamp);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSTrack);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSTrackRef);
-                image.Metadata.ExifProfile.RemoveValue(ExifTag.GPSVersionID);
+                image.Metadata.IptcProfile = null;
                 modified = true;
             }
-        }
 
-        if (image.Metadata.IptcProfile != null)
-        {
-            image.Metadata.IptcProfile = null;
-            modified = true;
-        }
+            if (image.Metadata.XmpProfile != null)
+            {
+                image.Metadata.XmpProfile = null;
+                modified = true;
+            }
 
-        if (image.Metadata.XmpProfile != null)
-        {
-            image.Metadata.XmpProfile = null;
-            modified = true;
+            if (modified)
+            {
+                image.Save(file);
+            }
         }
-
-        if (modified)
+        catch (Exception e)
         {
-            image.Save(file);
+            Console.Error.WriteLine("图像：" + file + " 不受支持");
         }
-    }
-    catch (Exception e)
-    {
-        Console.Error.WriteLine("图像：" + file + " 不受支持");
     }
 });
 

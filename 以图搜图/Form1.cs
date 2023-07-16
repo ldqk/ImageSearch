@@ -393,24 +393,24 @@ namespace 以图搜图
 
         public void ExplorerFile(string filePath)
         {
-            if (!File.Exists(filePath) && !Directory.Exists(filePath))
-                return;
-
-            if (Directory.Exists(filePath))
-                Process.Start(@"explorer.exe", "/select,\"" + filePath + "\"");
-            else
+            if (!File.Exists(filePath))
             {
-                IntPtr pidlList = ILCreateFromPathW(filePath);
-                if (pidlList != IntPtr.Zero)
+                return;
+            }
+
+            var pidlList = ILCreateFromPathW(filePath);
+            if (pidlList != IntPtr.Zero)
+            {
+                try
                 {
-                    try
-                    {
-                        Marshal.ThrowExceptionForHR(SHOpenFolderAndSelectItems(pidlList, 0, IntPtr.Zero, 0));
-                    }
-                    finally
-                    {
-                        ILFree(pidlList);
-                    }
+                    Marshal.ThrowExceptionForHR(SHOpenFolderAndSelectItems(pidlList, 0, IntPtr.Zero, 0));
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    ILFree(pidlList);
                 }
             }
         }
