@@ -5,7 +5,11 @@
 ![image](https://user-images.githubusercontent.com/20254980/177023173-c0bb4be5-a015-4c05-981b-98c26c47010c.png)
 ## 环境要求
 开发环境：Visual Studio 2022  
-运行时：.net7 desktop
+运行时：.net7 desktop  
+## Star趋势
+
+<img src="https://starchart.cc/ldqk/ImageSearch.svg">
+
 ## 理论篇
 https://segmentfault.com/a/1190000038308093
 
