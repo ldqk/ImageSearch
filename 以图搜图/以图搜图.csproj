@@ -1,21 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <OutputType>WinExe</OutputType>
-        <TargetFramework>net7.0-windows</TargetFramework>
-        <AssemblyName>以图搜图</AssemblyName>
-        <RootNamespace>以图搜图</RootNamespace>
-        <UseWindowsForms>true</UseWindowsForms>
-        <IsTestProject>false</IsTestProject>
-        <IsPackable>false</IsPackable>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <ApplicationIcon>logo.ico</ApplicationIcon>
-        <PlatformTarget>x64</PlatformTarget>
-        <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
-    </PropertyGroup>
-    <ItemGroup>
-        <Content Include="logo.ico" />
-    </ItemGroup>
-    <ItemGroup>
-        <PackageReference Include="Masuit.Tools.Abstractions" Version="2.6.6.9" />
-    </ItemGroup>
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>以图搜图</AssemblyName>
+    <RootNamespace>以图搜图</RootNamespace>
+    <UseWindowsForms>true</UseWindowsForms>
+    <IsTestProject>false</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
+    <PlatformTarget>x64</PlatformTarget>
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="logo.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Masuit.Tools.Abstractions" Version="2.6.8" />
+  </ItemGroup>
 </Project>
