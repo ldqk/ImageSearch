@@ -270,7 +270,7 @@
             // numLike
             // 
             numLike.Location = new Point(130, 75);
-            numLike.Minimum = new decimal(new int[] { 70, 0, 0, 0 });
+            numLike.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
             numLike.Name = "numLike";
             numLike.Size = new Size(51, 24);
             numLike.TabIndex = 21;
