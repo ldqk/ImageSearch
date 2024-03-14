@@ -104,7 +104,7 @@ public partial class Form1 : Form
                 File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
                 ReaderWriterLock.ExitWriteLock();
                 _removingInvalidIndex = false;
-                lbIndexCount.Text = _index.Count + "文件";
+                lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
             });
         }
 
@@ -181,7 +181,7 @@ public partial class Form1 : Form
                 }
             });
             lbSpeed.Text = $"索引速度: {Math.Round(local.Values.Sum() * 1.0 / sw.Elapsed.TotalSeconds)} items/s({size * 1f / 1048576 / sw.Elapsed.TotalSeconds:N}MB/s)";
-            lbIndexCount.Text = _index.Count + "文件";
+            lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
             cbRemoveInvalidIndex.Show();
             ReaderWriterLock.EnterWriteLock();
             File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
