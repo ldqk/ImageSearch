@@ -23,6 +23,28 @@ public partial class Form1 : Form
         CheckForIllegalCrossThreadCalls = false;
     }
 
+    private async void Form1_Load(object sender, EventArgs e)
+    {
+        lbIndexCount.Text = "正在加载索引...";
+        if (File.Exists("index.json"))
+        {
+            _index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(File.OpenRead("index.json")).ConfigureAwait(false);
+        }
+        if (File.Exists("frame_index.json"))
+        {
+            _frameIndex = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, List<ulong[]>>>(File.OpenRead("frame_index.json")).ConfigureAwait(false);
+        }
+
+        if (_index.Count + _frameIndex.Count > 0)
+        {
+            lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
+        }
+        else
+        {
+            lbIndexCount.Text = "请先创建索引";
+        }
+    }
+
     private void btnDirectory_Click(object sender, EventArgs e)
     {
         using var dialog = new FolderBrowserDialog();
@@ -43,7 +65,8 @@ public partial class Form1 : Form
     }
 
     private ConcurrentDictionary<string, ulong[]> _index = new();
-    private static ReaderWriterLockSlim _readerWriterLock = new();
+    private ConcurrentDictionary<string, List<ulong[]>> _frameIndex = new();
+    private static readonly ReaderWriterLockSlim ReaderWriterLock = new();
     private bool _removingInvalidIndex;
     public bool IndexRunning { get; set; }
 
@@ -71,11 +94,15 @@ public partial class Form1 : Form
                 {
                     _index.TryRemove(key, out _);
                 }
+                foreach (var (key, _) in _frameIndex.AsParallel().WithDegreeOfParallelism(32).Where(s => !File.Exists(s.Key)))
+                {
+                    _frameIndex.TryRemove(key, out _);
+                }
 
-                _readerWriterLock.EnterWriteLock();
-                var json = JsonSerializer.Serialize(_index);
-                File.WriteAllText("index.json", json, Encoding.UTF8);
-                _readerWriterLock.ExitWriteLock();
+                ReaderWriterLock.EnterWriteLock();
+                File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
+                File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
+                ReaderWriterLock.ExitWriteLock();
                 _removingInvalidIndex = false;
             });
         }
@@ -85,7 +112,7 @@ public partial class Form1 : Form
         cbRemoveInvalidIndex.Hide();
         var imageHasher = new ImageHasher(new ImageSharpTransformer());
         int? filesCount = null;
-        Task.Run(() => filesCount = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Count(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase))).ConfigureAwait(false);
+        Task.Run(() => filesCount = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|png|bmp)$", RegexOptions.IgnoreCase))).ConfigureAwait(false);
         var local = new ThreadLocal<int>(true);
         await Task.Run(() =>
         {
@@ -118,13 +145,47 @@ public partial class Form1 : Form
                     }
                 }
             });
+            Directory.EnumerateFiles(txtDirectory.Text, "*.gif", SearchOption.AllDirectories).Except(_frameIndex.Keys).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
+            {
+                foreach (var s in g)
+                {
+                    if (IndexRunning)
+                    {
+                        if (lblProcess.InvokeRequired)
+                        {
+                            local.Value++;
+                            lblProcess.Invoke(() => lblProcess.Text = $"{local.Values.Sum()}/{filesCount}");
+                        }
+                        try
+                        {
+                            using var gif = Image.Load<Rgba32>(s);
+                            for (var i = 0; i < gif.Frames.Count; i++)
+                            {
+                                using var frame = gif.Frames.ExportFrame(i);
+                                var hash = imageHasher.DifferenceHash256(frame);
+                                _frameIndex.GetOrAdd(s, _ => []).Add(hash);
+                            }
+
+                            size += new FileInfo(s).Length;
+                        }
+                        catch
+                        {
+                            LogManager.Info(s + "格式不正确");
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            });
             lbSpeed.Text = $"索引速度: {Math.Round(local.Values.Sum() * 1.0 / sw.Elapsed.TotalSeconds)} items/s({size * 1f / 1048576 / sw.Elapsed.TotalSeconds:N}MB/s)";
             lbIndexCount.Text = _index.Count + "文件";
             cbRemoveInvalidIndex.Show();
-            _readerWriterLock.EnterWriteLock();
-            var json = JsonSerializer.Serialize(_index);
-            File.WriteAllText("index.json", json, Encoding.UTF8);
-            _readerWriterLock.ExitWriteLock();
+            ReaderWriterLock.EnterWriteLock();
+            File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
+            File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
+            ReaderWriterLock.ExitWriteLock();
             MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
         }).ConfigureAwait(false);
         IndexRunning = false;
@@ -154,56 +215,95 @@ public partial class Form1 : Form
         var sim = (float)numLike.Value / 100;
         var hasher = new ImageHasher();
         var sw = Stopwatch.StartNew();
-        var hash = hasher.DifferenceHash256(txtPic.Text);
-        var hashs = new ConcurrentBag<ulong[]> { hash };
-        using (var image = Image.Load<Rgba32>(txtPic.Text))
-        {
-            var actions = new List<Action>();
-            if (cbRotate.Checked)
-            {
-                actions.Add(() =>
-                {
-                    using var clone = image.Clone(c => c.Rotate(90));
-                    var rotate90 = clone.DifferenceHash256();
-                    hashs.Add(rotate90);
-                });
-                actions.Add(() =>
-                {
-                    using var clone = image.Clone(c => c.Rotate(180));
-                    var rotate180 = clone.DifferenceHash256();
-                    hashs.Add(rotate180);
-                });
-                actions.Add(() =>
-                {
-                    using var clone = image.Clone(c => c.Rotate(270));
-                    var rotate270 = clone.DifferenceHash256();
-                    hashs.Add(rotate270);
-                });
-            }
+        var hashs = new ConcurrentBag<ulong[]>();
+        var actions = new List<Action>();
 
-            if (cbFlip.Checked)
+        if (txtPic.Text.EndsWith("gif"))
+        {
+            using (var gif = Image.Load<Rgba32>(txtPic.Text))
             {
-                actions.Add(() =>
+                for (var i = 0; i < gif.Frames.Count; i++)
                 {
-                    using var clone = image.Clone(c => c.Flip(FlipMode.Horizontal));
-                    var flipH = clone.DifferenceHash256();
-                    hashs.Add(flipH);
-                });
-                actions.Add(() =>
-                {
-                    using var clone = image.Clone(c => c.Flip(FlipMode.Vertical));
-                    var flipV = clone.DifferenceHash256();
-                    hashs.Add(flipV);
-                });
+                    var frame = gif.Frames.ExportFrame(i);
+                    actions.Add(() =>
+                    {
+                        hashs.Add(frame.DifferenceHash256());
+                        frame.Dispose();
+                    });
+                }
+                Parallel.Invoke(actions.ToArray());
             }
-            Parallel.Invoke(actions.ToArray());
+        }
+        else
+        {
+            hashs.Add(hasher.DifferenceHash256(txtPic.Text));
+            using (var image = Image.Load<Rgba32>(txtPic.Text))
+            {
+                if (cbRotate.Checked)
+                {
+                    actions.Add(() =>
+                    {
+                        using var clone = image.Clone(c => c.Rotate(90));
+                        var rotate90 = clone.DifferenceHash256();
+                        hashs.Add(rotate90);
+                    });
+                    actions.Add(() =>
+                    {
+                        using var clone = image.Clone(c => c.Rotate(180));
+                        var rotate180 = clone.DifferenceHash256();
+                        hashs.Add(rotate180);
+                    });
+                    actions.Add(() =>
+                    {
+                        using var clone = image.Clone(c => c.Rotate(270));
+                        var rotate270 = clone.DifferenceHash256();
+                        hashs.Add(rotate270);
+                    });
+                }
+
+                if (cbFlip.Checked)
+                {
+                    actions.Add(() =>
+                    {
+                        using var clone = image.Clone(c => c.Flip(FlipMode.Horizontal));
+                        var flipH = clone.DifferenceHash256();
+                        hashs.Add(flipH);
+                    });
+                    actions.Add(() =>
+                    {
+                        using var clone = image.Clone(c => c.Flip(FlipMode.Vertical));
+                        var flipV = clone.DifferenceHash256();
+                        hashs.Add(flipV);
+                    });
+                }
+                Parallel.Invoke(actions.ToArray());
+            }
         }
 
-        var list = _index.Select(x => new
+        var list = new List<SearchResult>();
+        if (txtPic.Text.EndsWith("gif"))
         {
-            路径 = x.Key,
-            匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
-        }).Where(x => x.匹配度 >= sim).OrderByDescending(a => a.匹配度).ToList();
+            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult
+            {
+                路径 = x.Key,
+                匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= sim).OrderDescending().Take(10).DefaultIfEmpty().Average()
+            }).Where(x => x.匹配度 >= sim));
+        }
+        else
+        {
+            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult
+            {
+                路径 = x.Key,
+                匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Max()
+            }).Where(x => x.匹配度 >= sim));
+            list.AddRange(_index.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult
+            {
+                路径 = x.Key,
+                匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
+            }).Where(x => x.匹配度 >= sim));
+        }
+
+        list = list.OrderByDescending(a => a.匹配度).ToList();
         lbElpased.Text = sw.ElapsedMilliseconds + "ms";
         if (list.Count > 0)
         {
@@ -213,20 +313,6 @@ public partial class Form1 : Form
 
         dgvResult.DataSource = list;
         dgvResult.Focus();
-    }
-
-    private async void Form1_Load(object sender, EventArgs e)
-    {
-        lbIndexCount.Text = "正在加载索引...";
-        if (File.Exists("index.json"))
-        {
-            _index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(File.OpenRead("index.json")).ConfigureAwait(false);
-            lbIndexCount.Text = _index.Count + "文件";
-        }
-        else
-        {
-            lbIndexCount.Text = "请先创建索引";
-        }
     }
 
     private void dgvResult_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -351,11 +437,17 @@ public partial class Form1 : Form
                 Parallel.Invoke(actions.ToArray());
             }
 
-            var list = _index.Select(x => new
+            var list = _frameIndex.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult()
+            {
+                路径 = x.Key,
+                匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Max()
+            }).Where(x => x.匹配度 >= sim).ToList();
+            list.AddRange(_index.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult()
             {
                 路径 = x.Key,
                 匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
-            }).Where(x => x.匹配度 >= sim).OrderByDescending(a => a.匹配度).ToList();
+            }).Where(x => x.匹配度 >= sim));
+            list = list.OrderByDescending(a => a.匹配度).ToList();
             lbElpased.Text = sw.ElapsedMilliseconds + "ms";
             if (list.Count > 0)
             {
@@ -475,4 +567,10 @@ public partial class Form1 : Form
             e.Cancel = true;
         }
     }
+}
+
+public record SearchResult
+{
+    public string 路径 { get; set; }
+    public float 匹配度 { get; set; }
 }

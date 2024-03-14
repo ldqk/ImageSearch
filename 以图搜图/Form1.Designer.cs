@@ -381,7 +381,7 @@
             MaximizeBox = false;
             Name = "Form1";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "本地以图搜图小工具 by 懒得勤快";
+            Text = "本地以图搜图小工具 by 懒得勤快 (评估版本)";
             FormClosing += Form1_FormClosing;
             Load += Form1_Load;
             ((System.ComponentModel.ISupportInitialize)picSource).EndInit();
