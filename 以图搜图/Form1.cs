@@ -104,6 +104,7 @@ public partial class Form1 : Form
                 File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
                 ReaderWriterLock.ExitWriteLock();
                 _removingInvalidIndex = false;
+                lbIndexCount.Text = _index.Count + "文件";
             });
         }
 
