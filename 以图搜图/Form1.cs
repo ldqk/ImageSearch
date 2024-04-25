@@ -1,4 +1,4 @@
-using Masuit.Tools.Logging;
+﻿using Masuit.Tools.Logging;
 using Masuit.Tools.Media;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;

@@ -273,11 +273,13 @@
             numLike.Name = "numLike";
             numLike.Size = new Size(45, 23);
             numLike.TabIndex = 21;
-            numLike.Value = new decimal(new int[] { 90, 0, 0, 0 });
+            numLike.Value = new decimal(new int[] { 80, 0, 0, 0 });
             // 
             // cbRotate
             // 
             cbRotate.AutoSize = true;
+            cbRotate.Checked = true;
+            cbRotate.CheckState = CheckState.Checked;
             cbRotate.Location = new Point(171, 69);
             cbRotate.Name = "cbRotate";
             cbRotate.Size = new Size(87, 21);
