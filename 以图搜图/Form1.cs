@@ -113,13 +113,13 @@ public partial class Form1 : Form
         cbRemoveInvalidIndex.Hide();
         var imageHasher = new ImageHasher(new ImageSharpTransformer());
         int? filesCount = null;
-        Task.Run(() => filesCount = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|png|bmp)$", RegexOptions.IgnoreCase))).ConfigureAwait(false);
+        Task.Run(() => filesCount = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase))).ConfigureAwait(false);
         var local = new ThreadLocal<int>(true);
         await Task.Run(() =>
         {
             var sw = Stopwatch.StartNew();
             long size = 0;
-            Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Where(s => Regex.IsMatch(s, "(jpg|png|bmp)$", RegexOptions.IgnoreCase)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
+            Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Where(s => Regex.IsMatch(s, "(jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
             {
                 foreach (var s in g)
                 {

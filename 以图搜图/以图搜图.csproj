@@ -16,6 +16,6 @@
     <Content Include="logo.ico" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Masuit.Tools.Abstractions" Version="2024.1.0" />
+    <PackageReference Include="Masuit.Tools.Abstractions" Version="2024.2.0" />
   </ItemGroup>
 </Project>
