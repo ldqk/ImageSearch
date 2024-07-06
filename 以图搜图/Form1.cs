@@ -12,6 +12,7 @@ using Masuit.Tools.Systems;
 using Image = SixLabors.ImageSharp.Image;
 using ImageFormat = System.Drawing.Imaging.ImageFormat;
 using System.Runtime.InteropServices;
+using System;
 
 namespace 以图搜图;
 
@@ -87,14 +88,15 @@ public partial class Form1 : Form
 
         if (cbRemoveInvalidIndex.Checked)
         {
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
                 _removingInvalidIndex = true;
-                foreach (var (key, _) in _index.AsParallel().WithDegreeOfParallelism(32).Where(s => !File.Exists(s.Key)))
+                foreach (var key in _index.Keys.Except(_index.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g => Directory.EnumerateFiles(FindLCP(g.ToArray()), "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase)))).AsParallel().WithDegreeOfParallelism(32).Where(s => !File.Exists(s)))
                 {
                     _index.TryRemove(key, out _);
                 }
-                foreach (var (key, _) in _frameIndex.AsParallel().WithDegreeOfParallelism(32).Where(s => !File.Exists(s.Key)))
+
+                foreach (var key in _frameIndex.Keys.Except(_frameIndex.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g => Directory.EnumerateFiles(FindLCP(g.ToArray()), "*.gif", SearchOption.AllDirectories))).AsParallel().WithDegreeOfParallelism(32).Where(s => !File.Exists(s)))
                 {
                     _frameIndex.TryRemove(key, out _);
                 }
@@ -105,7 +107,7 @@ public partial class Form1 : Form
                 ReaderWriterLock.ExitWriteLock();
                 _removingInvalidIndex = false;
                 lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
-            });
+            }).ConfigureAwait(false);
         }
 
         IndexRunning = true;
@@ -113,7 +115,7 @@ public partial class Form1 : Form
         cbRemoveInvalidIndex.Hide();
         var imageHasher = new ImageHasher(new ImageSharpTransformer());
         int? filesCount = null;
-        Task.Run(() => filesCount = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase))).ConfigureAwait(false);
+        _ = Task.Run(() => filesCount = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase))).ConfigureAwait(false);
         var local = new ThreadLocal<int>(true);
         await Task.Run(() =>
         {
@@ -191,6 +193,34 @@ public partial class Form1 : Form
         }).ConfigureAwait(false);
         IndexRunning = false;
         btnIndex.Text = "更新索引";
+    }
+
+    private static string FindLCP(string[] strs)
+    {
+        if (strs == null || strs.Length == 0) return "";
+
+        // 找到最短的字符串，因为LCP不会超过最短字符串的长度
+        string shortest = strs[0];
+        for (int i = 1; i < strs.Length; i++)
+        {
+            if (strs[i].Length < shortest.Length)
+                shortest = strs[i];
+        }
+
+        // 逐字符比较，直到找到不匹配的字符
+        for (int i = 0; i < shortest.Length; i++)
+        {
+            char c = shortest[i];
+            for (int j = 1; j < strs.Length; j++)
+            {
+                // 如果当前索引越界或字符不匹配，则返回当前LCP
+                if (i >= strs[j].Length || strs[j][i] != c)
+                    return shortest.Substring(0, i);
+            }
+        }
+
+        // 如果所有字符串共享整个最短字符串，则返回它
+        return shortest;
     }
 
     private void btnSearch_Click(object sender, EventArgs e)
