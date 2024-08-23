@@ -26,6 +26,13 @@ public partial class Form1 : Form
 
     private async void Form1_Load(object sender, EventArgs e)
     {
+        var bitmap = new Bitmap(picSource.Width, picSource.Height);
+        using var graphics = Graphics.FromImage(bitmap);
+        string text = "单击这里选择需要检索的图片";
+        Font font = new Font("微软雅黑LightUI", 9);
+        Brush brush = new SolidBrush(Color.Black);
+        graphics.DrawString(text, font, brush, new PointF(10, 10));
+        picSource.Image = bitmap;
         lbIndexCount.Text = "正在加载索引...";
         if (File.Exists("index.json"))
         {
@@ -44,14 +51,6 @@ public partial class Form1 : Form
         {
             lbIndexCount.Text = "请先创建索引";
         }
-
-        var bitmap = new Bitmap(picSource.Width, picSource.Height);
-        using var graphics = Graphics.FromImage(bitmap);
-        string text = "单击这里选择需要检索的图片";
-        Font font = new Font("微软雅黑LightUI", 9);
-        Brush brush = new SolidBrush(Color.Black);
-        graphics.DrawString(text, font, brush, new PointF(10, 10));
-        picSource.Image = bitmap;
     }
 
     private void btnDirectory_Click(object sender, EventArgs e)
@@ -362,7 +361,21 @@ public partial class Form1 : Form
 
     private void dgvResult_CellClick(object sender, DataGridViewCellEventArgs e)
     {
-        picDest.ImageLocation = dgvResult.SelectedCells[0].OwningRow.Cells["路径"].Value.ToString();
+        var location = dgvResult.SelectedCells[0].OwningRow.Cells["路径"].Value.ToString();
+        if (File.Exists(location))
+        {
+            picDest.ImageLocation = location;
+        }
+        else
+        {
+            var bitmap = new Bitmap(picSource.Width, picSource.Height);
+            using var graphics = Graphics.FromImage(bitmap);
+            string text = "文件不存在";
+            Font font = new Font("微软雅黑LightUI", 9);
+            Brush brush = new SolidBrush(Color.Black);
+            graphics.DrawString(text, font, brush, new PointF(10, 10));
+            picDest.Image = bitmap;
+        }
     }
 
     private void picSource_LoadCompleted(object sender, System.ComponentModel.AsyncCompletedEventArgs e)
@@ -372,7 +385,10 @@ public partial class Form1 : Form
 
     private void picDest_LoadCompleted(object sender, System.ComponentModel.AsyncCompletedEventArgs e)
     {
-        lblDestInfo.Text = $"分辨率：{picDest.Image.Width}x{picDest.Image.Height}，大小：{new FileInfo(picDest.ImageLocation).Length / 1024}KB";
+        if (File.Exists(picDest.ImageLocation))
+        {
+            lblDestInfo.Text = $"分辨率：{picDest.Image.Width}x{picDest.Image.Height}，大小：{new FileInfo(picDest.ImageLocation).Length / 1024}KB";
+        }
     }
 
     private void lblGithub_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
@@ -571,13 +587,48 @@ public partial class Form1 : Form
 
     private void dgvResult_KeyUp(object sender, KeyEventArgs e)
     {
+        if (e.KeyCode is Keys.Delete)
+        {
+            foreach (DataGridViewCell cell in dgvResult.SelectedCells)
+            {
+                var path = cell.OwningRow.Cells["路径"].Value.ToString();
+                File.Delete(path);
+                dgvResult.Rows.RemoveAt(cell.RowIndex);
+                _index.TryRemove(path, out _);
+                _frameIndex.TryRemove(path, out _);
+            }
+
+            Task.Run(() =>
+            {
+                _removingInvalidIndex = true;
+                ReaderWriterLock.EnterWriteLock();
+                File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
+                File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
+                ReaderWriterLock.ExitWriteLock();
+                _removingInvalidIndex = false;
+            }).ConfigureAwait(false);
+        }
     }
 
     private void dgvResult_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.KeyCode is Keys.Up or Keys.Down)
         {
-            picDest.ImageLocation = dgvResult.SelectedCells[0].OwningRow.Cells["路径"].Value.ToString();
+            var location = dgvResult.SelectedCells[0].OwningRow.Cells["路径"].Value.ToString();
+            if (File.Exists(location))
+            {
+                picDest.ImageLocation = location;
+            }
+            else
+            {
+                var bitmap = new Bitmap(picSource.Width, picSource.Height);
+                using var graphics = Graphics.FromImage(bitmap);
+                string text = "文件不存在";
+                Font font = new Font("微软雅黑LightUI", 9);
+                Brush brush = new SolidBrush(Color.Black);
+                graphics.DrawString(text, font, brush, new PointF(10, 10));
+                picDest.Image = bitmap;
+            }
         }
     }
 
@@ -627,11 +678,22 @@ public partial class Form1 : Form
         {
             foreach (DataGridViewCell cell in dgvResult.SelectedCells)
             {
-                File.Delete(cell.OwningRow.Cells["路径"].Value.ToString());
+                var path = cell.OwningRow.Cells["路径"].Value.ToString();
+                File.Delete(path);
                 dgvResult.Rows.RemoveAt(cell.RowIndex);
+                _index.TryRemove(path, out _);
+                _frameIndex.TryRemove(path, out _);
             }
 
-            MessageBox.Show("删除成功");
+            Task.Run(() =>
+            {
+                _removingInvalidIndex = true;
+                ReaderWriterLock.EnterWriteLock();
+                File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
+                File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
+                ReaderWriterLock.ExitWriteLock();
+                _removingInvalidIndex = false;
+            }).ConfigureAwait(false);
         }
     }
 }
