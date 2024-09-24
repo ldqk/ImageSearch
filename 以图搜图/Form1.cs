@@ -80,6 +80,8 @@ public partial class Form1 : Form
     private bool _removingInvalidIndex;
     public bool IndexRunning { get; set; }
 
+    private readonly Regex picRegex = new Regex("(jpg|jpeg|png|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private async void btnIndex_Click(object sender, EventArgs e)
     {
         if (IndexRunning)
@@ -100,12 +102,12 @@ public partial class Form1 : Form
             _ = Task.Run(() =>
             {
                 _removingInvalidIndex = true;
-                foreach (var key in _index.Keys.Except(_index.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g => Directory.EnumerateFiles(FindLCP(g.ToArray()), "*", SearchOption.AllDirectories).Where(s => Regex.IsMatch(s, "(jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase)))).AsParallel().WithDegreeOfParallelism(32).Where(s => !File.Exists(s)))
+                foreach (var key in _index.Keys.Except(_index.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g => Directory.Exists(g.Key) ? Directory.EnumerateFiles(FindLCP(g.ToArray()), "*", SearchOption.AllDirectories).Where(s => picRegex.IsMatch(s)) : [])).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Where(s => !File.Exists(s)))
                 {
                     _index.TryRemove(key, out _);
                 }
 
-                foreach (var key in _frameIndex.Keys.Except(_frameIndex.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g => Directory.EnumerateFiles(FindLCP(g.ToArray()), "*.gif", SearchOption.AllDirectories))).AsParallel().WithDegreeOfParallelism(32).Where(s => !File.Exists(s)))
+                foreach (var key in _frameIndex.Keys.Except(_frameIndex.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g => Directory.Exists(g.Key) ? Directory.EnumerateFiles(FindLCP(g.ToArray()), "*.gif", SearchOption.AllDirectories) : [])).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Where(s => !File.Exists(s)))
                 {
                     _frameIndex.TryRemove(key, out _);
                 }
@@ -130,7 +132,7 @@ public partial class Form1 : Form
         {
             var sw = Stopwatch.StartNew();
             long size = 0;
-            Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Where(s => Regex.IsMatch(s, "(jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
+            Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Where(s => picRegex.IsMatch(s)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
             {
                 foreach (var s in g)
                 {
@@ -323,7 +325,7 @@ public partial class Form1 : Form
         var list = new List<SearchResult>();
         if (txtPic.Text.EndsWith("gif"))
         {
-            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult
+            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult
             {
                 路径 = x.Key,
                 匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= sim).OrderDescending().Take(10).DefaultIfEmpty().Average()
@@ -331,12 +333,12 @@ public partial class Form1 : Form
         }
         else
         {
-            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult
+            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult
             {
                 路径 = x.Key,
                 匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Max()
             }).Where(x => x.匹配度 >= sim));
-            list.AddRange(_index.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult
+            list.AddRange(_index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult
             {
                 路径 = x.Key,
                 匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
@@ -497,12 +499,12 @@ public partial class Form1 : Form
                 Parallel.Invoke(actions.ToArray());
             }
 
-            var list = _frameIndex.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult()
+            var list = _frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult()
             {
                 路径 = x.Key,
                 匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Max()
             }).Where(x => x.匹配度 >= sim).ToList();
-            list.AddRange(_index.AsParallel().WithDegreeOfParallelism(32).Select(x => new SearchResult()
+            list.AddRange(_index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult()
             {
                 路径 = x.Key,
                 匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
