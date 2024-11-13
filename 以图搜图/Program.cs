@@ -1,4 +1,4 @@
-using Masuit.Tools.Logging;
+﻿using Masuit.Tools.Logging;
 using System.Diagnostics;
 
 namespace 以图搜图;

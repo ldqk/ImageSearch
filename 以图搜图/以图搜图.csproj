@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
     <AssemblyName>以图搜图</AssemblyName>
     <RootNamespace>以图搜图</RootNamespace>
     <UseWindowsForms>true</UseWindowsForms>
@@ -16,6 +16,11 @@
     <Content Include="logo.ico" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Masuit.Tools.Abstractions" Version="2024.5.6" />
+    <PackageReference Include="Masuit.Tools.Abstractions" Version="2024.6.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Everything64.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

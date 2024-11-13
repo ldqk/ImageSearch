@@ -78,7 +78,7 @@ public partial class Form1 : Form
     private ConcurrentDictionary<string, List<ulong[]>> _frameIndex = new();
     private static readonly ReaderWriterLockSlim ReaderWriterLock = new();
     private bool _removingInvalidIndex;
-    public bool IndexRunning { get; set; }
+    private bool IndexRunning { get; set; }
 
     private readonly Regex picRegex = new Regex("(jpg|jpeg|png|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
@@ -93,7 +93,7 @@ public partial class Form1 : Form
 
         if (string.IsNullOrEmpty(txtDirectory.Text))
         {
-            MessageBox.Show("请先选择文件夹");
+            MessageBox.Show("请先选择文件夹", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
             return;
         }
 
@@ -102,12 +102,48 @@ public partial class Form1 : Form
             _ = Task.Run(() =>
             {
                 _removingInvalidIndex = true;
-                foreach (var key in _index.Keys.Except(_index.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g => Directory.Exists(g.Key) ? Directory.EnumerateFiles(FindLCP(g.ToArray()), "*", SearchOption.AllDirectories).Where(s => picRegex.IsMatch(s)) : [])).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Where(s => !File.Exists(s)))
+                foreach (var key in _index.Keys.Except(_index.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g =>
+                         {
+                             if (Directory.Exists(g.Key))
+                             {
+                                 if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
+                                 {
+                                     return EverythingHelper.EnumerateFiles(FindLCP(g.ToArray()), "*.jpg|*.jpeg|*.bmp|*.png");
+                                 }
+
+                                 return Directory.EnumerateFiles(FindLCP(g.ToArray()), "*", new EnumerationOptions()
+                                 {
+                                     IgnoreInaccessible = true,
+                                     AttributesToSkip = FileAttributes.System | FileAttributes.Temporary,
+                                     RecurseSubdirectories = true
+                                 }).Where(s => picRegex.IsMatch(s));
+                             }
+
+                             return [];
+                         })).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Where(s => !File.Exists(s)))
                 {
                     _index.TryRemove(key, out _);
                 }
 
-                foreach (var key in _frameIndex.Keys.Except(_frameIndex.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g => Directory.Exists(g.Key) ? Directory.EnumerateFiles(FindLCP(g.ToArray()), "*.gif", SearchOption.AllDirectories) : [])).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Where(s => !File.Exists(s)))
+                foreach (var key in _frameIndex.Keys.Except(_frameIndex.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g =>
+                         {
+                             if (Directory.Exists(g.Key))
+                             {
+                                 if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
+                                 {
+                                     return EverythingHelper.EnumerateFiles(FindLCP(g.ToArray()), "*.gif");
+                                 }
+
+                                 return Directory.EnumerateFiles(FindLCP(g.ToArray()), "*.gif", new EnumerationOptions()
+                                 {
+                                     IgnoreInaccessible = true,
+                                     AttributesToSkip = FileAttributes.System | FileAttributes.Temporary,
+                                     RecurseSubdirectories = true
+                                 });
+                             }
+
+                             return [];
+                         })).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Where(s => !File.Exists(s)))
                 {
                     _frameIndex.TryRemove(key, out _);
                 }
@@ -118,6 +154,13 @@ public partial class Form1 : Form
                 ReaderWriterLock.ExitWriteLock();
                 _removingInvalidIndex = false;
                 lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
+            }).ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                {
+                    LogManager.Error(t.Exception);
+                    _removingInvalidIndex = false;
+                }
             }).ConfigureAwait(false);
         }
 
@@ -125,14 +168,15 @@ public partial class Form1 : Form
         btnIndex.Text = "停止索引";
         cbRemoveInvalidIndex.Hide();
         var imageHasher = new ImageHasher(new ImageSharpTransformer());
-        int? filesCount = null;
-        _ = Task.Run(() => filesCount = Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase))).ConfigureAwait(false);
+        lblProcess.Text = "正在扫描文件...";
+        var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? EverythingHelper.EnumerateFiles(txtDirectory.Text).ToArray() : Directory.GetFiles(txtDirectory.Text, "*", SearchOption.AllDirectories);
+        int? filesCount = files.Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase));
         var local = new ThreadLocal<int>(true);
         await Task.Run(() =>
         {
             var sw = Stopwatch.StartNew();
             long size = 0;
-            Directory.EnumerateFiles(txtDirectory.Text, "*", SearchOption.AllDirectories).Except(_index.Keys).Where(s => picRegex.IsMatch(s)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
+            files.Except(_index.Keys).Where(s => picRegex.IsMatch(s)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
             {
                 foreach (var s in g)
                 {
@@ -159,7 +203,7 @@ public partial class Form1 : Form
                     }
                 }
             });
-            Directory.EnumerateFiles(txtDirectory.Text, "*.gif", SearchOption.AllDirectories).Except(_frameIndex.Keys).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
+            files.Where(s => s.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase)).Except(_frameIndex.Keys).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
             {
                 foreach (var s in g)
                 {
@@ -200,7 +244,7 @@ public partial class Form1 : Form
             File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
             File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
             ReaderWriterLock.ExitWriteLock();
-            MessageBox.Show("索引创建完成，耗时：" + sw.Elapsed.TotalSeconds + "s");
+            MessageBox.Show($"索引创建完成，耗时：{sw.Elapsed.TotalSeconds}s", "消息", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
         }).ConfigureAwait(false);
         IndexRunning = false;
         btnIndex.Text = "更新索引";
@@ -238,19 +282,19 @@ public partial class Form1 : Form
     {
         if (string.IsNullOrEmpty(txtPic.Text))
         {
-            MessageBox.Show("请先选择图片");
+            MessageBox.Show("请先选择图片", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
             return;
         }
 
         if (_index.Count == 0)
         {
-            MessageBox.Show("当前没有任何索引，请先添加文件夹创建索引后再搜索");
+            MessageBox.Show("当前没有任何索引，请先添加文件夹创建索引后再搜索", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
             return;
         }
 
         if (new FileInfo(txtPic.Text).DetectFiletype().MimeType?.StartsWith("image") != true)
         {
-            MessageBox.Show("不是图像文件，无法检索");
+            MessageBox.Show("不是图像文件，无法检索", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
             return;
         }
 
@@ -648,14 +692,14 @@ public partial class Form1 : Form
     {
         if (IndexRunning)
         {
-            MessageBox.Show("正在索引文件，关闭程序前请先取消");
+            MessageBox.Show("正在索引文件，关闭程序前请先取消", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
             e.Cancel = true;
             return;
         }
 
         if (_removingInvalidIndex)
         {
-            MessageBox.Show("正在移除无效的索引文件，请稍后再试");
+            MessageBox.Show("正在移除无效的索引文件，请稍后再试", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
             e.Cancel = true;
             return;
         }
