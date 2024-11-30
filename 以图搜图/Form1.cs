@@ -636,11 +636,14 @@ public partial class Form1 : Form
         {
             foreach (DataGridViewCell cell in dgvResult.SelectedCells)
             {
-                var path = cell.OwningRow.Cells["路径"].Value.ToString();
-                File.Delete(path);
-                dgvResult.Rows.RemoveAt(cell.RowIndex);
-                _index.TryRemove(path, out _);
-                _frameIndex.TryRemove(path, out _);
+                var path = cell.OwningRow.Cells[0].Value?.ToString();
+                if (path is not null)
+                {
+                    File.Delete(path);
+                    dgvResult.Rows.RemoveAt(cell.RowIndex);
+                    _index.TryRemove(path, out _);
+                    _frameIndex.TryRemove(path, out _);
+                }
             }
 
             Task.Run(() =>
@@ -723,11 +726,14 @@ public partial class Form1 : Form
         {
             foreach (DataGridViewCell cell in dgvResult.SelectedCells)
             {
-                var path = cell.OwningRow.Cells["路径"].Value.ToString();
-                File.Delete(path);
-                dgvResult.Rows.RemoveAt(cell.RowIndex);
-                _index.TryRemove(path, out _);
-                _frameIndex.TryRemove(path, out _);
+                var path = cell.OwningRow.Cells[0].Value?.ToString();
+                if (path is not null)
+                {
+                    File.Delete(path);
+                    dgvResult.Rows.RemoveAt(cell.RowIndex);
+                    _index.TryRemove(path, out _);
+                    _frameIndex.TryRemove(path, out _);
+                }
             }
 
             Task.Run(() =>
