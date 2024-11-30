@@ -12,7 +12,7 @@ using Masuit.Tools.Systems;
 using Image = SixLabors.ImageSharp.Image;
 using ImageFormat = System.Drawing.Imaging.ImageFormat;
 using System.Runtime.InteropServices;
-using System;
+using System.ComponentModel;
 
 namespace 以图搜图;
 
@@ -395,9 +395,8 @@ public partial class Form1 : Form
         {
             picSource.Refresh();
         }
-        BindingSource bindingSource = new BindingSource();
-        bindingSource.DataSource = list;
-        dgvResult.DataSource = bindingSource;
+
+        dgvResult.DataSource = new BindingList<SearchResult>(list);
         dgvResult.Focus();
     }
 
@@ -561,7 +560,7 @@ public partial class Form1 : Form
                 picSource.Refresh();
             }
 
-            dgvResult.DataSource = list;
+            dgvResult.DataSource = new BindingList<SearchResult>(list);
             Task.Run(() =>
             {
                 Thread.Sleep(1000);
