@@ -639,7 +639,14 @@ public partial class Form1 : Form
                 var path = cell.OwningRow.Cells[0].Value?.ToString();
                 if (path is not null)
                 {
-                    File.Delete(path);
+                    if (e.Modifiers is Keys.Shift)
+                    {
+                        RecycleBinHelper.Delete(path);
+                    }
+                    else
+                    {
+                        File.Delete(path);
+                    }
                     dgvResult.Rows.RemoveAt(cell.RowIndex);
                     _index.TryRemove(path, out _);
                     _frameIndex.TryRemove(path, out _);
@@ -655,6 +662,11 @@ public partial class Form1 : Form
                 ReaderWriterLock.ExitWriteLock();
                 _removingInvalidIndex = false;
             }).ConfigureAwait(false);
+        }
+
+        if (e.Modifiers == Keys.Control && e.KeyCode is Keys.O)
+        {
+            ExplorerFile(dgvResult.SelectedCells[0].OwningRow.Cells["路径"].Value.ToString());
         }
     }
 
@@ -730,6 +742,35 @@ public partial class Form1 : Form
                 if (path is not null)
                 {
                     File.Delete(path);
+                    dgvResult.Rows.RemoveAt(cell.RowIndex);
+                    _index.TryRemove(path, out _);
+                    _frameIndex.TryRemove(path, out _);
+                }
+            }
+
+            Task.Run(() =>
+            {
+                _removingInvalidIndex = true;
+                ReaderWriterLock.EnterWriteLock();
+                File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
+                File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
+                ReaderWriterLock.ExitWriteLock();
+                _removingInvalidIndex = false;
+            }).ConfigureAwait(false);
+        }
+    }
+
+    private void 删除到回收站ToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        var result = MessageBox.Show("确认删除选中项吗？", "提示", MessageBoxButtons.OKCancel);
+        if (result == DialogResult.OK)
+        {
+            foreach (DataGridViewCell cell in dgvResult.SelectedCells)
+            {
+                var path = cell.OwningRow.Cells[0].Value?.ToString();
+                if (path is not null)
+                {
+                    RecycleBinHelper.Delete(path);
                     dgvResult.Rows.RemoveAt(cell.RowIndex);
                     _index.TryRemove(path, out _);
                     _frameIndex.TryRemove(path, out _);

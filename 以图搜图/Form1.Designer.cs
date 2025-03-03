@@ -44,6 +44,8 @@
             dgvResult = new DataGridView();
             dgvContextMenuStrip = new ContextMenuStrip(components);
             打开所在文件夹 = new ToolStripMenuItem();
+            删除 = new ToolStripMenuItem();
+            删除到回收站ToolStripMenuItem = new ToolStripMenuItem();
             label4 = new Label();
             lbIndexCount = new Label();
             label5 = new Label();
@@ -59,7 +61,6 @@
             cbRemoveInvalidIndex = new CheckBox();
             lblGithub = new LinkLabel();
             buttonClipSearch = new Button();
-            删除 = new ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)picSource).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picDest).BeginInit();
             ((System.ComponentModel.ISupportInitialize)dgvResult).BeginInit();
@@ -200,16 +201,30 @@
             // 
             // dgvContextMenuStrip
             // 
-            dgvContextMenuStrip.Items.AddRange(new ToolStripItem[] { 打开所在文件夹, 删除 });
+            dgvContextMenuStrip.Items.AddRange(new ToolStripItem[] { 打开所在文件夹, 删除, 删除到回收站ToolStripMenuItem });
             dgvContextMenuStrip.Name = "dgvContextMenuStrip";
-            dgvContextMenuStrip.Size = new Size(181, 70);
+            dgvContextMenuStrip.Size = new Size(228, 70);
             // 
             // 打开所在文件夹
             // 
             打开所在文件夹.Name = "打开所在文件夹";
-            打开所在文件夹.Size = new Size(180, 22);
-            打开所在文件夹.Text = "打开所在文件夹";
+            打开所在文件夹.Size = new Size(227, 22);
+            打开所在文件夹.Text = "打开所在文件夹(Ctrl+O)";
             打开所在文件夹.Click += 打开所在文件夹_Click;
+            // 
+            // 删除
+            // 
+            删除.Name = "删除";
+            删除.Size = new Size(227, 22);
+            删除.Text = "删除(Delete)";
+            删除.Click += 删除_Click;
+            // 
+            // 删除到回收站ToolStripMenuItem
+            // 
+            删除到回收站ToolStripMenuItem.Name = "删除到回收站ToolStripMenuItem";
+            删除到回收站ToolStripMenuItem.Size = new Size(227, 22);
+            删除到回收站ToolStripMenuItem.Text = "删除到回收站(Shift+Delete)";
+            删除到回收站ToolStripMenuItem.Click += 删除到回收站ToolStripMenuItem_Click;
             // 
             // label4
             // 
@@ -350,13 +365,6 @@
             buttonClipSearch.UseVisualStyleBackColor = true;
             buttonClipSearch.Click += buttonClipSearch_Click;
             // 
-            // 删除
-            // 
-            删除.Name = "删除";
-            删除.Size = new Size(180, 22);
-            删除.Text = "删除";
-            删除.Click += 删除_Click;
-            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
@@ -438,5 +446,6 @@
         private ContextMenuStrip dgvContextMenuStrip;
         private ToolStripMenuItem 打开所在文件夹;
         private ToolStripMenuItem 删除;
+        private ToolStripMenuItem 删除到回收站ToolStripMenuItem;
     }
 }
