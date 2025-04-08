@@ -29,7 +29,6 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             label1 = new Label();
             txtDirectory = new TextBox();
@@ -83,14 +82,14 @@
             txtDirectory.AllowDrop = true;
             txtDirectory.Location = new Point(113, 6);
             txtDirectory.Name = "txtDirectory";
-            txtDirectory.Size = new Size(504, 23);
+            txtDirectory.Size = new Size(758, 23);
             txtDirectory.TabIndex = 1;
             txtDirectory.DragDrop += txtDirectory_DragDrop;
             txtDirectory.DragEnter += txtDirectory_DragEnter;
             // 
             // btnDirectory
             // 
-            btnDirectory.Location = new Point(620, 6);
+            btnDirectory.Location = new Point(877, 9);
             btnDirectory.Name = "btnDirectory";
             btnDirectory.Size = new Size(64, 23);
             btnDirectory.TabIndex = 2;
@@ -100,7 +99,7 @@
             // 
             // btnPic
             // 
-            btnPic.Location = new Point(620, 39);
+            btnPic.Location = new Point(877, 42);
             btnPic.Name = "btnPic";
             btnPic.Size = new Size(64, 23);
             btnPic.TabIndex = 5;
@@ -113,7 +112,7 @@
             txtPic.AllowDrop = true;
             txtPic.Location = new Point(113, 39);
             txtPic.Name = "txtPic";
-            txtPic.Size = new Size(504, 23);
+            txtPic.Size = new Size(758, 23);
             txtPic.TabIndex = 0;
             txtPic.DragDrop += txtPic_DragDrop;
             txtPic.DragEnter += txtPic_DragEnter;
@@ -139,7 +138,7 @@
             // 
             // btnIndex
             // 
-            btnIndex.Location = new Point(690, 6);
+            btnIndex.Location = new Point(947, 9);
             btnIndex.Name = "btnIndex";
             btnIndex.Size = new Size(75, 23);
             btnIndex.TabIndex = 7;
@@ -150,7 +149,7 @@
             // picSource
             // 
             picSource.BorderStyle = BorderStyle.FixedSingle;
-            picSource.Location = new Point(744, 93);
+            picSource.Location = new Point(853, 93);
             picSource.Name = "picSource";
             picSource.Size = new Size(272, 166);
             picSource.SizeMode = PictureBoxSizeMode.Zoom;
@@ -163,7 +162,7 @@
             // 
             // picDest
             // 
-            picDest.Location = new Point(744, 288);
+            picDest.Location = new Point(853, 288);
             picDest.Name = "picDest";
             picDest.Size = new Size(272, 191);
             picDest.SizeMode = PictureBoxSizeMode.Zoom;
@@ -191,7 +190,7 @@
             dgvResult.Location = new Point(12, 93);
             dgvResult.Name = "dgvResult";
             dgvResult.ReadOnly = true;
-            dgvResult.Size = new Size(726, 457);
+            dgvResult.Size = new Size(835, 457);
             dgvResult.TabIndex = 13;
             dgvResult.CellClick += dgvResult_CellClick;
             dgvResult.CellContentClick += dgvResult_CellContentClick;
@@ -230,7 +229,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(697, 42);
+            label4.Location = new Point(954, 45);
             label4.Name = "label4";
             label4.Size = new Size(80, 17);
             label4.TabIndex = 14;
@@ -239,7 +238,7 @@
             // lbIndexCount
             // 
             lbIndexCount.AutoSize = true;
-            lbIndexCount.Location = new Point(782, 42);
+            lbIndexCount.Location = new Point(1039, 45);
             lbIndexCount.Name = "lbIndexCount";
             lbIndexCount.Size = new Size(0, 17);
             lbIndexCount.TabIndex = 15;
@@ -264,7 +263,7 @@
             // lblDestInfo
             // 
             lblDestInfo.AutoSize = true;
-            lblDestInfo.Location = new Point(744, 484);
+            lblDestInfo.Location = new Point(853, 484);
             lblDestInfo.Name = "lblDestInfo";
             lblDestInfo.Size = new Size(0, 17);
             lblDestInfo.TabIndex = 18;
@@ -272,7 +271,7 @@
             // lbSrcInfo
             // 
             lbSrcInfo.AutoSize = true;
-            lbSrcInfo.Location = new Point(748, 262);
+            lbSrcInfo.Location = new Point(857, 262);
             lbSrcInfo.Name = "lbSrcInfo";
             lbSrcInfo.Size = new Size(0, 17);
             lbSrcInfo.TabIndex = 19;
@@ -280,7 +279,7 @@
             // lbSpeed
             // 
             lbSpeed.AutoSize = true;
-            lbSpeed.Location = new Point(697, 67);
+            lbSpeed.Location = new Point(954, 70);
             lbSpeed.Name = "lbSpeed";
             lbSpeed.Size = new Size(16, 17);
             lbSpeed.TabIndex = 20;
@@ -329,7 +328,7 @@
             // lblProcess
             // 
             lblProcess.AutoSize = true;
-            lblProcess.Location = new Point(793, 8);
+            lblProcess.Location = new Point(1050, 11);
             lblProcess.Name = "lblProcess";
             lblProcess.Size = new Size(12, 17);
             lblProcess.TabIndex = 27;
@@ -338,7 +337,7 @@
             // cbRemoveInvalidIndex
             // 
             cbRemoveInvalidIndex.AutoSize = true;
-            cbRemoveInvalidIndex.Location = new Point(770, 9);
+            cbRemoveInvalidIndex.Location = new Point(1027, 12);
             cbRemoveInvalidIndex.Name = "cbRemoveInvalidIndex";
             cbRemoveInvalidIndex.Size = new Size(99, 21);
             cbRemoveInvalidIndex.TabIndex = 28;
@@ -370,7 +369,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1028, 579);
+            ClientSize = new Size(1137, 579);
             Controls.Add(buttonClipSearch);
             Controls.Add(lblGithub);
             Controls.Add(cbRemoveInvalidIndex);
