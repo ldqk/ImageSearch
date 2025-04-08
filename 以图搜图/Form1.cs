@@ -396,6 +396,23 @@ public partial class Form1 : Form
             picSource.Refresh();
         }
 
+        var dic = list.GroupBy(r => new FileInfo(r.路径).DirectoryName).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(g =>
+        {
+            var files = new DirectoryInfo(g.Key).GetFiles("*.*", SearchOption.AllDirectories);
+            return new
+            {
+                g.Key,
+                files.Length,
+                Size = files.Sum(s => s.Length) / 1048576f
+            };
+        }).ToDictionary(a => a.Key);
+        list.ForEach(result =>
+        {
+            var file = new FileInfo(result.路径);
+            result.大小 = $"{file.Length / 1024}KB";
+            result.所属文件夹文件数 = dic[file.DirectoryName].Length;
+            result.所属文件夹大小 = $"{dic[file.DirectoryName].Size}MB";
+        });
         dgvResult.DataSource = new BindingList<SearchResult>(list);
         dgvResult.Focus();
     }
@@ -550,7 +567,7 @@ public partial class Form1 : Form
             list.AddRange(_index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult()
             {
                 路径 = x.Key,
-                匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
+                匹配度 = hashs.Max(h => ImageHasher.Compare(x.Value, h))
             }).Where(x => x.匹配度 >= sim));
             list = list.OrderByDescending(a => a.匹配度).ToList();
             lbElpased.Text = sw.ElapsedMilliseconds + "ms";
@@ -560,6 +577,23 @@ public partial class Form1 : Form
                 picSource.Refresh();
             }
 
+            var dic = list.GroupBy(r => new FileInfo(r.路径).DirectoryName).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(g =>
+            {
+                var files = new DirectoryInfo(g.Key).GetFiles("*.*", SearchOption.AllDirectories);
+                return new
+                {
+                    g.Key,
+                    files.Length,
+                    Size = files.Sum(s => s.Length) / 1048576f
+                };
+            }).ToDictionary(a => a.Key);
+            list.ForEach(result =>
+            {
+                var file = new FileInfo(result.路径);
+                result.大小 = $"{file.Length / 1024}KB";
+                result.所属文件夹文件数 = dic[file.DirectoryName].Length;
+                result.所属文件夹大小 = $"{dic[file.DirectoryName].Size}MB";
+            });
             dgvResult.DataSource = new BindingList<SearchResult>(list);
             Task.Run(() =>
             {
@@ -597,7 +631,7 @@ public partial class Form1 : Form
     [DllImport("shell32.dll", ExactSpelling = true)]
     private static extern int SHOpenFolderAndSelectItems(IntPtr pidlList, uint cild, IntPtr children, uint dwFlags);
 
-    public void ExplorerFile(string filePath)
+    public static void ExplorerFile(string filePath)
     {
         if (!File.Exists(filePath))
         {
@@ -683,7 +717,7 @@ public partial class Form1 : Form
             {
                 var bitmap = new Bitmap(picSource.Width, picSource.Height);
                 using var graphics = Graphics.FromImage(bitmap);
-                string text = "文件不存在";
+                const string text = "文件不存在";
                 Font font = new Font("微软雅黑LightUI", 9);
                 Brush brush = new SolidBrush(Color.Black);
                 graphics.DrawString(text, font, brush, new PointF(10, 10));
@@ -794,4 +828,7 @@ public record SearchResult
 {
     public string 路径 { get; set; }
     public float 匹配度 { get; set; }
+    public string 大小 { get; set; }
+    public string 所属文件夹大小 { get; set; }
+    public int 所属文件夹文件数 { get; set; }
 }

@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
+            DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             label1 = new Label();
             txtDirectory = new TextBox();
@@ -149,7 +150,7 @@
             // picSource
             // 
             picSource.BorderStyle = BorderStyle.FixedSingle;
-            picSource.Location = new Point(618, 93);
+            picSource.Location = new Point(744, 93);
             picSource.Name = "picSource";
             picSource.Size = new Size(272, 166);
             picSource.SizeMode = PictureBoxSizeMode.Zoom;
@@ -162,7 +163,7 @@
             // 
             // picDest
             // 
-            picDest.Location = new Point(618, 288);
+            picDest.Location = new Point(744, 288);
             picDest.Name = "picDest";
             picDest.Size = new Size(272, 191);
             picDest.SizeMode = PictureBoxSizeMode.Zoom;
@@ -190,7 +191,7 @@
             dgvResult.Location = new Point(12, 93);
             dgvResult.Name = "dgvResult";
             dgvResult.ReadOnly = true;
-            dgvResult.Size = new Size(605, 386);
+            dgvResult.Size = new Size(726, 457);
             dgvResult.TabIndex = 13;
             dgvResult.CellClick += dgvResult_CellClick;
             dgvResult.CellContentClick += dgvResult_CellContentClick;
@@ -263,7 +264,7 @@
             // lblDestInfo
             // 
             lblDestInfo.AutoSize = true;
-            lblDestInfo.Location = new Point(627, 483);
+            lblDestInfo.Location = new Point(744, 484);
             lblDestInfo.Name = "lblDestInfo";
             lblDestInfo.Size = new Size(0, 17);
             lblDestInfo.TabIndex = 18;
@@ -271,7 +272,7 @@
             // lbSrcInfo
             // 
             lbSrcInfo.AutoSize = true;
-            lbSrcInfo.Location = new Point(626, 262);
+            lbSrcInfo.Location = new Point(748, 262);
             lbSrcInfo.Name = "lbSrcInfo";
             lbSrcInfo.Size = new Size(0, 17);
             lbSrcInfo.TabIndex = 19;
@@ -319,7 +320,7 @@
             // label6
             // 
             label6.AutoSize = true;
-            label6.Location = new Point(31, 484);
+            label6.Location = new Point(13, 553);
             label6.Name = "label6";
             label6.Size = new Size(68, 17);
             label6.TabIndex = 25;
@@ -347,7 +348,7 @@
             // lblGithub
             // 
             lblGithub.AutoSize = true;
-            lblGithub.Location = new Point(93, 484);
+            lblGithub.Location = new Point(75, 553);
             lblGithub.Name = "lblGithub";
             lblGithub.Size = new Size(227, 17);
             lblGithub.TabIndex = 29;
@@ -369,7 +370,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(902, 506);
+            ClientSize = new Size(1028, 579);
             Controls.Add(buttonClipSearch);
             Controls.Add(lblGithub);
             Controls.Add(cbRemoveInvalidIndex);
