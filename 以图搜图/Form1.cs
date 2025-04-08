@@ -13,6 +13,7 @@ using Image = SixLabors.ImageSharp.Image;
 using ImageFormat = System.Drawing.Imaging.ImageFormat;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using Masuit.Tools;
 
 namespace 以图搜图;
 
@@ -36,13 +37,14 @@ public partial class Form1 : Form
         lbIndexCount.Text = "正在加载索引...";
         if (File.Exists("index.json"))
         {
-            _index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(File.OpenRead("index.json")).ConfigureAwait(false);
+            await using var fs = File.OpenRead("index.json");
+            _index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(fs).ConfigureAwait(false);
         }
         if (File.Exists("frame_index.json"))
         {
-            _frameIndex = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, List<ulong[]>>>(File.OpenRead("frame_index.json")).ConfigureAwait(false);
+            await using var fs = File.OpenRead("frame_index.json");
+            _frameIndex = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, List<ulong[]>>>(fs).ConfigureAwait(false);
         }
-
         if (_index.Count + _frameIndex.Count > 0)
         {
             lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
@@ -76,8 +78,8 @@ public partial class Form1 : Form
 
     private ConcurrentDictionary<string, ulong[]> _index = new();
     private ConcurrentDictionary<string, List<ulong[]>> _frameIndex = new();
-    private static readonly ReaderWriterLockSlim ReaderWriterLock = new();
     private bool _removingInvalidIndex;
+    private readonly ReaderWriterLockSlim _readerWriterLock = new ReaderWriterLockSlim();
     private bool IndexRunning { get; set; }
 
     private readonly Regex picRegex = new Regex("(jpg|jpeg|png|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -93,7 +95,7 @@ public partial class Form1 : Form
 
         if (string.IsNullOrEmpty(txtDirectory.Text))
         {
-            MessageBox.Show("请先选择文件夹", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
+            MessageBox.Show(this, "请先选择文件夹", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
             return;
         }
 
@@ -147,11 +149,7 @@ public partial class Form1 : Form
                 {
                     _frameIndex.TryRemove(key, out _);
                 }
-
-                ReaderWriterLock.EnterWriteLock();
-                File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
-                File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
-                ReaderWriterLock.ExitWriteLock();
+                WriteIndex();
                 _removingInvalidIndex = false;
                 lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
             }).ContinueWith(t =>
@@ -172,9 +170,10 @@ public partial class Form1 : Form
         var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? EverythingHelper.EnumerateFiles(txtDirectory.Text).ToArray() : Directory.GetFiles(txtDirectory.Text, "*", SearchOption.AllDirectories);
         int? filesCount = files.Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase));
         var local = new ThreadLocal<int>(true);
+        var errors = new List<string>();
+        var sw = Stopwatch.StartNew();
         await Task.Run(() =>
         {
-            var sw = Stopwatch.StartNew();
             long size = 0;
             files.Except(_index.Keys).Where(s => picRegex.IsMatch(s)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
             {
@@ -194,7 +193,7 @@ public partial class Form1 : Form
                         }
                         catch
                         {
-                            LogManager.Info(s + "格式不正确");
+                            errors.Add(s);
                         }
                     }
                     else
@@ -228,7 +227,7 @@ public partial class Form1 : Form
                         }
                         catch
                         {
-                            LogManager.Info(s + "格式不正确");
+                            errors.Add(s);
                         }
                     }
                     else
@@ -240,12 +239,16 @@ public partial class Form1 : Form
             lbSpeed.Text = $"索引速度: {Math.Round(local.Values.Sum() * 1.0 / sw.Elapsed.TotalSeconds)} items/s({size * 1f / 1048576 / sw.Elapsed.TotalSeconds:N}MB/s)";
             lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
             cbRemoveInvalidIndex.Show();
-            ReaderWriterLock.EnterWriteLock();
-            File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
-            File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
-            ReaderWriterLock.ExitWriteLock();
-            MessageBox.Show($"索引创建完成，耗时：{sw.Elapsed.TotalSeconds}s", "消息", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+            WriteIndex();
         }).ConfigureAwait(false);
+        if (errors.Count > 0)
+        {
+            new ErrorsDialog("以下文件格式不正确，无法创建索引，请检查：\r\n" + errors.Join("\r\n")).ShowDialog(this);
+        }
+        else
+        {
+            MessageBox.Show(this, $"索引创建完成，耗时：{sw.Elapsed.TotalSeconds}s", "消息", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+        }
         IndexRunning = false;
         btnIndex.Text = "更新索引";
     }
@@ -282,19 +285,19 @@ public partial class Form1 : Form
     {
         if (string.IsNullOrEmpty(txtPic.Text))
         {
-            MessageBox.Show("请先选择图片", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+            MessageBox.Show(this, "请先选择图片", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
             return;
         }
 
         if (_index.Count == 0)
         {
-            MessageBox.Show("当前没有任何索引，请先添加文件夹创建索引后再搜索", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+            MessageBox.Show(this, "当前没有任何索引，请先添加文件夹创建索引后再搜索", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
             return;
         }
 
         if (new FileInfo(txtPic.Text).DetectFiletype().MimeType?.StartsWith("image") != true)
         {
-            MessageBox.Show("不是图像文件，无法检索", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+            MessageBox.Show(this, "不是图像文件，无法检索", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
             return;
         }
 
@@ -690,10 +693,7 @@ public partial class Form1 : Form
             Task.Run(() =>
             {
                 _removingInvalidIndex = true;
-                ReaderWriterLock.EnterWriteLock();
-                File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
-                File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
-                ReaderWriterLock.ExitWriteLock();
+                WriteIndex();
                 _removingInvalidIndex = false;
             }).ConfigureAwait(false);
         }
@@ -740,19 +740,16 @@ public partial class Form1 : Form
     {
         if (IndexRunning)
         {
-            MessageBox.Show("正在索引文件，关闭程序前请先取消", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
+            MessageBox.Show(this, "正在索引文件，关闭程序前请先取消", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
             e.Cancel = true;
             return;
         }
 
         if (_removingInvalidIndex)
         {
-            MessageBox.Show("正在移除无效的索引文件，请稍后再试", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
+            MessageBox.Show(this, "正在移除无效的索引文件，请稍后再试", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
             e.Cancel = true;
-            return;
         }
-
-        ReaderWriterLock.Dispose();
     }
 
     private void picSource_Click(object sender, EventArgs e)
@@ -767,7 +764,7 @@ public partial class Form1 : Form
 
     private void 删除_Click(object sender, EventArgs e)
     {
-        var result = MessageBox.Show("确认删除选中项吗？", "提示", MessageBoxButtons.OKCancel);
+        var result = MessageBox.Show(this, "确认删除选中项吗？", "提示", MessageBoxButtons.OKCancel);
         if (result == DialogResult.OK)
         {
             foreach (DataGridViewCell cell in dgvResult.SelectedCells)
@@ -785,10 +782,7 @@ public partial class Form1 : Form
             Task.Run(() =>
             {
                 _removingInvalidIndex = true;
-                ReaderWriterLock.EnterWriteLock();
-                File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
-                File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
-                ReaderWriterLock.ExitWriteLock();
+                WriteIndex();
                 _removingInvalidIndex = false;
             }).ConfigureAwait(false);
         }
@@ -796,7 +790,7 @@ public partial class Form1 : Form
 
     private void 删除到回收站ToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        var result = MessageBox.Show("确认删除选中项吗？", "提示", MessageBoxButtons.OKCancel);
+        var result = MessageBox.Show(this, "确认删除选中项吗？", "提示", MessageBoxButtons.OKCancel);
         if (result == DialogResult.OK)
         {
             foreach (DataGridViewCell cell in dgvResult.SelectedCells)
@@ -814,13 +808,18 @@ public partial class Form1 : Form
             Task.Run(() =>
             {
                 _removingInvalidIndex = true;
-                ReaderWriterLock.EnterWriteLock();
-                File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
-                File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
-                ReaderWriterLock.ExitWriteLock();
+                WriteIndex();
                 _removingInvalidIndex = false;
             }).ConfigureAwait(false);
         }
+    }
+
+    private void WriteIndex()
+    {
+        _readerWriterLock.EnterReadLock();
+        File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
+        File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
+        _readerWriterLock.ExitReadLock();
     }
 }
 

@@ -82,14 +82,14 @@
             txtDirectory.AllowDrop = true;
             txtDirectory.Location = new Point(113, 6);
             txtDirectory.Name = "txtDirectory";
-            txtDirectory.Size = new Size(758, 23);
+            txtDirectory.Size = new Size(558, 23);
             txtDirectory.TabIndex = 1;
             txtDirectory.DragDrop += txtDirectory_DragDrop;
             txtDirectory.DragEnter += txtDirectory_DragEnter;
             // 
             // btnDirectory
             // 
-            btnDirectory.Location = new Point(877, 9);
+            btnDirectory.Location = new Point(677, 9);
             btnDirectory.Name = "btnDirectory";
             btnDirectory.Size = new Size(64, 23);
             btnDirectory.TabIndex = 2;
@@ -99,7 +99,7 @@
             // 
             // btnPic
             // 
-            btnPic.Location = new Point(877, 42);
+            btnPic.Location = new Point(677, 42);
             btnPic.Name = "btnPic";
             btnPic.Size = new Size(64, 23);
             btnPic.TabIndex = 5;
@@ -112,7 +112,7 @@
             txtPic.AllowDrop = true;
             txtPic.Location = new Point(113, 39);
             txtPic.Name = "txtPic";
-            txtPic.Size = new Size(758, 23);
+            txtPic.Size = new Size(558, 23);
             txtPic.TabIndex = 0;
             txtPic.DragDrop += txtPic_DragDrop;
             txtPic.DragEnter += txtPic_DragEnter;
@@ -138,7 +138,7 @@
             // 
             // btnIndex
             // 
-            btnIndex.Location = new Point(947, 9);
+            btnIndex.Location = new Point(747, 9);
             btnIndex.Name = "btnIndex";
             btnIndex.Size = new Size(75, 23);
             btnIndex.TabIndex = 7;
@@ -229,7 +229,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(954, 45);
+            label4.Location = new Point(754, 45);
             label4.Name = "label4";
             label4.Size = new Size(80, 17);
             label4.TabIndex = 14;
@@ -238,7 +238,7 @@
             // lbIndexCount
             // 
             lbIndexCount.AutoSize = true;
-            lbIndexCount.Location = new Point(1039, 45);
+            lbIndexCount.Location = new Point(839, 45);
             lbIndexCount.Name = "lbIndexCount";
             lbIndexCount.Size = new Size(0, 17);
             lbIndexCount.TabIndex = 15;
@@ -279,7 +279,7 @@
             // lbSpeed
             // 
             lbSpeed.AutoSize = true;
-            lbSpeed.Location = new Point(954, 70);
+            lbSpeed.Location = new Point(932, 13);
             lbSpeed.Name = "lbSpeed";
             lbSpeed.Size = new Size(16, 17);
             lbSpeed.TabIndex = 20;
@@ -328,7 +328,7 @@
             // lblProcess
             // 
             lblProcess.AutoSize = true;
-            lblProcess.Location = new Point(1050, 11);
+            lblProcess.Location = new Point(850, 11);
             lblProcess.Name = "lblProcess";
             lblProcess.Size = new Size(12, 17);
             lblProcess.TabIndex = 27;
@@ -337,7 +337,7 @@
             // cbRemoveInvalidIndex
             // 
             cbRemoveInvalidIndex.AutoSize = true;
-            cbRemoveInvalidIndex.Location = new Point(1027, 12);
+            cbRemoveInvalidIndex.Location = new Point(827, 12);
             cbRemoveInvalidIndex.Name = "cbRemoveInvalidIndex";
             cbRemoveInvalidIndex.Size = new Size(99, 21);
             cbRemoveInvalidIndex.TabIndex = 28;
