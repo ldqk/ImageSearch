@@ -367,6 +367,7 @@
             // 
             // Form1
             // 
+            AllowDrop = true;
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1137, 579);
@@ -405,6 +406,8 @@
             Text = "本地以图搜图小工具 by 懒得勤快 (评估版本)";
             FormClosing += Form1_FormClosing;
             Load += Form1_Load;
+            DragDrop += Form1_DragDrop;
+            DragEnter += Form1_DragEnter;
             ((System.ComponentModel.ISupportInitialize)picSource).EndInit();
             ((System.ComponentModel.ISupportInitialize)picDest).EndInit();
             ((System.ComponentModel.ISupportInitialize)dgvResult).EndInit();

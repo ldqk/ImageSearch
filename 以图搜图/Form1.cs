@@ -14,6 +14,7 @@ using ImageFormat = System.Drawing.Imaging.ImageFormat;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using Masuit.Tools;
+using Masuit.Tools.Files;
 
 namespace 以图搜图;
 
@@ -23,13 +24,15 @@ public partial class Form1 : Form
     {
         InitializeComponent();
         CheckForIllegalCrossThreadCalls = false;
+        //这句代码不会抱错，但是需要手动输入，.net编辑器无法自动识别AllowDrop
+        picSource.AllowDrop = true;
     }
 
     private async void Form1_Load(object sender, EventArgs e)
     {
         var bitmap = new Bitmap(picSource.Width, picSource.Height);
         using var graphics = Graphics.FromImage(bitmap);
-        string text = "单击这里选择需要检索的图片";
+        string text = "单击这里选择或直接拖放需要检索的图片";
         Font font = new Font("微软雅黑LightUI", 9);
         Brush brush = new SolidBrush(Color.Black);
         graphics.DrawString(text, font, brush, new PointF(10, 10));
@@ -283,7 +286,8 @@ public partial class Form1 : Form
 
     private void btnSearch_Click(object sender, EventArgs e)
     {
-        if (string.IsNullOrEmpty(txtPic.Text))
+        var filename = txtPic.Text;
+        if (string.IsNullOrEmpty(filename))
         {
             MessageBox.Show(this, "请先选择图片", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
             return;
@@ -295,21 +299,26 @@ public partial class Form1 : Form
             return;
         }
 
-        if (new FileInfo(txtPic.Text).DetectFiletype().MimeType?.StartsWith("image") != true)
+        if (new FileInfo(filename).DetectFiletype().MimeType?.StartsWith("image") != true)
         {
             MessageBox.Show(this, "不是图像文件，无法检索", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
             return;
         }
 
+        SearchCore(filename);
+    }
+
+    private void SearchCore(string filename)
+    {
         var sim = (float)numLike.Value / 100;
         var hasher = new ImageHasher();
         var sw = Stopwatch.StartNew();
         var hashs = new ConcurrentBag<ulong[]>();
         var actions = new List<Action>();
 
-        if (txtPic.Text.EndsWith("gif"))
+        if (filename.EndsWith("gif"))
         {
-            using (var gif = Image.Load<Rgba32>(txtPic.Text))
+            using (var gif = Image.Load<Rgba32>(filename))
             {
                 for (var i = 0; i < gif.Frames.Count; i++)
                 {
@@ -325,8 +334,8 @@ public partial class Form1 : Form
         }
         else
         {
-            hashs.Add(hasher.DifferenceHash256(txtPic.Text));
-            using (var image = Image.Load<Rgba32>(txtPic.Text))
+            hashs.Add(hasher.DifferenceHash256(filename));
+            using (var image = Image.Load<Rgba32>(filename))
             {
                 if (cbRotate.Checked)
                 {
@@ -370,7 +379,7 @@ public partial class Form1 : Form
         }
 
         var list = new List<SearchResult>();
-        if (txtPic.Text.EndsWith("gif"))
+        if (filename.EndsWith("gif"))
         {
             list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult
             {
@@ -394,11 +403,6 @@ public partial class Form1 : Form
 
         list = list.OrderByDescending(a => a.匹配度).ToList();
         lbElpased.Text = sw.ElapsedMilliseconds + "ms";
-        if (list.Count > 0)
-        {
-            picSource.Refresh();
-        }
-
         var dic = list.GroupBy(r => new FileInfo(r.路径).DirectoryName).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(g =>
         {
             var files = new DirectoryInfo(g.Key).GetFiles("*.*", SearchOption.AllDirectories);
@@ -416,8 +420,20 @@ public partial class Form1 : Form
             result.所属文件夹文件数 = dic[file.DirectoryName].Length;
             result.所属文件夹大小 = $"{dic[file.DirectoryName].Size}MB";
         });
-        dgvResult.DataSource = new BindingList<SearchResult>(list);
-        dgvResult.Focus();
+        if (list.Count > 0)
+        {
+            dgvResult.DataSource = new BindingList<SearchResult>(list);
+            dgvResult.Focus();
+            picSource.Refresh();
+            picDest.ImageLocation = list[0].路径;
+        }
+        else
+        {
+            dgvResult.DataSource = null;
+            picDest.Image?.Dispose();
+            picDest.Image = null;
+            lblDestInfo.Text = "";
+        }
     }
 
     private void dgvResult_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -514,90 +530,7 @@ public partial class Form1 : Form
             var filename = Path.Combine(Environment.GetEnvironmentVariable("temp"), SnowFlake.NewId);
             sourceImage.Save(filename, ImageFormat.Jpeg);
             picSource.ImageLocation = filename;
-            var sim = (float)numLike.Value / 100;
-            var hasher = new ImageHasher();
-            var sw = Stopwatch.StartNew();
-            var hash = hasher.DifferenceHash256(filename);
-            var hashs = new ConcurrentBag<ulong[]> { hash };
-            using (var image = Image.Load<Rgba32>(filename))
-            {
-                var actions = new List<Action>();
-                if (cbRotate.Checked)
-                {
-                    actions.Add(() =>
-                    {
-                        using var clone = image.Clone(c => c.Rotate(90));
-                        var rotate90 = clone.DifferenceHash256();
-                        hashs.Add(rotate90);
-                    });
-                    actions.Add(() =>
-                    {
-                        using var clone = image.Clone(c => c.Rotate(180));
-                        var rotate180 = clone.DifferenceHash256();
-                        hashs.Add(rotate180);
-                    });
-                    actions.Add(() =>
-                    {
-                        using var clone = image.Clone(c => c.Rotate(270));
-                        var rotate270 = clone.DifferenceHash256();
-                        hashs.Add(rotate270);
-                    });
-                }
-
-                if (cbFlip.Checked)
-                {
-                    actions.Add(() =>
-                    {
-                        using var clone = image.Clone(c => c.Flip(FlipMode.Horizontal));
-                        var flipH = clone.DifferenceHash256();
-                        hashs.Add(flipH);
-                    });
-                    actions.Add(() =>
-                    {
-                        using var clone = image.Clone(c => c.Flip(FlipMode.Vertical));
-                        var flipV = clone.DifferenceHash256();
-                        hashs.Add(flipV);
-                    });
-                }
-                Parallel.Invoke(actions.ToArray());
-            }
-
-            var list = _frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult()
-            {
-                路径 = x.Key,
-                匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Max()
-            }).Where(x => x.匹配度 >= sim).ToList();
-            list.AddRange(_index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult()
-            {
-                路径 = x.Key,
-                匹配度 = hashs.Max(h => ImageHasher.Compare(x.Value, h))
-            }).Where(x => x.匹配度 >= sim));
-            list = list.OrderByDescending(a => a.匹配度).ToList();
-            lbElpased.Text = sw.ElapsedMilliseconds + "ms";
-            if (list.Count > 0)
-            {
-                picSource.ImageLocation = filename;
-                picSource.Refresh();
-            }
-
-            var dic = list.GroupBy(r => new FileInfo(r.路径).DirectoryName).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(g =>
-            {
-                var files = new DirectoryInfo(g.Key).GetFiles("*.*", SearchOption.AllDirectories);
-                return new
-                {
-                    g.Key,
-                    files.Length,
-                    Size = files.Sum(s => s.Length) / 1048576f
-                };
-            }).ToDictionary(a => a.Key);
-            list.ForEach(result =>
-            {
-                var file = new FileInfo(result.路径);
-                result.大小 = $"{file.Length / 1024}KB";
-                result.所属文件夹文件数 = dic[file.DirectoryName].Length;
-                result.所属文件夹大小 = $"{dic[file.DirectoryName].Size}MB";
-            });
-            dgvResult.DataSource = new BindingList<SearchResult>(list);
+            SearchCore(filename);
             Task.Run(() =>
             {
                 Thread.Sleep(1000);
@@ -820,6 +753,114 @@ public partial class Form1 : Form
         File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
         File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
         _readerWriterLock.ExitReadLock();
+    }
+
+    private static readonly HttpClient HttpClient = new HttpClient();
+
+    private async void Form1_DragDrop(object sender, DragEventArgs e)
+    {
+        // 1. 检查文件拖放
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files.Length > 0)
+            {
+                txtPic.Text = files[0];
+                picSource.ImageLocation = files[0];
+                btnSearch_Click(sender, e);
+                return;
+            }
+        }
+
+        // 2. 处理浏览器拖放的图片（FileContents）
+        if (e.Data.GetDataPresent("FileContents"))
+        {
+            if (e.Data.GetData("FileContents") is Stream stream)
+            {
+                var filename = Path.Combine(Environment.GetEnvironmentVariable("temp"), SnowFlake.NewId);
+                await stream.SaveFileAsync(filename);
+                picSource.ImageLocation = filename;
+                SearchCore(filename);
+                Task.Run(() =>
+                {
+                    Thread.Sleep(1000);
+                    File.Delete(filename);
+                }).ContinueWith(_ => 0).ConfigureAwait(false);
+                return;
+            }
+        }
+
+        // 3. 直接获取位图数据
+        if (e.Data.GetDataPresent(DataFormats.Bitmap))
+        {
+            using var sourceImage = (System.Drawing.Image)e.Data.GetData(DataFormats.Bitmap);
+            var filename = Path.Combine(Environment.GetEnvironmentVariable("temp"), SnowFlake.NewId);
+            sourceImage.Save(filename, ImageFormat.Jpeg);
+            picSource.ImageLocation = filename;
+            SearchCore(filename);
+            Task.Run(() =>
+            {
+                Thread.Sleep(1000);
+                File.Delete(filename);
+            }).ContinueWith(_ => 0).ConfigureAwait(false);
+            return;
+        }
+
+        // 4. 处理URL或Base64文本
+        if (e.Data.GetDataPresent(DataFormats.Text))
+        {
+            string text = e.Data.GetData(DataFormats.Text).ToString();
+            // 检查是否为URL
+            if (Uri.TryCreate(text, UriKind.Absolute, out Uri uri))
+            {
+                var bytes = await HttpClient.GetByteArrayAsync(uri);
+                using MemoryStream stream = new MemoryStream(bytes);
+                var filename = Path.Combine(Environment.GetEnvironmentVariable("temp"), Path.GetFileName(uri.AbsolutePath));
+                await stream.SaveFileAsync(filename);
+                picSource.ImageLocation = filename;
+                SearchCore(filename);
+                Task.Run(() =>
+                {
+                    Thread.Sleep(1000);
+                    File.Delete(filename);
+                }).ContinueWith(_ => 0).ConfigureAwait(false);
+                return;
+            }
+
+            // 检查是否为Base64图像数据
+            if (text.StartsWith("data:image/"))
+            {
+                int commaIndex = text.IndexOf(',');
+                if (commaIndex != -1)
+                {
+                    string base64Data = text.Substring(commaIndex + 1);
+                    byte[] bytes = Convert.FromBase64String(base64Data);
+                    using MemoryStream stream = new MemoryStream(bytes);
+                    var filename = Path.Combine(Environment.GetEnvironmentVariable("temp"), SnowFlake.NewId);
+                    await stream.SaveFileAsync(filename);
+                    picSource.ImageLocation = filename;
+                    SearchCore(filename);
+                    Task.Run(() =>
+                    {
+                        Thread.Sleep(1000);
+                        File.Delete(filename);
+                    }).ContinueWith(_ => 0).ConfigureAwait(false);
+                }
+            }
+        }
+    }
+
+    private void Form1_DragEnter(object sender, DragEventArgs e)
+    {
+        // 支持的文件格式：文件、图片、URL、文本（Base64或URL）
+        if (e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetDataPresent("FileContents") || e.Data.GetDataPresent(DataFormats.Bitmap) || e.Data.GetDataPresent(DataFormats.Text))
+        {
+            e.Effect = DragDropEffects.Copy;
+        }
+        else
+        {
+            e.Effect = DragDropEffects.None;
+        }
     }
 }
 
