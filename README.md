@@ -5,7 +5,7 @@
 ![image](https://user-images.githubusercontent.com/20254980/177023173-c0bb4be5-a015-4c05-981b-98c26c47010c.png)
 ## 环境要求
 开发环境：Visual Studio 2022  
-运行时：.net8 desktop  
+运行时：.net9 desktop  
 ## 特别说明
 1. 如果电脑中安装有everything，软件会自动调取everything进行目录扫描，请确保要扫描的目录已经被everything索引，如果你想让软件不自动调取everything，把目录下的everything64.dll文件删掉即可
 2. 软件不支持部分区域的图片检索，只能做相似检索
