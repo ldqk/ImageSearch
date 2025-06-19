@@ -17,7 +17,7 @@
     <Content Include="logo.ico" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Masuit.Tools.Abstractions" Version="2025.2.0" />
+    <PackageReference Include="Masuit.Tools.Abstractions" Version="2025.3.1" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Everything64.dll">

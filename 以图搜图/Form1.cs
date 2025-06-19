@@ -16,6 +16,8 @@ using System.ComponentModel;
 using Masuit.Tools;
 using Masuit.Tools.Files;
 
+// ReSharper disable AccessToDisposedClosure
+
 namespace 以图搜图;
 
 public partial class Form1 : Form
@@ -113,7 +115,13 @@ public partial class Form1 : Form
                              {
                                  if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
                                  {
-                                     return EverythingHelper.EnumerateFiles(FindLCP(g.ToArray()), "*.jpg|*.jpeg|*.bmp|*.png");
+                                     var files = EverythingHelper.EnumerateFiles(FindLCP(g.ToArray()), "*.jpg|*.jpeg|*.bmp|*.png").ToList();
+                                     if (files.Count == 0)
+                                     {
+                                         throw new Exception("所选目录未包含在everything索引范围，或文件数为0，请检查");
+                                     }
+
+                                     return files;
                                  }
 
                                  return Directory.EnumerateFiles(FindLCP(g.ToArray()), "*", new EnumerationOptions()
