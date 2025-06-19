@@ -87,7 +87,7 @@ public partial class Form1 : Form
     private readonly ReaderWriterLockSlim _readerWriterLock = new ReaderWriterLockSlim();
     private bool IndexRunning { get; set; }
 
-    private readonly Regex picRegex = new Regex("(jpg|jpeg|png|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private readonly Regex picRegex = new Regex("(jpg|jpeg|png|bmp|webp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private async void btnIndex_Click(object sender, EventArgs e)
     {
@@ -115,7 +115,7 @@ public partial class Form1 : Form
                              {
                                  if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
                                  {
-                                     var files = EverythingHelper.EnumerateFiles(FindLCP(g.ToArray()), "*.jpg|*.jpeg|*.bmp|*.png").ToList();
+                                     var files = EverythingHelper.EnumerateFiles(FindLCP(g.ToArray()), "*.jpg|*.jpeg|*.bmp|*.png|*.webp").ToList();
                                      if (files.Count == 0)
                                      {
                                          throw new Exception("所选目录未包含在everything索引范围，或文件数为0，请检查");
@@ -179,7 +179,7 @@ public partial class Form1 : Form
         var imageHasher = new ImageHasher(new ImageSharpTransformer());
         lblProcess.Text = "正在扫描文件...";
         var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? EverythingHelper.EnumerateFiles(txtDirectory.Text).ToArray() : Directory.GetFiles(txtDirectory.Text, "*", SearchOption.AllDirectories);
-        int? filesCount = files.Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp)$", RegexOptions.IgnoreCase));
+        int? filesCount = files.Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase));
         var local = new ThreadLocal<int>(true);
         var errors = new List<string>();
         var sw = Stopwatch.StartNew();
