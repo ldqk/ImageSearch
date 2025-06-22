@@ -15,6 +15,8 @@ using System.Runtime.InteropServices;
 using System.ComponentModel;
 using Masuit.Tools;
 using Masuit.Tools.Files;
+using SixLabors.ImageSharp.Formats;
+using Size = SixLabors.ImageSharp.Size;
 
 // ReSharper disable AccessToDisposedClosure
 
@@ -133,7 +135,7 @@ public partial class Form1 : Form
                              }
 
                              return [];
-                         })).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Where(s => !File.Exists(s)))
+                         })).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Where(s => !File.Exists(s)))
                 {
                     _index.TryRemove(key, out _);
                 }
@@ -156,7 +158,7 @@ public partial class Form1 : Form
                              }
 
                              return [];
-                         })).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Where(s => !File.Exists(s)))
+                         })).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Where(s => !File.Exists(s)))
                 {
                     _frameIndex.TryRemove(key, out _);
                 }
@@ -186,7 +188,7 @@ public partial class Form1 : Form
         await Task.Run(() =>
         {
             long size = 0;
-            files.Except(_index.Keys).Where(s => picRegex.IsMatch(s)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
+            files.Except(_index.Keys).Where(s => picRegex.IsMatch(s)).Chunk(Environment.ProcessorCount * 4).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).ForAll(g =>
             {
                 foreach (var s in g)
                 {
@@ -226,7 +228,11 @@ public partial class Form1 : Form
                         }
                         try
                         {
-                            using var gif = Image.Load<Rgba32>(s);
+                            using var gif = Image.Load<L8>(new DecoderOptions()
+                            {
+                                TargetSize = new Size(144),
+                                SkipMetadata = true
+                            }, s);
                             for (var i = 0; i < gif.Frames.Count; i++)
                             {
                                 using var frame = gif.Frames.ExportFrame(i);
@@ -326,7 +332,11 @@ public partial class Form1 : Form
 
         if (filename.EndsWith("gif"))
         {
-            using (var gif = Image.Load<Rgba32>(filename))
+            using (var gif = Image.Load<L8>(new DecoderOptions()
+            {
+                SkipMetadata = true,
+                TargetSize = new Size(144)
+            }, filename))
             {
                 for (var i = 0; i < gif.Frames.Count; i++)
                 {
@@ -337,13 +347,18 @@ public partial class Form1 : Form
                         frame.Dispose();
                     });
                 }
+
                 Parallel.Invoke(actions.ToArray());
             }
         }
         else
         {
             hashs.Add(hasher.DifferenceHash256(filename));
-            using (var image = Image.Load<Rgba32>(filename))
+            using (var image = Image.Load<L8>(new DecoderOptions()
+            {
+                SkipMetadata = true,
+                TargetSize = new Size(144)
+            }, filename))
             {
                 if (cbRotate.Checked)
                 {
@@ -389,7 +404,7 @@ public partial class Form1 : Form
         var list = new List<SearchResult>();
         if (filename.EndsWith("gif"))
         {
-            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult
+            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
             {
                 路径 = x.Key,
                 匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= sim).OrderDescending().Take(10).DefaultIfEmpty().Average()
@@ -397,12 +412,12 @@ public partial class Form1 : Form
         }
         else
         {
-            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult
+            list.AddRange(_frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
             {
                 路径 = x.Key,
                 匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Max()
             }).Where(x => x.匹配度 >= sim));
-            list.AddRange(_index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(x => new SearchResult
+            list.AddRange(_index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
             {
                 路径 = x.Key,
                 匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
@@ -411,7 +426,7 @@ public partial class Form1 : Form
 
         list = list.Where(e => File.Exists(e.路径)).OrderByDescending(a => a.匹配度).ToList();
         lbElpased.Text = sw.ElapsedMilliseconds + "ms";
-        var dic = list.GroupBy(r => new FileInfo(r.路径).DirectoryName).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(g =>
+        var dic = list.GroupBy(r => new FileInfo(r.路径).DirectoryName).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(g =>
         {
             var files = new DirectoryInfo(g.Key).GetFiles("*.*", SearchOption.AllDirectories);
             return new
