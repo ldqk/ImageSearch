@@ -409,7 +409,7 @@ public partial class Form1 : Form
             }).Where(x => x.匹配度 >= sim));
         }
 
-        list = list.OrderByDescending(a => a.匹配度).ToList();
+        list = list.Where(e => File.Exists(e.路径)).OrderByDescending(a => a.匹配度).ToList();
         lbElpased.Text = sw.ElapsedMilliseconds + "ms";
         var dic = list.GroupBy(r => new FileInfo(r.路径).DirectoryName).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).Select(g =>
         {
@@ -517,7 +517,7 @@ public partial class Form1 : Form
 
         if (Clipboard.ContainsText())
         {
-            var text = Clipboard.GetText();
+            var text = Clipboard.GetText().Trim();
             if (File.Exists(text))
             {
                 picSource.ImageLocation = text;
@@ -603,7 +603,7 @@ public partial class Form1 : Form
     {
         if (keyData == (Keys.Control | Keys.V))
         {
-            buttonClipSearch_Click(null, null);
+            buttonClipSearch_Click(this, EventArgs.Empty);
         }
         return base.ProcessCmdKey(ref msg, keyData);
     }

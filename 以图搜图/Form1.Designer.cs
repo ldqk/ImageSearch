@@ -71,27 +71,27 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(12, 9);
+            label1.Location = new Point(14, 10);
             label1.Name = "label1";
-            label1.Size = new Size(95, 17);
+            label1.Size = new Size(103, 19);
             label1.TabIndex = 0;
             label1.Text = "添加搜索文件夹:";
             // 
             // txtDirectory
             // 
             txtDirectory.AllowDrop = true;
-            txtDirectory.Location = new Point(113, 6);
+            txtDirectory.Location = new Point(129, 7);
             txtDirectory.Name = "txtDirectory";
-            txtDirectory.Size = new Size(558, 23);
+            txtDirectory.Size = new Size(637, 24);
             txtDirectory.TabIndex = 1;
             txtDirectory.DragDrop += txtDirectory_DragDrop;
             txtDirectory.DragEnter += txtDirectory_DragEnter;
             // 
             // btnDirectory
             // 
-            btnDirectory.Location = new Point(677, 9);
+            btnDirectory.Location = new Point(774, 10);
             btnDirectory.Name = "btnDirectory";
-            btnDirectory.Size = new Size(64, 23);
+            btnDirectory.Size = new Size(73, 26);
             btnDirectory.TabIndex = 2;
             btnDirectory.Text = "选择";
             btnDirectory.UseVisualStyleBackColor = true;
@@ -99,9 +99,9 @@
             // 
             // btnPic
             // 
-            btnPic.Location = new Point(677, 42);
+            btnPic.Location = new Point(774, 44);
             btnPic.Name = "btnPic";
-            btnPic.Size = new Size(64, 23);
+            btnPic.Size = new Size(73, 26);
             btnPic.TabIndex = 5;
             btnPic.Text = "选择";
             btnPic.UseVisualStyleBackColor = true;
@@ -110,9 +110,9 @@
             // txtPic
             // 
             txtPic.AllowDrop = true;
-            txtPic.Location = new Point(113, 39);
+            txtPic.Location = new Point(129, 44);
             txtPic.Name = "txtPic";
-            txtPic.Size = new Size(558, 23);
+            txtPic.Size = new Size(637, 24);
             txtPic.TabIndex = 0;
             txtPic.DragDrop += txtPic_DragDrop;
             txtPic.DragEnter += txtPic_DragEnter;
@@ -120,17 +120,17 @@
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(13, 42);
+            label2.Location = new Point(15, 47);
             label2.Name = "label2";
-            label2.Size = new Size(95, 17);
+            label2.Size = new Size(103, 19);
             label2.TabIndex = 3;
             label2.Text = "用于检索的图片:";
             // 
             // btnSearch
             // 
-            btnSearch.Location = new Point(371, 66);
+            btnSearch.Location = new Point(424, 74);
             btnSearch.Name = "btnSearch";
-            btnSearch.Size = new Size(51, 23);
+            btnSearch.Size = new Size(58, 26);
             btnSearch.TabIndex = 6;
             btnSearch.Text = "搜索";
             btnSearch.UseVisualStyleBackColor = true;
@@ -138,9 +138,9 @@
             // 
             // btnIndex
             // 
-            btnIndex.Location = new Point(747, 9);
+            btnIndex.Location = new Point(854, 10);
             btnIndex.Name = "btnIndex";
-            btnIndex.Size = new Size(75, 23);
+            btnIndex.Size = new Size(86, 26);
             btnIndex.TabIndex = 7;
             btnIndex.Text = "更新索引";
             btnIndex.UseVisualStyleBackColor = true;
@@ -149,9 +149,9 @@
             // picSource
             // 
             picSource.BorderStyle = BorderStyle.FixedSingle;
-            picSource.Location = new Point(853, 93);
+            picSource.Location = new Point(975, 104);
             picSource.Name = "picSource";
-            picSource.Size = new Size(272, 166);
+            picSource.Size = new Size(311, 185);
             picSource.SizeMode = PictureBoxSizeMode.Zoom;
             picSource.TabIndex = 9;
             picSource.TabStop = false;
@@ -162,9 +162,9 @@
             // 
             // picDest
             // 
-            picDest.Location = new Point(853, 288);
+            picDest.Location = new Point(975, 322);
             picDest.Name = "picDest";
-            picDest.Size = new Size(272, 191);
+            picDest.Size = new Size(311, 213);
             picDest.SizeMode = PictureBoxSizeMode.Zoom;
             picDest.TabIndex = 10;
             picDest.TabStop = false;
@@ -174,9 +174,9 @@
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(31, 70);
+            label3.Location = new Point(35, 78);
             label3.Name = "label3";
-            label3.Size = new Size(80, 17);
+            label3.Size = new Size(87, 19);
             label3.TabIndex = 11;
             label3.Text = "查找相似度：";
             // 
@@ -187,10 +187,10 @@
             dgvResult.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             dgvResult.BackgroundColor = SystemColors.Control;
             dgvResult.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvResult.Location = new Point(12, 93);
+            dgvResult.Location = new Point(14, 104);
             dgvResult.Name = "dgvResult";
             dgvResult.ReadOnly = true;
-            dgvResult.Size = new Size(835, 457);
+            dgvResult.Size = new Size(954, 511);
             dgvResult.TabIndex = 13;
             dgvResult.CellClick += dgvResult_CellClick;
             dgvResult.CellContentClick += dgvResult_CellContentClick;
@@ -203,94 +203,94 @@
             // 
             dgvContextMenuStrip.Items.AddRange(new ToolStripItem[] { 打开所在文件夹, 删除, 删除到回收站ToolStripMenuItem });
             dgvContextMenuStrip.Name = "dgvContextMenuStrip";
-            dgvContextMenuStrip.Size = new Size(228, 70);
+            dgvContextMenuStrip.Size = new Size(243, 76);
             // 
             // 打开所在文件夹
             // 
             打开所在文件夹.Name = "打开所在文件夹";
-            打开所在文件夹.Size = new Size(227, 22);
+            打开所在文件夹.Size = new Size(242, 24);
             打开所在文件夹.Text = "打开所在文件夹(Ctrl+O)";
             打开所在文件夹.Click += 打开所在文件夹_Click;
             // 
             // 删除
             // 
             删除.Name = "删除";
-            删除.Size = new Size(227, 22);
+            删除.Size = new Size(242, 24);
             删除.Text = "删除(Delete)";
             删除.Click += 删除_Click;
             // 
             // 删除到回收站ToolStripMenuItem
             // 
             删除到回收站ToolStripMenuItem.Name = "删除到回收站ToolStripMenuItem";
-            删除到回收站ToolStripMenuItem.Size = new Size(227, 22);
+            删除到回收站ToolStripMenuItem.Size = new Size(242, 24);
             删除到回收站ToolStripMenuItem.Text = "删除到回收站(Shift+Delete)";
             删除到回收站ToolStripMenuItem.Click += 删除到回收站ToolStripMenuItem_Click;
             // 
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(754, 45);
+            label4.Location = new Point(862, 47);
             label4.Name = "label4";
-            label4.Size = new Size(80, 17);
+            label4.Size = new Size(87, 19);
             label4.TabIndex = 14;
             label4.Text = "索引总数量：";
             // 
             // lbIndexCount
             // 
             lbIndexCount.AutoSize = true;
-            lbIndexCount.Location = new Point(839, 45);
+            lbIndexCount.Location = new Point(959, 48);
             lbIndexCount.Name = "lbIndexCount";
-            lbIndexCount.Size = new Size(0, 17);
+            lbIndexCount.Size = new Size(0, 19);
             lbIndexCount.TabIndex = 15;
             // 
             // label5
             // 
             label5.AutoSize = true;
-            label5.Location = new Point(529, 70);
+            label5.Location = new Point(605, 78);
             label5.Name = "label5";
-            label5.Size = new Size(68, 17);
+            label5.Size = new Size(74, 19);
             label5.TabIndex = 16;
             label5.Text = "搜索耗时：";
             // 
             // lbElpased
             // 
             lbElpased.AutoSize = true;
-            lbElpased.Location = new Point(603, 69);
+            lbElpased.Location = new Point(689, 77);
             lbElpased.Name = "lbElpased";
-            lbElpased.Size = new Size(0, 17);
+            lbElpased.Size = new Size(0, 19);
             lbElpased.TabIndex = 17;
             // 
             // lblDestInfo
             // 
             lblDestInfo.AutoSize = true;
-            lblDestInfo.Location = new Point(853, 484);
+            lblDestInfo.Location = new Point(975, 541);
             lblDestInfo.Name = "lblDestInfo";
-            lblDestInfo.Size = new Size(0, 17);
+            lblDestInfo.Size = new Size(0, 19);
             lblDestInfo.TabIndex = 18;
             // 
             // lbSrcInfo
             // 
             lbSrcInfo.AutoSize = true;
-            lbSrcInfo.Location = new Point(857, 262);
+            lbSrcInfo.Location = new Point(979, 293);
             lbSrcInfo.Name = "lbSrcInfo";
-            lbSrcInfo.Size = new Size(0, 17);
+            lbSrcInfo.Size = new Size(0, 19);
             lbSrcInfo.TabIndex = 19;
             // 
             // lbSpeed
             // 
             lbSpeed.AutoSize = true;
-            lbSpeed.Location = new Point(932, 13);
+            lbSpeed.Location = new Point(1065, 15);
             lbSpeed.Name = "lbSpeed";
-            lbSpeed.Size = new Size(16, 17);
+            lbSpeed.Size = new Size(17, 19);
             lbSpeed.TabIndex = 20;
             lbSpeed.Text = "  ";
             // 
             // numLike
             // 
-            numLike.Location = new Point(114, 67);
+            numLike.Location = new Point(130, 75);
             numLike.Minimum = new decimal(new int[] { 70, 0, 0, 0 });
             numLike.Name = "numLike";
-            numLike.Size = new Size(45, 23);
+            numLike.Size = new Size(51, 24);
             numLike.TabIndex = 21;
             numLike.Value = new decimal(new int[] { 80, 0, 0, 0 });
             // 
@@ -299,9 +299,9 @@
             cbRotate.AutoSize = true;
             cbRotate.Checked = true;
             cbRotate.CheckState = CheckState.Checked;
-            cbRotate.Location = new Point(171, 69);
+            cbRotate.Location = new Point(195, 77);
             cbRotate.Name = "cbRotate";
-            cbRotate.Size = new Size(87, 21);
+            cbRotate.Size = new Size(93, 23);
             cbRotate.TabIndex = 22;
             cbRotate.Text = "查找已旋转";
             cbRotate.UseVisualStyleBackColor = true;
@@ -309,9 +309,9 @@
             // cbFlip
             // 
             cbFlip.AutoSize = true;
-            cbFlip.Location = new Point(275, 69);
+            cbFlip.Location = new Point(314, 77);
             cbFlip.Name = "cbFlip";
-            cbFlip.Size = new Size(87, 21);
+            cbFlip.Size = new Size(93, 23);
             cbFlip.TabIndex = 23;
             cbFlip.Text = "查找已翻转";
             cbFlip.UseVisualStyleBackColor = true;
@@ -319,27 +319,27 @@
             // label6
             // 
             label6.AutoSize = true;
-            label6.Location = new Point(13, 553);
+            label6.Location = new Point(15, 618);
             label6.Name = "label6";
-            label6.Size = new Size(68, 17);
+            label6.Size = new Size(74, 19);
             label6.TabIndex = 25;
             label6.Text = "项目地址：";
             // 
             // lblProcess
             // 
             lblProcess.AutoSize = true;
-            lblProcess.Location = new Point(850, 11);
+            lblProcess.Location = new Point(971, 12);
             lblProcess.Name = "lblProcess";
-            lblProcess.Size = new Size(12, 17);
+            lblProcess.Size = new Size(13, 19);
             lblProcess.TabIndex = 27;
             lblProcess.Text = " ";
             // 
             // cbRemoveInvalidIndex
             // 
             cbRemoveInvalidIndex.AutoSize = true;
-            cbRemoveInvalidIndex.Location = new Point(827, 12);
+            cbRemoveInvalidIndex.Location = new Point(945, 13);
             cbRemoveInvalidIndex.Name = "cbRemoveInvalidIndex";
-            cbRemoveInvalidIndex.Size = new Size(99, 21);
+            cbRemoveInvalidIndex.Size = new Size(106, 23);
             cbRemoveInvalidIndex.TabIndex = 28;
             cbRemoveInvalidIndex.Text = "移除无效索引";
             cbRemoveInvalidIndex.UseVisualStyleBackColor = true;
@@ -347,9 +347,9 @@
             // lblGithub
             // 
             lblGithub.AutoSize = true;
-            lblGithub.Location = new Point(75, 553);
+            lblGithub.Location = new Point(86, 618);
             lblGithub.Name = "lblGithub";
-            lblGithub.Size = new Size(227, 17);
+            lblGithub.Size = new Size(244, 19);
             lblGithub.TabIndex = 29;
             lblGithub.TabStop = true;
             lblGithub.Text = "https://github.com/ldqk/ImageSearch";
@@ -357,9 +357,9 @@
             // 
             // buttonClipSearch
             // 
-            buttonClipSearch.Location = new Point(427, 66);
+            buttonClipSearch.Location = new Point(488, 74);
             buttonClipSearch.Name = "buttonClipSearch";
-            buttonClipSearch.Size = new Size(96, 23);
+            buttonClipSearch.Size = new Size(110, 26);
             buttonClipSearch.TabIndex = 30;
             buttonClipSearch.Text = "从剪切板搜索";
             buttonClipSearch.UseVisualStyleBackColor = true;
@@ -368,9 +368,9 @@
             // Form1
             // 
             AllowDrop = true;
-            AutoScaleDimensions = new SizeF(7F, 17F);
+            AutoScaleDimensions = new SizeF(8F, 19F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1137, 579);
+            ClientSize = new Size(1299, 647);
             Controls.Add(buttonClipSearch);
             Controls.Add(lblGithub);
             Controls.Add(cbRemoveInvalidIndex);
