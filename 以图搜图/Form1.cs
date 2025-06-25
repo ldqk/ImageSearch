@@ -30,7 +30,25 @@ public partial class Form1 : Form
         CheckForIllegalCrossThreadCalls = false;
         //这句代码不会抱错，但是需要手动输入，.net编辑器无法自动识别AllowDrop
         picSource.AllowDrop = true;
+        IndexStream = File.Open("index.json", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
+        FrameIndexStream = File.Open("frame_index.json", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
+        Task.Run(() =>
+        {
+            while (true)
+            {
+                if (_writeQueue.TryDequeue(out _))
+                {
+                    while (_writeQueue.TryDequeue(out _)) { }
+                    WriteIndex();
+                }
+                Thread.Sleep(1000); // 每秒检查一次队列
+            }
+        });
     }
+
+    private FileStream IndexStream { get; set; }
+    private FileStream FrameIndexStream { get; set; }
+    private readonly ConcurrentQueue<int> _writeQueue = new();
 
     private async void Form1_Load(object sender, EventArgs e)
     {
@@ -42,15 +60,13 @@ public partial class Form1 : Form
         graphics.DrawString(text, font, brush, new PointF(10, 10));
         picSource.Image = bitmap;
         lbIndexCount.Text = "正在加载索引...";
-        if (File.Exists("index.json"))
+        if (IndexStream.Length > 0)
         {
-            await using var fs = File.OpenRead("index.json");
-            _index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(fs).ConfigureAwait(false);
+            _index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(IndexStream).ConfigureAwait(false);
         }
-        if (File.Exists("frame_index.json"))
+        if (FrameIndexStream.Length > 0)
         {
-            await using var fs = File.OpenRead("frame_index.json");
-            _frameIndex = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, List<ulong[]>>>(fs).ConfigureAwait(false);
+            _frameIndex = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, List<ulong[]>>>(FrameIndexStream).ConfigureAwait(false);
         }
         if (_index.Count + _frameIndex.Count > 0)
         {
@@ -85,8 +101,7 @@ public partial class Form1 : Form
 
     private ConcurrentDictionary<string, ulong[]> _index = new();
     private ConcurrentDictionary<string, List<ulong[]>> _frameIndex = new();
-    private bool _removingInvalidIndex;
-    private readonly ReaderWriterLockSlim _readerWriterLock = new ReaderWriterLockSlim();
+    private bool _indexWriting;
     private bool IndexRunning { get; set; }
 
     private readonly Regex picRegex = new Regex("(jpg|jpeg|png|bmp|webp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -110,7 +125,6 @@ public partial class Form1 : Form
         {
             _ = Task.Run(() =>
             {
-                _removingInvalidIndex = true;
                 foreach (var key in _index.Keys.Except(_index.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g =>
                          {
                              if (Directory.Exists(g.Key))
@@ -162,15 +176,13 @@ public partial class Form1 : Form
                 {
                     _frameIndex.TryRemove(key, out _);
                 }
-                WriteIndex();
-                _removingInvalidIndex = false;
+                _writeQueue.Enqueue(1);
                 lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
             }).ContinueWith(t =>
             {
                 if (t.IsFaulted)
                 {
                     LogManager.Error(t.Exception);
-                    _removingInvalidIndex = false;
                 }
             }).ConfigureAwait(false);
         }
@@ -197,7 +209,7 @@ public partial class Form1 : Form
                         if (lblProcess.InvokeRequired)
                         {
                             local.Value++;
-                            lblProcess.Invoke(() => lblProcess.Text = $"{local.Values.Sum()}/{filesCount}");
+                            lblProcess.BeginInvoke(() => lblProcess.Text = $"{local.Values.Sum()}/{filesCount}");
                         }
                         try
                         {
@@ -224,7 +236,7 @@ public partial class Form1 : Form
                         if (lblProcess.InvokeRequired)
                         {
                             local.Value++;
-                            lblProcess.Invoke(() => lblProcess.Text = $"{local.Values.Sum()}/{filesCount}");
+                            lblProcess.BeginInvoke(() => lblProcess.Text = $"{local.Values.Sum()}/{filesCount}");
                         }
                         try
                         {
@@ -256,7 +268,7 @@ public partial class Form1 : Form
             lbSpeed.Text = $"索引速度: {Math.Round(local.Values.Sum() * 1.0 / sw.Elapsed.TotalSeconds)} items/s({size * 1f / 1048576 / sw.Elapsed.TotalSeconds:N}MB/s)";
             lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
             cbRemoveInvalidIndex.Show();
-            WriteIndex();
+            _writeQueue.Enqueue(1);
         }).ConfigureAwait(false);
         if (errors.Count > 0)
         {
@@ -645,13 +657,7 @@ public partial class Form1 : Form
                     _frameIndex.TryRemove(path, out _);
                 }
             }
-
-            Task.Run(() =>
-            {
-                _removingInvalidIndex = true;
-                WriteIndex();
-                _removingInvalidIndex = false;
-            }).ConfigureAwait(false);
+            _writeQueue.Enqueue(1);
         }
 
         if (e.Modifiers == Keys.Control && e.KeyCode is Keys.O)
@@ -701,11 +707,15 @@ public partial class Form1 : Form
             return;
         }
 
-        if (_removingInvalidIndex)
+        if (_indexWriting)
         {
-            MessageBox.Show(this, "正在移除无效的索引文件，请稍后再试", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
+            MessageBox.Show(this, "正在写入索引文件，请稍后再试", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
             e.Cancel = true;
+            return;
         }
+
+        IndexStream.Dispose();
+        FrameIndexStream.Dispose();
     }
 
     private void picSource_Click(object sender, EventArgs e)
@@ -734,13 +744,7 @@ public partial class Form1 : Form
                     _frameIndex.TryRemove(path, out _);
                 }
             }
-
-            Task.Run(() =>
-            {
-                _removingInvalidIndex = true;
-                WriteIndex();
-                _removingInvalidIndex = false;
-            }).ConfigureAwait(false);
+            _writeQueue.Enqueue(1);
         }
     }
 
@@ -760,22 +764,20 @@ public partial class Form1 : Form
                     _frameIndex.TryRemove(path, out _);
                 }
             }
-
-            Task.Run(() =>
-            {
-                _removingInvalidIndex = true;
-                WriteIndex();
-                _removingInvalidIndex = false;
-            }).ConfigureAwait(false);
+            _writeQueue.Enqueue(1);
         }
     }
 
     private void WriteIndex()
     {
-        _readerWriterLock.EnterReadLock();
-        File.WriteAllText("index.json", JsonSerializer.Serialize(_index), Encoding.UTF8);
-        File.WriteAllText("frame_index.json", JsonSerializer.Serialize(_frameIndex), Encoding.UTF8);
-        _readerWriterLock.ExitReadLock();
+        _indexWriting = true;
+        IndexStream.Seek(0, SeekOrigin.Begin);
+        FrameIndexStream.Seek(0, SeekOrigin.Begin);
+        JsonSerializer.Serialize(IndexStream, _index);
+        JsonSerializer.Serialize(FrameIndexStream, _frameIndex);
+        IndexStream.SetLength(IndexStream.Position);
+        FrameIndexStream.SetLength(FrameIndexStream.Position);
+        _indexWriting = false;
     }
 
     private static readonly HttpClient HttpClient = new HttpClient();
