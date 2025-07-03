@@ -193,7 +193,7 @@ public partial class Form1 : Form
         var imageHasher = new ImageHasher(new ImageSharpTransformer());
         lblProcess.Text = "正在扫描文件...";
         var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? EverythingHelper.EnumerateFiles(txtDirectory.Text).ToArray() : Directory.GetFiles(txtDirectory.Text, "*", SearchOption.AllDirectories);
-        int? filesCount = files.Except(_index.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase));
+        int? filesCount = files.Except(_index.Keys).Except(_frameIndex.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase));
         var local = new ThreadLocal<int>(true);
         var errors = new List<string>();
         var sw = Stopwatch.StartNew();
@@ -268,11 +268,14 @@ public partial class Form1 : Form
             lbSpeed.Text = $"索引速度: {Math.Round(local.Values.Sum() * 1.0 / sw.Elapsed.TotalSeconds)} items/s({size * 1f / 1048576 / sw.Elapsed.TotalSeconds:N}MB/s)";
             lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
             cbRemoveInvalidIndex.Show();
-            _writeQueue.Enqueue(1);
+            if (size > 0)
+            {
+                _writeQueue.Enqueue(1);
+            }
         }).ConfigureAwait(false);
         if (errors.Count > 0)
         {
-            new ErrorsDialog("以下文件格式不正确，无法创建索引，请检查：\r\n" + errors.Join("\r\n")).ShowDialog(this);
+            new ErrorsDialog($"耗时：{sw.Elapsed.TotalSeconds}s，以下文件格式不正确，无法创建索引，请检查：\r\n{errors.Join("\r\n")}").ShowDialog(this);
         }
         else
         {
