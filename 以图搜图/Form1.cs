@@ -115,64 +115,46 @@ public partial class Form1 : Form
             return;
         }
 
-        if (string.IsNullOrEmpty(txtDirectory.Text))
+        IndexRunning = true;
+        btnIndex.Text = "停止索引";
+        var dirs = string.IsNullOrWhiteSpace(txtDirectory.Text) ? PathPrefixFinder.FindLongestCommonPathPrefixes(_index.Keys.Union(_frameIndex.Keys), 3).Where(Directory.Exists).ToArray() : [txtDirectory.Text];
+        if (dirs.Length == 0)
         {
             MessageBox.Show(this, "请先选择文件夹", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
+            IndexRunning = false;
+            btnIndex.Text = "更新索引";
             return;
         }
 
+        cbRemoveInvalidIndex.Hide();
+        var imageHasher = new ImageHasher(new ImageSharpTransformer());
+        lblProcess.Text = "正在扫描文件...";
+        var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? dirs.SelectMany(s =>
+        {
+            var array = EverythingHelper.EnumerateFiles(s).ToArray();
+            return array.Length == 0 ? Directory.GetFiles(s, "*", SearchOption.AllDirectories) : array;
+        }).ToArray() : dirs.SelectMany(s => Directory.GetFiles(s, "*", SearchOption.AllDirectories)).ToArray();
         if (cbRemoveInvalidIndex.Checked)
         {
             _ = Task.Run(() =>
             {
-                foreach (var key in _index.Keys.Except(_index.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g =>
-                         {
-                             if (Directory.Exists(g.Key))
-                             {
-                                 if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
-                                 {
-                                     var files = EverythingHelper.EnumerateFiles(FindLCP(g.ToArray()), "*.jpg|*.jpeg|*.bmp|*.png|*.webp").ToList();
-                                     if (files.Count == 0)
-                                     {
-                                         throw new Exception("所选目录未包含在everything索引范围，或文件数为0，请检查");
-                                     }
+                var allfiles = files;
+                if (!string.IsNullOrWhiteSpace(txtDirectory.Text))
+                {
+                    var alldirs = PathPrefixFinder.FindLongestCommonPathPrefixes(_index.Keys.Union(_frameIndex.Keys), 3).Where(Directory.Exists);
+                    allfiles = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? alldirs.SelectMany(s =>
+                    {
+                        var array = EverythingHelper.EnumerateFiles(s).ToArray();
+                        return array.Length == 0 ? Directory.GetFiles(s, "*", SearchOption.AllDirectories) : array;
+                    }).ToArray() : alldirs.SelectMany(s => Directory.GetFiles(s, "*", SearchOption.AllDirectories)).ToArray();
+                }
 
-                                     return files;
-                                 }
-
-                                 return Directory.EnumerateFiles(FindLCP(g.ToArray()), "*", new EnumerationOptions()
-                                 {
-                                     IgnoreInaccessible = true,
-                                     AttributesToSkip = FileAttributes.System | FileAttributes.Temporary,
-                                     RecurseSubdirectories = true
-                                 }).Where(s => picRegex.IsMatch(s));
-                             }
-
-                             return [];
-                         })).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Where(s => !File.Exists(s)))
+                foreach (var key in _index.Keys.Except(allfiles).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Where(s => !File.Exists(s)))
                 {
                     _index.TryRemove(key, out _);
                 }
 
-                foreach (var key in _frameIndex.Keys.Except(_frameIndex.Keys.GroupBy(x => string.Join('\\', x.Split('\\')[..2])).SelectMany(g =>
-                         {
-                             if (Directory.Exists(g.Key))
-                             {
-                                 if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
-                                 {
-                                     return EverythingHelper.EnumerateFiles(FindLCP(g.ToArray()), "*.gif");
-                                 }
-
-                                 return Directory.EnumerateFiles(FindLCP(g.ToArray()), "*.gif", new EnumerationOptions()
-                                 {
-                                     IgnoreInaccessible = true,
-                                     AttributesToSkip = FileAttributes.System | FileAttributes.Temporary,
-                                     RecurseSubdirectories = true
-                                 });
-                             }
-
-                             return [];
-                         })).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Where(s => !File.Exists(s)))
+                foreach (var key in _frameIndex.Keys.Except(allfiles).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Where(s => !File.Exists(s)))
                 {
                     _frameIndex.TryRemove(key, out _);
                 }
@@ -187,12 +169,6 @@ public partial class Form1 : Form
             }).ConfigureAwait(false);
         }
 
-        IndexRunning = true;
-        btnIndex.Text = "停止索引";
-        cbRemoveInvalidIndex.Hide();
-        var imageHasher = new ImageHasher(new ImageSharpTransformer());
-        lblProcess.Text = "正在扫描文件...";
-        var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? EverythingHelper.EnumerateFiles(txtDirectory.Text).ToArray() : Directory.GetFiles(txtDirectory.Text, "*", SearchOption.AllDirectories);
         int? filesCount = files.Except(_index.Keys).Except(_frameIndex.Keys).Count(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase));
         var local = new ThreadLocal<int>(true);
         var errors = new List<string>();
@@ -283,34 +259,6 @@ public partial class Form1 : Form
         }
         IndexRunning = false;
         btnIndex.Text = "更新索引";
-    }
-
-    private static string FindLCP(string[] strs)
-    {
-        if (strs == null || strs.Length == 0) return "";
-
-        // 找到最短的字符串，因为LCP不会超过最短字符串的长度
-        string shortest = strs[0];
-        for (int i = 1; i < strs.Length; i++)
-        {
-            if (strs[i].Length < shortest.Length)
-                shortest = strs[i];
-        }
-
-        // 逐字符比较，直到找到不匹配的字符
-        for (int i = 0; i < shortest.Length; i++)
-        {
-            char c = shortest[i];
-            for (int j = 1; j < strs.Length; j++)
-            {
-                // 如果当前索引越界或字符不匹配，则返回当前LCP
-                if (i >= strs[j].Length || strs[j][i] != c)
-                    return shortest.Substring(0, i);
-            }
-        }
-
-        // 如果所有字符串共享整个最短字符串，则返回它
-        return shortest;
     }
 
     private void btnSearch_Click(object sender, EventArgs e)
