@@ -117,6 +117,8 @@ public partial class Form1 : Form
 
         IndexRunning = true;
         btnIndex.Text = "停止索引";
+        cbRemoveInvalidIndex.Hide();
+        lblProcess.Text = "正在扫描文件夹...";
         var dirs = string.IsNullOrWhiteSpace(txtDirectory.Text) ? PathPrefixFinder.FindLongestCommonPathPrefixes(_index.Keys.Union(_frameIndex.Keys), 3).Where(Directory.Exists).ToArray() : [txtDirectory.Text];
         if (dirs.Length == 0)
         {
@@ -126,10 +128,9 @@ public partial class Form1 : Form
             return;
         }
 
-        cbRemoveInvalidIndex.Hide();
         var imageHasher = new ImageHasher(new ImageSharpTransformer());
         lblProcess.Text = "正在扫描文件...";
-        var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? dirs.SelectMany(s =>
+        var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? dirs.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount).SelectMany(s =>
         {
             var array = EverythingHelper.EnumerateFiles(s).ToArray();
             return array.Length == 0 ? Directory.GetFiles(s, "*", SearchOption.AllDirectories) : array;
