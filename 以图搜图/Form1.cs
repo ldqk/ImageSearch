@@ -176,7 +176,7 @@ public partial class Form1 : Form
         await Task.Run(() =>
         {
             long size = 0;
-            files.Except(_index.Keys).Where(s => picRegex.IsMatch(s)).Chunk(Environment.ProcessorCount * 4).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).ForAll(g =>
+            files.Where(s => picRegex.IsMatch(s)).Except(_index.Keys).Chunk(Environment.ProcessorCount * 4).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).ForAll(g =>
             {
                 foreach (var s in g)
                 {

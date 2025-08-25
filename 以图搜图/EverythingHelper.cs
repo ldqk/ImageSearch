@@ -26,9 +26,10 @@ public class EverythingHelper
         Everything_SetMax(uint.MaxValue);
     }
 
-    public static IEnumerable<string> EnumerateFiles(string directoryPath, string searchPartten = "*.jpg|*.jpeg|*.bmp|*.png|*.gif")
+    public static IEnumerable<string> EnumerateFiles(string directoryPath, string extFilter = "jpg;jpeg;bmp;png;gif")
     {
-        string search = $"\"{directoryPath}\" {searchPartten}"; // 构造搜索字符串，例如："C:\Users *.jpg"
+        string search = $"file:\"{directoryPath}\"{extFilter}"; // 仅文件，并限制路径
+
         Everything_SetSearch(search);
         Everything_Query(true); // 执行搜索
         uint numResults = Everything_GetNumResults();
