@@ -28,7 +28,7 @@ public class EverythingHelper
 
     public static IEnumerable<string> EnumerateFiles(string directoryPath, string extFilter = "jpg;jpeg;bmp;png;gif")
     {
-        string search = $"file:\"{directoryPath}\"{extFilter}"; // 仅文件，并限制路径
+        string search = $"file:\"{directoryPath}\" ext:{extFilter}"; // 仅文件，并限制路径
 
         Everything_SetSearch(search);
         Everything_Query(true); // 执行搜索
