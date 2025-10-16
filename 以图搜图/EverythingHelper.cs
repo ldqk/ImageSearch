@@ -3,23 +3,23 @@ using System.Text;
 
 namespace 以图搜图;
 
-public class EverythingHelper
+public static class EverythingHelper
 {
     // 导入Everything DLL的方法
     [DllImport("Everything64.dll", CharSet = CharSet.Unicode)]
-    public static extern uint Everything_SetSearch(string lpSearchString);
+    private static extern uint Everything_SetSearch(string lpSearchString);
 
     [DllImport("Everything64.dll", CharSet = CharSet.Unicode)]
-    public static extern void Everything_GetResultFullPathName(uint index, StringBuilder path, uint length);
+    private static extern void Everything_GetResultFullPathName(uint index, StringBuilder path, uint length);
 
     [DllImport("Everything64.dll", CharSet = CharSet.Unicode)]
-    public static extern bool Everything_Query(bool wait);
+    private static extern bool Everything_Query(bool wait);
 
     [DllImport("Everything64.dll", CharSet = CharSet.Unicode)]
-    public static extern uint Everything_GetNumResults();
+    private static extern uint Everything_GetNumResults();
 
     [DllImport("Everything64.dll", CharSet = CharSet.Unicode)]
-    public static extern void Everything_SetMax(uint dwMaxResults);
+    private static extern void Everything_SetMax(uint dwMaxResults);
 
     static EverythingHelper()
     {

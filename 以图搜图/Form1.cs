@@ -130,7 +130,7 @@ public partial class Form1 : Form
 
         var imageHasher = new ImageHasher(new ImageSharpTransformer());
         lblProcess.Text = "正在扫描文件...";
-        var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? dirs.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount).SelectMany(s =>
+        var files = File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0 ? dirs.SelectMany(s =>
         {
             var array = EverythingHelper.EnumerateFiles(s).ToArray();
             return array.Length == 0 ? Directory.GetFiles(s, "*", SearchOption.AllDirectories) : array;
@@ -147,20 +147,24 @@ public partial class Form1 : Form
                     {
                         var array = EverythingHelper.EnumerateFiles(s).ToArray();
                         return array.Length == 0 ? Directory.GetFiles(s, "*", SearchOption.AllDirectories) : array;
-                    }).ToArray() : alldirs.SelectMany(s => Directory.GetFiles(s, "*", SearchOption.AllDirectories)).ToArray();
+                    }).Union(files).ToArray() : alldirs.SelectMany(s => Directory.GetFiles(s, "*", SearchOption.AllDirectories)).Union(files).ToArray();
                 }
 
-                foreach (var key in _index.Keys.Except(allfiles).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Where(s => !File.Exists(s)))
+                var removes = _index.Keys.Except(allfiles).ToList();
+                foreach (var key in removes)
                 {
                     _index.TryRemove(key, out _);
                 }
 
-                foreach (var key in _frameIndex.Keys.Except(allfiles).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Where(s => !File.Exists(s)))
+                removes = _frameIndex.Keys.Except(allfiles).ToList();
+                foreach (var key in removes)
                 {
                     _frameIndex.TryRemove(key, out _);
                 }
                 _writeQueue.Enqueue(1);
                 lbIndexCount.Text = _index.Count + _frameIndex.Count + "文件";
+                cbRemoveInvalidIndex.Checked = false;
+                cbRemoveInvalidIndex.Hide();
             }).ContinueWith(t =>
             {
                 if (t.IsFaulted)
