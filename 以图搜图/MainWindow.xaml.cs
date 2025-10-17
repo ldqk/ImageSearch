@@ -16,9 +16,9 @@ public partial class MainWindow
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
-    private void Window_Drop(object sender, DragEventArgs e)
+    private async void Window_Drop(object sender, DragEventArgs e)
     {
-        ViewModel.HandleDrop(e.Data);
+        await ViewModel.HandleDrop(e.Data);
     }
 
     private void Window_DragEnter(object sender, DragEventArgs e)

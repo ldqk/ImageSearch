@@ -287,7 +287,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    public async void HandleDrop(IDataObject dataObject)
+    public async Task HandleDrop(IDataObject dataObject)
     {
         // 1. 检查文件拖放
         if (dataObject.GetDataPresent(DataFormats.FileDrop))
@@ -304,7 +304,8 @@ public partial class MainViewModel : ObservableObject
         // 2. 处理浏览器拖放的图片（FileContents）
         if (dataObject.GetDataPresent("FileContents"))
         {
-            if (dataObject.GetData("FileContents") is Stream stream)
+            var data = dataObject.GetData("FileContents");
+            if (data is Stream stream)
             {
                 var filename = Path.Combine(Path.GetTempPath(), SnowFlake.NewId + ".jpg");
                 await stream.SaveFileAsync(filename);
