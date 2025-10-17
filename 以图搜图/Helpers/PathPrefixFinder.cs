@@ -1,4 +1,5 @@
-﻿using Masuit.Tools.Systems;
+﻿using System.IO;
+using Masuit.Tools.Systems;
 
 namespace 以图搜图;
 
@@ -64,7 +65,7 @@ public static class PathPrefixFinder
             }
             else
             {
-                // 多个路径，找最长公共前缀，使用已缓存的segments
+                // 多个路径,找最长公共前缀，使用已缓存的segments
                 var commonPrefix = FindLongestCommonPrefixOptimized(groupArray);
                 if (!string.IsNullOrEmpty(commonPrefix))
                 {
