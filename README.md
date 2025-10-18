@@ -1,8 +1,10 @@
 # ImageSearch
 图片exif信息移除小工具和本地硬盘以图搜图案例Demo分享，灵感来源于[DuplicateCleaner](https://masuit.org/1776)，**千万级图片秒级检索**：   
-![image](https://user-images.githubusercontent.com/20254980/177007293-d9431b89-7999-496b-a865-1ccfadb6243f.png)
-![image](https://user-images.githubusercontent.com/20254980/177023108-b2847b7c-4618-4878-8988-94a5df59fd63.png)
-![image](https://user-images.githubusercontent.com/20254980/177023173-c0bb4be5-a015-4c05-981b-98c26c47010c.png)
+<img width="1165" height="840" alt="image" src="https://github.com/user-attachments/assets/9f295f3b-3edf-4227-bbd8-a4b386b59251" />
+<img width="1307" height="1040" alt="image" src="https://github.com/user-attachments/assets/68aefef0-b143-4385-a7f9-fb9dbcaf073d" />
+<img width="1377" height="911" alt="image" src="https://github.com/user-attachments/assets/34a37f96-a665-43ef-a4c9-c4f3a63c8b0e" />
+
+
 ## 环境要求
 开发环境：Visual Studio 2022  
 运行时：.net9 desktop  
