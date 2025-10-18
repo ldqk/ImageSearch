@@ -30,6 +30,7 @@
         <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
         <converters:ProgressWidthConverter x:Key="ProgressWidthConverter" />
         <converters:SpeedHistoryToPathConverter x:Key="SpeedHistoryToPathConverter" />
+        <converters:ImagePathToBitmapConverter x:Key="ImagePathToBitmapConverter" />
 
         <!-- 全局字体大小设置 -->
         <Style TargetType="TextBlock">
@@ -1014,7 +1015,7 @@
                       BorderThickness="1"
                       Background="#FAFAFA"
                       CornerRadius="4">
-                                <Image Source="{Binding SourceImagePath}"
+                                <Image Source="{Binding SourceImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
                        Stretch="Uniform"
                        Cursor="Hand"
                        MouseLeftButtonDown="SourceImage_Click"
@@ -1060,7 +1061,7 @@
                       BorderThickness="1"
                       Background="#FAFAFA"
                       CornerRadius="4">
-                                <Image Source="{Binding DestImagePath}"
+                                <Image Source="{Binding DestImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
                        Stretch="Uniform"
                        Cursor="Hand"
                        MouseLeftButtonDown="DestImage_Click"

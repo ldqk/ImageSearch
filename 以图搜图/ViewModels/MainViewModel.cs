@@ -296,6 +296,13 @@ public partial class MainViewModel : ObservableObject
         {
             if (File.Exists(SelectedResult.路径))
             {
+                // 删除前释放 Image 控件占用的文件
+                if (DestImagePath == SelectedResult.路径)
+                {
+                    DestImagePath = string.Empty;
+                    DestImageInfo = string.Empty;
+                }
+
                 File.Delete(SelectedResult.路径);
             }
             _indexService.RemoveFromIndex(SelectedResult.路径);
@@ -312,6 +319,13 @@ public partial class MainViewModel : ObservableObject
         var result = MessageBox.Show("确认删除到回收站吗？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.Question);
         if (result == MessageBoxResult.OK)
         {
+            // 删除前释放 Image 控件占用的文件
+            if (DestImagePath == SelectedResult.路径)
+            {
+                DestImagePath = string.Empty;
+                DestImageInfo = string.Empty;
+            }
+
             RecycleBinHelper.Delete(SelectedResult.路径);
             _indexService.RemoveFromIndex(SelectedResult.路径);
             SearchResults.Remove(SelectedResult);
@@ -520,6 +534,13 @@ public partial class MainViewModel : ObservableObject
         {
             if (File.Exists(SelectedResult.路径))
             {
+                // 删除前释放 Image 控件占用的文件
+                if (DestImagePath == SelectedResult.路径)
+                {
+                    DestImagePath = string.Empty;
+                    DestImageInfo = string.Empty;
+                }
+
                 if (modifiers == ModifierKeys.Shift)
                 {
                     RecycleBinHelper.Delete(SelectedResult.路径);
