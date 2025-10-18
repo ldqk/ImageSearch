@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Masuit.Tools.Logging;
 using Masuit.Tools.Media;
+using Masuit.Tools.Systems;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.PixelFormats;
@@ -12,7 +13,7 @@ using Size = SixLabors.ImageSharp.Size;
 
 namespace 以图搜图.Services;
 
-public class ImageIndexService
+public sealed class ImageIndexService : Disposable
 {
     private readonly Regex _picRegex = new("(jpg|jpeg|png|bmp|webp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private readonly ConcurrentQueue<int> _writeQueue = new();
@@ -99,13 +100,11 @@ public class ImageIndexService
             // 索引静态图片
             filesToIndex.Where(s => _picRegex.IsMatch(s)).Chunk(Environment.ProcessorCount * 4).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).ForAll(g =>
             {
-                foreach (var file in g)
+                foreach (var file in g.TakeWhile(_ => IsIndexing))
                 {
-                    if (!IsIndexing) break;
-
                     try
                     {
-                        Index.GetOrAdd(file, _ => imageHasher.DifferenceHash256(file));
+                        _ = Index.GetOrAdd(file, _ => imageHasher.DifferenceHash256(file));
                         var size = new FileInfo(file).Length;
                         Interlocked.Add(ref totalSize, size);
                         local.Value++;
@@ -114,7 +113,9 @@ public class ImageIndexService
                         {
                             Message = $"{local.Values.Sum()}/{filesCount}",
                             Speed = local.Values.Sum() / sw.Elapsed.TotalSeconds,
-                            ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds
+                            ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
+                            ProcessedFiles = local.Values.Sum(),
+                            TotalFiles = filesCount
                         });
                     }
                     catch
@@ -127,10 +128,8 @@ public class ImageIndexService
             // 索引GIF动画
             filesToIndex.Where(s => s.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
             {
-                foreach (var file in g)
+                foreach (var file in g.TakeWhile(_ => IsIndexing))
                 {
-                    if (!IsIndexing) break;
-
                     try
                     {
                         using var gif = Image.Load<L8>(new DecoderOptions
@@ -157,7 +156,9 @@ public class ImageIndexService
                         {
                             Message = $"{local.Values.Sum()}/{filesCount}",
                             Speed = local.Values.Sum() / sw.Elapsed.TotalSeconds,
-                            ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds
+                            ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
+                            ProcessedFiles = local.Values.Sum(),
+                            TotalFiles = filesCount
                         });
                     }
                     catch
@@ -196,9 +197,9 @@ public class ImageIndexService
         _writeQueue.Enqueue(1);
     }
 
-    public List<string> GetIndexedPaths()
+    public IEnumerable<string> GetIndexedPaths()
     {
-        return Index.Keys.Union(FrameIndex.Keys).ToList();
+        return Index.Keys.Union(FrameIndex.Keys);
     }
 
     private string[] GetFiles(string[] directories)
@@ -271,18 +272,22 @@ public class ImageIndexService
         }
     }
 
-    protected virtual void OnProgressChanged(IndexProgressEventArgs e)
+    private void OnProgressChanged(IndexProgressEventArgs e)
     {
         ProgressChanged?.Invoke(this, e);
     }
 
-    protected virtual void OnIndexCompleted(IndexCompletedEventArgs e)
+    private void OnIndexCompleted(IndexCompletedEventArgs e)
     {
         IndexCompleted?.Invoke(this, e);
     }
 
-    ~ImageIndexService()
+    /// <summary>释放</summary>
+    /// <param name="disposing"></param>
+    public override void Dispose(bool disposing)
     {
+        FrameIndex.Clear();
+        Index.Clear();
         _indexStream?.Dispose();
         _frameIndexStream?.Dispose();
     }

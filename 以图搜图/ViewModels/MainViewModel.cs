@@ -74,6 +74,33 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string updateIndexButtonText = "🔄 更新索引";
 
+    [ObservableProperty]
+    private bool isSearching;
+
+    [ObservableProperty]
+    private string searchStatusText = string.Empty;
+
+    [ObservableProperty]
+    private Visibility searchLoadingVisibility = Visibility.Collapsed;
+
+    [ObservableProperty]
+    private double indexProgress;
+
+    [ObservableProperty]
+    private string indexProgressText = string.Empty;
+
+    [ObservableProperty]
+    private Visibility indexProgressVisibility = Visibility.Collapsed;
+
+    [ObservableProperty]
+    private string indexSpeedText = string.Empty;
+
+    [ObservableProperty]
+    private string indexThroughputText = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<double> speedHistory = new();
+
     public MainViewModel()
     {
         _indexService = new ImageIndexService();
@@ -151,18 +178,20 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(DirectoryPath) && _indexService.GetIndexedPaths().Count == 0)
+        OnIndexProgressChanged(this, new IndexProgressEventArgs
+        {
+            Message = "准备开始"
+        });
+        var paths = _indexService.GetIndexedPaths().ToList();
+        if (string.IsNullOrWhiteSpace(DirectoryPath) && paths.Count == 0)
         {
             MessageBox.Show("请先选择文件夹", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IndexProgressVisibility = Visibility.Collapsed;
             return;
         }
 
         UpdateIndexButtonText = "⏸️ 停止索引";
-        var dirs = string.IsNullOrWhiteSpace(DirectoryPath) ? PathPrefixFinder.FindLongestCommonPathPrefixes(_indexService.GetIndexedPaths(), 3).Where(Directory.Exists).ToArray() : new[]
-        {
-            DirectoryPath
-        };
-
+        var dirs = string.IsNullOrWhiteSpace(DirectoryPath) ? PathPrefixFinder.FindLongestCommonPathPrefixes(paths, 3).Where(Directory.Exists).ToArray() : [DirectoryPath];
         await _indexService.UpdateIndexAsync(dirs, RemoveInvalidIndex);
         UpdateIndexButtonText = "🔄 更新索引";
         RemoveInvalidIndex = false;
@@ -177,7 +206,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        if (_indexService.GetIndexedPaths().Count == 0)
+        if (!_indexService.GetIndexedPaths().Any())
         {
             MessageBox.Show("当前没有任何索引，请先添加文件夹创建索引后再搜索", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
@@ -195,6 +224,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task SearchFromClipboard()
     {
+        IsSearching = true;
+        SearchLoadingVisibility = Visibility.Visible;
+        SearchStatusText = "🔍 正在搜索相似图片...";
         if (Clipboard.ContainsFileDropList())
         {
             var files = Clipboard.GetFileDropList();
@@ -289,98 +321,196 @@ public partial class MainViewModel : ObservableObject
 
     public async Task HandleDrop(IDataObject dataObject)
     {
-        // 1. 检查文件拖放
-        if (dataObject.GetDataPresent(DataFormats.FileDrop))
+        IsSearching = true;
+        SearchLoadingVisibility = Visibility.Visible;
+        SearchStatusText = "🔍 正在搜索相似图片...";
+        try
         {
-            var files = (string[])dataObject.GetData(DataFormats.FileDrop)!;
-            if (files.Length > 0)
+            // 1. 检查文件拖放
+            if (dataObject.GetDataPresent(DataFormats.FileDrop))
             {
-                ImagePath = files[0];
-                await Search();
-                return;
-            }
-        }
-
-        // 2. 处理浏览器拖放的图片（FileContents）
-        if (dataObject.GetDataPresent("FileContents"))
-        {
-            var data = dataObject.GetData("FileContents");
-            if (data is Stream stream)
-            {
-                var filename = Path.Combine(Path.GetTempPath(), SnowFlake.NewId + ".jpg");
-                await stream.SaveFileAsync(filename);
-                await SearchCore(filename);
-                _ = Task.Run(async () =>
+                var files = (string[])dataObject.GetData(DataFormats.FileDrop)!;
+                if (files.Length > 0)
                 {
-                    await Task.Delay(1000);
-                    File.Delete(filename);
-                });
-                return;
-            }
-        }
-
-        // 3. 直接获取位图数据
-        if (dataObject.GetDataPresent(DataFormats.Bitmap))
-        {
-            var image = (System.Windows.Media.Imaging.BitmapSource)dataObject.GetData(DataFormats.Bitmap)!;
-            var filename = Path.Combine(Path.GetTempPath(), SnowFlake.NewId + ".jpg");
-
-            var encoder = new System.Windows.Media.Imaging.JpegBitmapEncoder();
-            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(image));
-
-            using (var fileStream = new FileStream(filename, FileMode.Create))
-            {
-                encoder.Save(fileStream);
+                    ImagePath = files[0];
+                    await Search();
+                    return;
+                }
             }
 
-            await SearchCore(filename);
-            _ = Task.Run(async () =>
+            // 2. 直接获取位图数据（优先处理，避免格式转换问题）
+            if (dataObject.GetDataPresent(DataFormats.Bitmap))
             {
-                await Task.Delay(1000);
-                File.Delete(filename);
-            });
-            return;
-        }
-
-        // 4. 处理URL或Base64文本
-        if (dataObject.GetDataPresent(DataFormats.Text))
-        {
-            string text = dataObject.GetData(DataFormats.Text)!.ToString()!;
-
-            // 检查是否为URL
-            if (Uri.TryCreate(text, UriKind.Absolute, out Uri? uri))
-            {
-                using var httpClient = new HttpClient();
-                var bytes = await httpClient.GetByteArrayAsync(uri);
-                var filename = Path.Combine(Path.GetTempPath(), Path.GetFileName(uri.AbsolutePath));
-                await File.WriteAllBytesAsync(filename, bytes);
-                await SearchCore(filename);
-                _ = Task.Run(async () =>
+                try
                 {
-                    await Task.Delay(1000);
-                    File.Delete(filename);
-                });
-                return;
-            }
-
-            // 检查是否为Base64图像数据
-            if (text.StartsWith("data:image/"))
-            {
-                int commaIndex = text.IndexOf(',');
-                if (commaIndex != -1)
-                {
-                    string base64Data = text.Substring(commaIndex + 1);
-                    byte[] bytes = Convert.FromBase64String(base64Data);
+                    var image = (System.Windows.Media.Imaging.BitmapSource)dataObject.GetData(DataFormats.Bitmap)!;
                     var filename = Path.Combine(Path.GetTempPath(), SnowFlake.NewId + ".jpg");
-                    await File.WriteAllBytesAsync(filename, bytes);
+
+                    var encoder = new System.Windows.Media.Imaging.JpegBitmapEncoder();
+                    encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(image));
+
+                    using (var fileStream = new FileStream(filename, FileMode.Create))
+                    {
+                        encoder.Save(fileStream);
+                    }
+                    OnImagePathChanged(filename);
+
                     await SearchCore(filename);
                     _ = Task.Run(async () =>
                     {
                         await Task.Delay(1000);
-                        File.Delete(filename);
+                        if (File.Exists(filename))
+                            File.Delete(filename);
                     });
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"位图数据处理失败: {ex.Message}");
+                    // 继续尝试其他格式
                 }
             }
+
+            // 3. 处理 DIB (Device Independent Bitmap) 格式
+            if (dataObject.GetDataPresent(DataFormats.Dib))
+            {
+                try
+                {
+                    var image = (System.Windows.Media.Imaging.BitmapSource)dataObject.GetData(DataFormats.Dib)!;
+                    var filename = Path.Combine(Path.GetTempPath(), SnowFlake.NewId + ".jpg");
+
+                    var encoder = new System.Windows.Media.Imaging.JpegBitmapEncoder();
+                    encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(image));
+
+                    using (var fileStream = new FileStream(filename, FileMode.Create))
+                    {
+                        encoder.Save(fileStream);
+                    }
+                    OnImagePathChanged(filename);
+
+                    await SearchCore(filename);
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(1000);
+                        if (File.Exists(filename))
+                            File.Delete(filename);
+                    });
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"DIB 格式处理失败: {ex.Message}");
+                    // 继续尝试其他格式
+                }
+            }
+
+            // 4. 处理浏览器拖放的图片（FileContents）
+            if (dataObject.GetDataPresent("FileContents"))
+            {
+                try
+                {
+                    var data = dataObject.GetData("FileContents");
+                    if (data is Stream stream)
+                    {
+                        var filename = Path.Combine(Path.GetTempPath(), SnowFlake.NewId + ".jpg");
+                        await stream.SaveFileAsync(filename);
+                        OnImagePathChanged(filename);
+                        await SearchCore(filename);
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(1000);
+                            if (File.Exists(filename))
+                                File.Delete(filename);
+                        });
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"FileContents 处理失败: {ex.Message}");
+                    // 继续尝试其他格式
+                }
+            }
+
+            // 5. 处理URL或Base64文本
+            if (dataObject.GetDataPresent(DataFormats.Text))
+            {
+                try
+                {
+                    string text = dataObject.GetData(DataFormats.Text)!.ToString()!;
+
+                    // 检查是否为URL
+                    if (Uri.TryCreate(text, UriKind.Absolute, out Uri? uri) && (uri.Scheme == "http" || uri.Scheme == "https"))
+                    {
+                        using var httpClient = new HttpClient();
+                        httpClient.Timeout = TimeSpan.FromSeconds(10);
+                        var bytes = await httpClient.GetByteArrayAsync(uri);
+                        var filename = Path.Combine(Path.GetTempPath(), SnowFlake.NewId + Path.GetExtension(uri.AbsolutePath));
+                        if (string.IsNullOrEmpty(Path.GetExtension(filename)))
+                        {
+                            filename += ".jpg";
+                        }
+                        await File.WriteAllBytesAsync(filename, bytes);
+                        OnImagePathChanged(filename);
+                        await SearchCore(filename);
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(1000);
+                            if (File.Exists(filename))
+                                File.Delete(filename);
+                        });
+                        return;
+                    }
+
+                    // 检查是否为Base64图像数据
+                    if (text.StartsWith("data:image/"))
+                    {
+                        int commaIndex = text.IndexOf(',');
+                        if (commaIndex != -1)
+                        {
+                            string base64Data = text.Substring(commaIndex + 1);
+                            byte[] bytes = Convert.FromBase64String(base64Data);
+                            var filename = Path.Combine(Path.GetTempPath(), SnowFlake.NewId + ".jpg");
+                            await File.WriteAllBytesAsync(filename, bytes);
+                            await SearchCore(filename);
+                            _ = Task.Run(async () =>
+                            {
+                                await Task.Delay(1000);
+                                if (File.Exists(filename))
+                                    File.Delete(filename);
+                            });
+                            return;
+                        }
+                    }
+
+                    // 检查是否为本地文件路径
+                    if (File.Exists(text))
+                    {
+                        ImagePath = text;
+                        await Search();
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"文本数据处理失败: {ex.Message}");
+                    // 继续尝试其他格式
+                }
+            }
+
+            // 如果所有格式都失败，显示提示
+            MessageBox.Show("无法识别拖放的数据格式，请尝试从剪切板搜索或选择本地文件拖放", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"处理拖放数据时发生错误：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            Debug.WriteLine($"HandleDrop 异常: {ex}");
+        }
+        finally
+        {
+            IsSearching = false;
+            SearchLoadingVisibility = Visibility.Collapsed;
+            SearchStatusText = string.Empty;
         }
     }
 
@@ -413,28 +543,54 @@ public partial class MainViewModel : ObservableObject
 
     public bool CanClose()
     {
-        return !_indexService.IsIndexing && !_indexService.IsWriting;
+        return _indexService is { IsIndexing: false, IsWriting: false };
     }
 
     private async Task SearchCore(string filename)
     {
-        var sw = Stopwatch.StartNew();
-        var sim = Similarity / 100f;
-
-        var results = await _searchService.SearchAsync(filename, _indexService.Index, _indexService.FrameIndex, sim, FindRotated, FindFlipped);
-
-        sw.Stop();
-        ElapsedTime = $"{sw.ElapsedMilliseconds}ms";
-
-        SearchResults.Clear();
-        foreach (var result in results)
+        try
         {
-            SearchResults.Add(result);
+            IsSearching = true;
+            SearchLoadingVisibility = Visibility.Visible;
+            SearchStatusText = "🔍 正在搜索相似图片...";
+            ElapsedTime = string.Empty;
+
+            var sw = Stopwatch.StartNew();
+            var sim = Similarity / 100f;
+
+            var results = await _searchService.SearchAsync(filename, _indexService.Index, _indexService.FrameIndex, sim, FindRotated, FindFlipped);
+
+            sw.Stop();
+            ElapsedTime = $"{sw.ElapsedMilliseconds}ms";
+
+            SearchResults.Clear();
+            foreach (var result in results)
+            {
+                SearchResults.Add(result);
+            }
+
+            if (SearchResults.Count > 0)
+            {
+                SelectedResult = SearchResults[0];
+                SearchStatusText = $"✅ 搜索完成，找到 {SearchResults.Count} 个相似图片";
+            }
+            else
+            {
+                SearchStatusText = "ℹ️ 未找到相似图片";
+            }
         }
-
-        if (SearchResults.Count > 0)
+        catch (Exception ex)
         {
-            SelectedResult = SearchResults[0];
+            SearchStatusText = $"❌ 搜索失败: {ex.Message}";
+            MessageBox.Show($"搜索时发生错误：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsSearching = false;
+            // 延迟隐藏 loading，让用户看到完成状态
+            await Task.Delay(800);
+            SearchLoadingVisibility = Visibility.Collapsed;
+            SearchStatusText = string.Empty;
         }
     }
 
@@ -443,9 +599,18 @@ public partial class MainViewModel : ObservableObject
         Application.Current.Dispatcher.Invoke(() =>
         {
             ProcessStatus = e.Message;
+            IndexProgress = e.ProgressPercentage;
+            IndexProgressText = $"{e.ProcessedFiles:#,0} / {e.TotalFiles:#,0}";
+            IndexProgressVisibility = Visibility.Visible;
+
             if (e.Speed > 0)
             {
                 IndexSpeed = $"索引速度: {e.Speed:F0} items/s ({e.ThroughputMB:F2}MB/s)";
+                IndexSpeedText = $"{e.Speed:F0} items/s";
+                IndexThroughputText = $"{e.ThroughputMB:F2} MB/s";
+
+                // 添加速度数据点到历史记录 - 显示整个索引过程
+                SpeedHistory.Add(e.Speed);
             }
         });
     }
@@ -465,6 +630,12 @@ public partial class MainViewModel : ObservableObject
             {
                 MessageBox.Show($"索引创建完成，耗时：{e.ElapsedSeconds:F2}s", "消息", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+            IndexProgressVisibility = Visibility.Collapsed;
+            IndexProgress = 0;
+            IndexProgressText = string.Empty;
+            IndexSpeedText = string.Empty;
+            IndexThroughputText = string.Empty;
+            SpeedHistory.Clear();
         });
     }
 
@@ -483,7 +654,7 @@ public partial class MainViewModel : ObservableObject
         {
             try
             {
-                using var image = Image.Load(path);
+                var image = Image.Identify(path);
                 var fileInfo = new FileInfo(path);
                 SourceImageInfo = $"分辨率：{image.Width}x{image.Height}，大小：{fileInfo.Length / 1024}KB";
             }
@@ -500,7 +671,7 @@ public partial class MainViewModel : ObservableObject
         {
             try
             {
-                using var image = Image.Load(path);
+                var image = Image.Identify(path);
                 var fileInfo = new FileInfo(path);
                 DestImageInfo = $"分辨率：{image.Width}x{image.Height}，大小：{fileInfo.Length / 1024}KB";
             }
