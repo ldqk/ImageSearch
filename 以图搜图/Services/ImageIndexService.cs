@@ -218,28 +218,31 @@ public sealed class ImageIndexService : Disposable
 
     private void RemoveInvalidIndexes(string[] newDirs, string[] allFiles)
     {
-        var allPaths = allFiles.ToHashSet();
+        var allPaths = allFiles;
 
         if (newDirs.Length > 0)
         {
             var allDirs = PathPrefixFinder.FindLongestCommonPathPrefixes(Index.Keys.Union(FrameIndex.Keys), 3).Where(Directory.Exists);
             var combinedFiles = GetFiles(allDirs.Union(newDirs).ToArray());
-            allPaths = combinedFiles.ToHashSet();
+            allPaths = combinedFiles;
         }
 
+        var removed = false;
         var removes = Index.Keys.Except(allPaths).ToList();
         foreach (var key in removes)
         {
             Index.TryRemove(key, out _);
+            removed = true;
         }
 
         removes = FrameIndex.Keys.Except(allPaths).ToList();
         foreach (var key in removes)
         {
             FrameIndex.TryRemove(key, out _);
+            removed = true;
         }
 
-        if (removes.Count > 0)
+        if (removed)
         {
             _writeQueue.Enqueue(1);
         }
@@ -269,6 +272,7 @@ public sealed class ImageIndexService : Disposable
         finally
         {
             IsWriting = false;
+            OnIndexCompleted(new IndexCompletedEventArgs());
         }
     }
 

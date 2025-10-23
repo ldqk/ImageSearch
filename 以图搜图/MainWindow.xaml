@@ -713,7 +713,8 @@
 
         <!-- 搜索配置区域 -->
         <Border Grid.Row="2"
-            Style="{StaticResource CardStyle}">
+            Style="{StaticResource CardStyle}"
+            IsEnabled="{Binding IsSearchEnabled}">
             <StackPanel>
                 <TextBlock Text="🔍 搜索配置"
                    Style="{StaticResource SectionHeaderStyle}"
