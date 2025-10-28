@@ -122,7 +122,8 @@ public partial class MainViewModel : ObservableObject
         _indexService.ProgressChanged += OnIndexProgressChanged;
         _indexService.IndexCompleted += OnIndexCompleted;
 
-        InitializePerformanceMonitoring();
+        // 异步初始化性能监测，避免阻塞 UI 线程
+        _ = Task.Run(() => InitializePerformanceMonitoring());
         LoadIndexAsync();
     }
 
@@ -892,11 +893,11 @@ public partial class MainViewModel : ObservableObject
         try
         {
             _currentProcess = Process.GetCurrentProcess();
-            
+
             // 初始化当前进程的 CPU 性能计数器
             _cpuCounter = new PerformanceCounter("Process", "% Processor Time", _currentProcess.ProcessName, true);
             _cpuCounter.NextValue(); // 初始化
-            
+
             // 创建定时器，每秒更新一次
             _performanceTimer = new System.Timers.Timer(1000);
             _performanceTimer.Elapsed += UpdatePerformanceMetrics;
@@ -917,17 +918,17 @@ public partial class MainViewModel : ObservableObject
             {
                 // 刷新进程信息
                 _currentProcess.Refresh();
-                
+
                 // 获取 CPU 使用率（百分比）
                 var cpuUsageValue = _cpuCounter?.NextValue() ?? 0;
-                
+
                 // 获取内存使用量（转换为 MB）
                 var memoryUsage = _currentProcess.WorkingSet64 / (1024.0 * 1024.0);
-                
+
                 // 切回 UI 线程更新 UI
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    CpuUsage = cpuUsageValue/Environment.ProcessorCount;
+                    CpuUsage = cpuUsageValue / Environment.ProcessorCount;
                     MemoryUsage = memoryUsage;
                 });
             }
