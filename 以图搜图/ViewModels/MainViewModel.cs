@@ -922,13 +922,13 @@ public partial class MainViewModel : ObservableObject
                 var cpuUsageValue = _cpuCounter?.NextValue() ?? 0;
                 
                 // 获取内存使用量（转换为 MB）
-                var memoryUsageMB = _currentProcess.WorkingSet64 / (1024.0 * 1024.0);
+                var memoryUsage = _currentProcess.WorkingSet64 / (1024.0 * 1024.0);
                 
                 // 切回 UI 线程更新 UI
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     CpuUsage = cpuUsageValue/Environment.ProcessorCount;
-                    MemoryUsage = memoryUsageMB;
+                    MemoryUsage = memoryUsage;
                 });
             }
         }
