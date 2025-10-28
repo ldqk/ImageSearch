@@ -1088,33 +1088,72 @@
             BorderThickness="0,1,0,0"
             Padding="15,12"
             Margin="-15,15,-15,-15">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="💡 提示："
-                   FontSize="12"
-                   FontWeight="SemiBold"
-                   Foreground="#555555"
-                   VerticalAlignment="Center"
-                   Margin="0,0,6,0" />
-                <TextBlock Text="可直接拖放图片到窗口进行搜索 | "
-                   FontSize="12"
-                   Foreground="#888888"
-                   VerticalAlignment="Center" />
-                <TextBlock Text="项目地址："
-                   FontSize="12"
-                   FontWeight="SemiBold"
-                   Foreground="#555555"
-                   VerticalAlignment="Center"
-                   Margin="8,0,6,0" />
-                <TextBlock VerticalAlignment="Center">
-          <Hyperlink NavigateUri="https://github.com/ldqk/ImageSearch"
-                     RequestNavigate="Hyperlink_RequestNavigate"
-                     Foreground="#007ACC"
-                     TextDecorations="None">
-            <Run Text="github.com/ldqk/ImageSearch"
-                 FontSize="12" />
-          </Hyperlink>
-                </TextBlock>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 左侧提示信息 -->
+                <StackPanel Grid.Column="0"
+                    Orientation="Horizontal">
+                    <TextBlock Text="💡 提示："
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="#555555"
+                       VerticalAlignment="Center"
+                       Margin="0,0,6,0" />
+                    <TextBlock Text="可直接拖放图片到窗口进行搜索 | "
+                       FontSize="12"
+                       Foreground="#888888"
+                       VerticalAlignment="Center" />
+                    <TextBlock Text="项目地址："
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="#555555"
+                       VerticalAlignment="Center"
+                       Margin="8,0,6,0" />
+                    <TextBlock VerticalAlignment="Center">
+              <Hyperlink NavigateUri="https://github.com/ldqk/ImageSearch"
+                         RequestNavigate="Hyperlink_RequestNavigate"
+                         Foreground="#007ACC"
+                         TextDecorations="None">
+                <Run Text="github.com/ldqk/ImageSearch"
+                     FontSize="12" />
+              </Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- 右侧 CPU 和内存信息 -->
+                <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    Margin="20,0,0,0">
+                    <StackPanel Orientation="Horizontal"
+                        Margin="0,0,15,0">
+                        <TextBlock Text="💻 CPU: "
+                           FontSize="12"
+                           Foreground="#555555"
+                           VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding CpuUsage, StringFormat={}{0:F1}%}"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="#FF6B6B"
+                           VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🧠 内存: "
+                           FontSize="12"
+                           Foreground="#555555"
+                           VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding MemoryUsage, StringFormat={}{0:F1}MB}"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="#28A745"
+                           VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </Window>

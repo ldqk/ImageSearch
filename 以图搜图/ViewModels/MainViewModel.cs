@@ -102,7 +102,17 @@ public partial class MainViewModel : ObservableObject
     private ObservableCollection<double> speedHistory = new();
 
     [ObservableProperty]
-    private bool isSearchEnabled = false;
+    private bool isSearchEnabled;
+
+    [ObservableProperty]
+    private double cpuUsage;
+
+    [ObservableProperty]
+    private double memoryUsage;
+
+    private Process? _currentProcess;
+    private PerformanceCounter? _cpuCounter;
+    private System.Timers.Timer? _performanceTimer;
 
     public MainViewModel()
     {
@@ -112,6 +122,7 @@ public partial class MainViewModel : ObservableObject
         _indexService.ProgressChanged += OnIndexProgressChanged;
         _indexService.IndexCompleted += OnIndexCompleted;
 
+        InitializePerformanceMonitoring();
         LoadIndexAsync();
     }
 
@@ -874,5 +885,63 @@ public partial class MainViewModel : ObservableObject
                 DestImageInfo = "无法加载图片信息";
             }
         }
+    }
+
+    private void InitializePerformanceMonitoring()
+    {
+        try
+        {
+            _currentProcess = Process.GetCurrentProcess();
+            
+            // 初始化当前进程的 CPU 性能计数器
+            _cpuCounter = new PerformanceCounter("Process", "% Processor Time", _currentProcess.ProcessName, true);
+            _cpuCounter.NextValue(); // 初始化
+            
+            // 创建定时器，每秒更新一次
+            _performanceTimer = new System.Timers.Timer(1000);
+            _performanceTimer.Elapsed += UpdatePerformanceMetrics;
+            _performanceTimer.AutoReset = true;
+            _performanceTimer.Start();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"性能监测初始化失败: {ex.Message}");
+        }
+    }
+
+    private void UpdatePerformanceMetrics(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        try
+        {
+            if (_currentProcess != null)
+            {
+                // 刷新进程信息
+                _currentProcess.Refresh();
+                
+                // 获取 CPU 使用率（百分比）
+                var cpuUsageValue = _cpuCounter?.NextValue() ?? 0;
+                
+                // 获取内存使用量（转换为 MB）
+                var memoryUsageMB = _currentProcess.WorkingSet64 / (1024.0 * 1024.0);
+                
+                // 切回 UI 线程更新 UI
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    CpuUsage = cpuUsageValue/Environment.ProcessorCount;
+                    MemoryUsage = memoryUsageMB;
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"更新性能指标失败: {ex.Message}");
+        }
+    }
+
+    ~MainViewModel()
+    {
+        _performanceTimer?.Dispose();
+        _cpuCounter?.Dispose();
+        _currentProcess?.Dispose();
     }
 }
