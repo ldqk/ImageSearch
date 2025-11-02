@@ -17,20 +17,28 @@ public sealed class ImageIndexService : Disposable
 {
     private readonly Regex _picRegex = new("(jpg|jpeg|png|bmp|webp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private readonly ConcurrentQueue<int> _writeQueue = new();
-    private FileStream? _frameIndexStream;
-    private FileStream? _indexStream;
+    private readonly FileStream? _frameIndexStream;
+    private readonly FileStream? _indexStream;
+    private readonly CancellationTokenSource? _cancellationTokenSource;
+    private readonly Task? _writeTask;
 
     public ImageIndexService()
     {
         _indexStream = File.Open("index.json", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
         _frameIndexStream = File.Open("frame_index.json", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
+        _cancellationTokenSource = new CancellationTokenSource();
+        _writeTask = StartWriteTaskAsync(_cancellationTokenSource.Token);
+    }
 
-        Task.Run(async () =>
+    private async Task StartWriteTaskAsync(CancellationToken cancellationToken)
+    {
+        try
         {
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 if (_writeQueue.TryDequeue(out _))
                 {
+                    // 清空队列中的所有项
                     while (_writeQueue.TryDequeue(out _))
                     {
                     }
@@ -38,9 +46,13 @@ public sealed class ImageIndexService : Disposable
                     await WriteIndexAsync();
                 }
 
-                await Task.Delay(1000);
+                await Task.Delay(1000, cancellationToken);
             }
-        });
+        }
+        catch (OperationCanceledException)
+        {
+            // 正常的取消操作
+        }
     }
 
     public ConcurrentDictionary<string, ulong[]> Index { get; private set; } = new();
@@ -78,23 +90,21 @@ public sealed class ImageIndexService : Disposable
     public async Task UpdateIndexAsync(string[] directories, bool removeInvalid)
     {
         IsIndexing = true;
-        var imageHasher = new ImageHasher(new ImageSharpTransformer());
-
+        var imageHasher = new ImageHasher();
         var files = GetFiles(directories);
-
         if (removeInvalid)
         {
             _ = Task.Run(() => RemoveInvalidIndexes(directories, files));
         }
 
         var filesToIndex = files.Except(Index.Keys).Except(FrameIndex.Keys).Where(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase)).ToArray();
-
         var filesCount = filesToIndex.Length;
-        var local = new ThreadLocal<int>(true);
         var errors = new List<string>();
         var sw = Stopwatch.StartNew();
         long totalSize = 0;
 
+        // 使用 using 确保 ThreadLocal 被正确释放
+        using var local = new ThreadLocal<int>(true);
         await Task.Run(() =>
         {
             // 索引静态图片
@@ -176,7 +186,6 @@ public sealed class ImageIndexService : Disposable
 
         sw.Stop();
         IsIndexing = false;
-
         OnIndexCompleted(new IndexCompletedEventArgs
         {
             ElapsedSeconds = sw.Elapsed.TotalSeconds,
@@ -202,7 +211,7 @@ public sealed class ImageIndexService : Disposable
         return Index.Keys.Union(FrameIndex.Keys);
     }
 
-    private string[] GetFiles(string[] directories)
+    private static string[] GetFiles(string[] directories)
     {
         if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
         {
@@ -272,7 +281,6 @@ public sealed class ImageIndexService : Disposable
         finally
         {
             IsWriting = false;
-            OnIndexCompleted(new IndexCompletedEventArgs());
         }
     }
 
@@ -290,9 +298,30 @@ public sealed class ImageIndexService : Disposable
     /// <param name="disposing"></param>
     public override void Dispose(bool disposing)
     {
-        FrameIndex.Clear();
-        Index.Clear();
+        // 停止后台任务
+        _cancellationTokenSource?.Cancel();
+        try
+        {
+            _writeTask?.Wait(TimeSpan.FromSeconds(5));
+        }
+        catch (OperationCanceledException)
+        {
+            // 预期的异常
+        }
+
+        // 清理事件订阅
+        ProgressChanged = null;
+        IndexCompleted = null;
+
+        // 清理数据
+        FrameIndex?.Clear();
+        Index?.Clear();
+
+        // 关闭文件流
         _indexStream?.Dispose();
         _frameIndexStream?.Dispose();
+
+        // 清理令牌源
+        _cancellationTokenSource?.Dispose();
     }
 }
