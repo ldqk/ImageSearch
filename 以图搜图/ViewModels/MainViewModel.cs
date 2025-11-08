@@ -268,9 +268,6 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        IsSearching = true;
-        SearchLoadingVisibility = Visibility.Visible;
-        SearchStatusText = "🔍 正在搜索相似图片...";
         if (Clipboard.ContainsFileDropList())
         {
             var files = Clipboard.GetFileDropList();
@@ -429,9 +426,6 @@ public partial class MainViewModel : ObservableObject
 
     public async Task HandleDrop(IDataObject dataObject)
     {
-        IsSearching = true;
-        SearchLoadingVisibility = Visibility.Visible;
-        SearchStatusText = "🔍 正在搜索相似图片...";
         try
         {
             // 1. 检查文件拖放
