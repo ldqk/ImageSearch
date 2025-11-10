@@ -4,7 +4,8 @@
         Title="错误信息"
     Height="400"
     Width="600"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        Topmost="True">
   <Grid Margin="10">
     <Grid.RowDefinitions>
       <RowDefinition Height="*"/>

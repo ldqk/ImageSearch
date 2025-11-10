@@ -20,7 +20,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Masuit.Tools.Abstractions" Version="2025.5.2" />
+    <PackageReference Include="Masuit.Tools.Abstractions" Version="2025.5.4" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
   </ItemGroup>
   <ItemGroup>

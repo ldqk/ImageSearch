@@ -30,7 +30,15 @@ public partial class App : Application
     DispatcherUnhandledException += (sender, args) =>
     {
       LogManager.Error(args.Exception);
-      MessageBox.Show(args.Exception.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+      var owner = Current.MainWindow;
+      if (owner != null)
+      {
+        MessageBox.Show(owner, args.Exception.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+      }
+      else
+      {
+        MessageBox.Show(args.Exception.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+      }
       args.Handled = true;
     };
 

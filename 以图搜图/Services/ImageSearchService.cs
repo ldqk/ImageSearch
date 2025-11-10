@@ -13,12 +13,12 @@ namespace 以图搜图.Services;
 
 public class ImageSearchService
 {
-    public async Task<List<SearchResult>> SearchAsync(string filename, ConcurrentDictionary<string, ulong[]> index, ConcurrentDictionary<string, List<ulong[]>> frameIndex, float similarity, bool checkRotated, bool checkFlipped)
+    public async Task<List<SearchResult>> SearchAsync(string filename, ConcurrentDictionary<string, IndexItem> index, ConcurrentDictionary<string, FrameIndexItem> frameIndex, float similarity, bool checkRotated, bool checkFlipped)
     {
         return await Task.Run(() =>
         {
-            var hasher = new ImageHasher();
-            var hashs = new ConcurrentBag<ulong[]>();
+            var defHashs = new ConcurrentBag<ulong[]>();
+            var dctHashs = new ConcurrentBag<ulong>();
             var actions = new List<Action>();
 
             if (filename.EndsWith("gif", StringComparison.OrdinalIgnoreCase))
@@ -26,7 +26,7 @@ public class ImageSearchService
                 using (var gif = Image.Load<L8>(new DecoderOptions
                 {
                     SkipMetadata = true,
-                    TargetSize = new Size(144)
+                    TargetSize = new Size(160)
                 }, filename))
                 {
                     for (var i = 0; i < gif.Frames.Count; i++)
@@ -34,7 +34,8 @@ public class ImageSearchService
                         var frame = gif.Frames.ExportFrame(i);
                         actions.Add(() =>
                         {
-                            hashs.Add(frame.DifferenceHash256());
+                            defHashs.Add(frame.DifferenceHash256());
+                            dctHashs.Add(frame.DctHash());
                             frame.Dispose();
                         });
                     }
@@ -44,30 +45,33 @@ public class ImageSearchService
             }
             else
             {
-                hashs.Add(hasher.DifferenceHash256(filename));
-
                 using (var image = Image.Load<L8>(new DecoderOptions
                 {
                     SkipMetadata = true,
-                    TargetSize = new Size(144)
+                    TargetSize = new Size(160)
                 }, filename))
                 {
+                    defHashs.Add(image.DifferenceHash256());
+                    dctHashs.Add(image.DctHash());
                     if (checkRotated)
                     {
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Rotate(90));
-                            hashs.Add(clone.DifferenceHash256());
+                            defHashs.Add(clone.DifferenceHash256());
+                            dctHashs.Add(clone.DctHash());
                         });
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Rotate(180));
-                            hashs.Add(clone.DifferenceHash256());
+                            defHashs.Add(clone.DifferenceHash256());
+                            dctHashs.Add(clone.DctHash());
                         });
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Rotate(270));
-                            hashs.Add(clone.DifferenceHash256());
+                            defHashs.Add(clone.DifferenceHash256());
+                            dctHashs.Add(clone.DctHash());
                         });
                     }
 
@@ -76,12 +80,14 @@ public class ImageSearchService
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Flip(FlipMode.Horizontal));
-                            hashs.Add(clone.DifferenceHash256());
+                            defHashs.Add(clone.DifferenceHash256());
+                            dctHashs.Add(clone.DctHash());
                         });
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Flip(FlipMode.Vertical));
-                            hashs.Add(clone.DifferenceHash256());
+                            defHashs.Add(clone.DifferenceHash256());
+                            dctHashs.Add(clone.DctHash());
                         });
                     }
 
@@ -96,7 +102,14 @@ public class ImageSearchService
                 list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
                 {
                     路径 = x.Key,
-                    匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= similarity).OrderDescending().Take(10).DefaultIfEmpty().Average()
+                    匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= similarity).OrderDescending().Take(10).DefaultIfEmpty().Average(),
+                    匹配算法 = "DifferenceHash"
+                }).Where(x => x.匹配度 >= similarity));
+                list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
+                {
+                    路径 = x.Key,
+                    匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= similarity).OrderDescending().Take(10).DefaultIfEmpty().Average(),
+                    匹配算法 = "DctHash"
                 }).Where(x => x.匹配度 >= similarity));
             }
             else
@@ -104,17 +117,33 @@ public class ImageSearchService
                 list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
                 {
                     路径 = x.Key,
-                    匹配度 = x.Value.SelectMany(h => hashs.Select(hh => ImageHasher.Compare(h, hh))).Max()
+                    匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh))).Max(),
+                    匹配算法 = "DifferenceHash"
                 }).Where(x => x.匹配度 >= similarity));
 
                 list.AddRange(index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
                 {
                     路径 = x.Key,
-                    匹配度 = hashs.Select(h => ImageHasher.Compare(x.Value, h)).Max()
+                    匹配度 = defHashs.Select(h => ImageHasher.Compare(x.Value.DifferenceHash, h)).Max(),
+                    匹配算法 = "DifferenceHash"
+                }).Where(x => x.匹配度 >= similarity));
+
+                list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
+                {
+                    路径 = x.Key,
+                    匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh))).Max(),
+                    匹配算法 = "DctHash"
+                }).Where(x => x.匹配度 >= similarity));
+
+                list.AddRange(index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
+                {
+                    路径 = x.Key,
+                    匹配度 = dctHashs.Select(h => ImageHasher.Compare(x.Value.DctHash, h)).Max(),
+                    匹配算法 = "DctHash"
                 }).Where(x => x.匹配度 >= similarity));
             }
 
-            list = list.OrderByDescending(a => a.匹配度).ToList();
+            list = list.OrderByDescending(a => a.匹配度).DistinctBy(e => e.路径).ToList();
 
             var dic = list.Where(e => File.Exists(e.路径)).GroupBy(r => new FileInfo(r.路径).DirectoryName).Where(g => g.Key != null).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(g =>
             {

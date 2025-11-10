@@ -209,7 +209,7 @@ public partial class MainWindow
         base.OnClosing(e);
         if (!ViewModel.CanClose())
         {
-            MessageBox.Show("正在索引或写入文件，请稍后再试", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "正在索引或写入文件，请稍后再试", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
             e.Cancel = true;
         }
     }

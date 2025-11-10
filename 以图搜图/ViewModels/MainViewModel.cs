@@ -99,6 +99,12 @@ public partial class MainViewModel : ObservableObject
     private string indexThroughputText = string.Empty;
 
     [ObservableProperty]
+    private string maxThroughputText = string.Empty;
+
+    [ObservableProperty]
+    private string estimatedRemainingTimeText = string.Empty;
+
+    [ObservableProperty]
     private ObservableCollection<double> speedHistory = new();
 
     [ObservableProperty]
@@ -123,7 +129,7 @@ public partial class MainViewModel : ObservableObject
         _indexService.IndexCompleted += OnIndexCompleted;
 
         // 异步初始化性能监测，避免阻塞 UI 线程
-        _ = Task.Run(() => InitializePerformanceMonitoring());
+        _ = Task.Run(InitializePerformanceMonitoring);
         LoadIndexAsync();
     }
 
@@ -190,6 +196,7 @@ public partial class MainViewModel : ObservableObject
         {
             _indexService.StopIndexing();
             UpdateIndexButtonText = "🔄 更新索引";
+            //MessageBox.Show(Application.Current.MainWindow!, "已发送停止请求，请等待完成...", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -198,7 +205,6 @@ public partial class MainViewModel : ObservableObject
         {
             Message = "准备开始"
         });
-        UpdateIndexButtonText = "⏸️ 停止索引";
 
         await Task.Run(async () =>
         {
@@ -209,7 +215,7 @@ public partial class MainViewModel : ObservableObject
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        MessageBox.Show("请先选择文件夹", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show(Application.Current.MainWindow!, "请先选择文件夹", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
                         IndexProgressVisibility = Visibility.Collapsed;
                         UpdateIndexButtonText = "🔄 更新索引";
                     });
@@ -240,19 +246,19 @@ public partial class MainViewModel : ObservableObject
     {
         if (string.IsNullOrEmpty(ImagePath))
         {
-            MessageBox.Show("请先选择图片", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Application.Current.MainWindow!, "请先选择图片", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
         if (!IsSearchEnabled)
         {
-            MessageBox.Show("当前没有任何索引，请先添加文件夹创建索引后再搜索", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Application.Current.MainWindow!, "当前没有任何索引，请先添加文件夹创建索引后再搜索", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
         if (new FileInfo(ImagePath).DetectFiletype().MimeType?.StartsWith("image") != true)
         {
-            MessageBox.Show("不是图像文件，无法检索", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Application.Current.MainWindow!, "不是图像文件，无法检索", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -264,7 +270,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (!IsSearchEnabled)
         {
-            MessageBox.Show("当前没有任何索引，请先添加文件夹创建索引后再搜索", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Application.Current.MainWindow!, "当前没有任何索引，请先添加文件夹创建索引后再搜索", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -324,7 +330,7 @@ public partial class MainViewModel : ObservableObject
                             var encoder = new System.Windows.Media.Imaging.JpegBitmapEncoder();
                             encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(image));
 
-                            using (var fileStream = new FileStream(filename, FileMode.Create))
+                            await using (var fileStream = new FileStream(filename, FileMode.Create))
                             {
                                 encoder.Save(fileStream);
                             }
@@ -349,7 +355,7 @@ public partial class MainViewModel : ObservableObject
                         {
                             Application.Current.Dispatcher.Invoke(() =>
                             {
-                                MessageBox.Show($"处理剪贴板图片失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                                MessageBox.Show(Application.Current.MainWindow!, $"处理剪贴板图片失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                                 IsSearching = false;
                                 SearchLoadingVisibility = Visibility.Collapsed;
                                 SearchStatusText = string.Empty;
@@ -360,7 +366,7 @@ public partial class MainViewModel : ObservableObject
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"读取剪贴板失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Application.Current.MainWindow!, $"读取剪贴板失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 IsSearching = false;
                 SearchLoadingVisibility = Visibility.Collapsed;
                 SearchStatusText = string.Empty;
@@ -382,7 +388,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedResult == null) return;
 
-        var result = MessageBox.Show("确认删除选中项吗？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        var result = MessageBox.Show(Application.Current.MainWindow!, "确认删除选中项吗？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.Question);
         if (result == MessageBoxResult.OK)
         {
             if (File.Exists(SelectedResult.路径))
@@ -407,7 +413,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedResult == null) return;
 
-        var result = MessageBox.Show("确认删除到回收站吗？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        var result = MessageBox.Show(Application.Current.MainWindow!, "确认删除到回收站吗？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.Question);
         if (result == MessageBoxResult.OK)
         {
             // 删除前释放 Image 控件占用的文件
@@ -459,7 +465,7 @@ public partial class MainViewModel : ObservableObject
                             var encoder = new System.Windows.Media.Imaging.JpegBitmapEncoder();
                             encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(image));
 
-                            using (var fileStream = new FileStream(filename, FileMode.Create))
+                            await using (var fileStream = new FileStream(filename, FileMode.Create))
                             {
                                 encoder.Save(fileStream);
                             }
@@ -508,7 +514,7 @@ public partial class MainViewModel : ObservableObject
                             var encoder = new System.Windows.Media.Imaging.JpegBitmapEncoder();
                             encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(image));
 
-                            using (var fileStream = new FileStream(filename, FileMode.Create))
+                            await using (var fileStream = new FileStream(filename, FileMode.Create))
                             {
                                 encoder.Save(fileStream);
                             }
@@ -676,11 +682,11 @@ public partial class MainViewModel : ObservableObject
             }
 
             // 如果所有格式都失败，显示提示
-            MessageBox.Show("无法识别拖放的数据格式，请尝试从剪切板搜索或选择本地文件拖放", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(Application.Current.MainWindow!, "无法识别拖放的数据格式，请尝试从剪切板搜索或选择本地文件拖放", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"处理拖放数据时发生错误：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Application.Current.MainWindow!, $"处理拖放数据时发生错误：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             Debug.WriteLine($"HandleDrop 异常: {ex}");
         }
         finally
@@ -778,7 +784,7 @@ public partial class MainViewModel : ObservableObject
             Application.Current.Dispatcher.Invoke(() =>
             {
                 SearchStatusText = $"❌ 搜索失败: {ex.Message}";
-                MessageBox.Show($"搜索时发生错误：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Application.Current.MainWindow!, $"搜索时发生错误：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             });
         }
         finally
@@ -791,10 +797,13 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    private double maxThroughput;
+
     private void OnIndexProgressChanged(object? sender, IndexProgressEventArgs e)
     {
         Application.Current.Dispatcher.Invoke(() =>
         {
+            UpdateIndexButtonText = "⏸️ 停止索引";
             ProcessStatus = e.Message;
             IndexProgress = e.ProgressPercentage;
             IndexProgressText = $"{e.ProcessedFiles:#,0} / {e.TotalFiles:#,0}";
@@ -806,10 +815,42 @@ public partial class MainViewModel : ObservableObject
                 IndexSpeedText = $"{e.Speed:F0} items/s";
                 IndexThroughputText = $"{e.ThroughputMB:F2} MB/s";
 
+                // 计算最大吞吐量
+                maxThroughput = Math.Max(e.ThroughputMB, maxThroughput);
+                MaxThroughputText = $"{maxThroughput:F2} MB/s";
+
+                // 计算预估剩余时间
+                var remainingFiles = e.TotalFiles - e.ProcessedFiles;
+                if (remainingFiles > 0 && e.Speed > 0)
+                {
+                    var estimatedSeconds = remainingFiles / e.Speed;
+                    EstimatedRemainingTimeText = FormatTimespan(TimeSpan.FromSeconds(estimatedSeconds));
+                }
+                else
+                {
+                    EstimatedRemainingTimeText = "--";
+                }
+
                 // 添加速度数据点到历史记录 - 显示整个索引过程
                 SpeedHistory.Add(e.Speed);
             }
         });
+    }
+
+    private string FormatTimespan(TimeSpan timespan)
+    {
+        if (timespan.TotalHours >= 1)
+        {
+            return $"{(int)timespan.TotalHours}h {timespan.Minutes}m {timespan.Seconds}s";
+        }
+        else if (timespan.TotalMinutes >= 1)
+        {
+            return $"{(int)timespan.TotalMinutes}m {timespan.Seconds}s";
+        }
+        else
+        {
+            return $"{timespan.Seconds}s";
+        }
     }
 
     private void OnIndexCompleted(object? sender, IndexCompletedEventArgs e)
@@ -825,13 +866,17 @@ public partial class MainViewModel : ObservableObject
             }
             else if (e.FilesProcessed > 0)
             {
-                MessageBox.Show($"索引创建完成，耗时：{e.ElapsedSeconds:F2}s", "消息", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Application.Current.MainWindow!, $"索引创建完成，耗时：{e.ElapsedSeconds:F2}s", "消息", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             IndexProgressVisibility = Visibility.Collapsed;
             IndexProgress = 0;
             IndexProgressText = string.Empty;
             IndexSpeedText = string.Empty;
             IndexThroughputText = string.Empty;
+            MaxThroughputText = string.Empty;
+            EstimatedRemainingTimeText = string.Empty;
+            UpdateIndexButtonText = "🔄 更新索引";
+            maxThroughput = 0;
             SpeedHistory.Clear();
         });
     }

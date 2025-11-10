@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Masuit.Tools;
 using Masuit.Tools.Logging;
 using Masuit.Tools.Media;
 using Masuit.Tools.Systems;
@@ -55,8 +56,8 @@ public sealed class ImageIndexService : Disposable
         }
     }
 
-    public ConcurrentDictionary<string, ulong[]> Index { get; private set; } = new();
-    public ConcurrentDictionary<string, List<ulong[]>> FrameIndex { get; private set; } = new();
+    public ConcurrentDictionary<string, IndexItem> Index { get; private set; } = new();
+    public ConcurrentDictionary<string, FrameIndexItem> FrameIndex { get; private set; } = new();
 
     public bool IsIndexing { get; private set; }
     public bool IsWriting { get; private set; }
@@ -72,25 +73,34 @@ public sealed class ImageIndexService : Disposable
             if (_indexStream!.Length > 0)
             {
                 _indexStream.Seek(0, SeekOrigin.Begin);
-                Index = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, ulong[]>>(_indexStream) ?? new ConcurrentDictionary<string, ulong[]>();
+                var set = await JsonSerializer.DeserializeAsync<HashSet<IndexItem>>(_indexStream);
+                if (set != null)
+                {
+                    Index = set.ToConcurrentDictionary(x => x.FilePath);
+                }
             }
 
             if (_frameIndexStream!.Length > 0)
             {
                 _frameIndexStream.Seek(0, SeekOrigin.Begin);
-                FrameIndex = await JsonSerializer.DeserializeAsync<ConcurrentDictionary<string, List<ulong[]>>>(_frameIndexStream) ?? new ConcurrentDictionary<string, List<ulong[]>>();
+                var set = await JsonSerializer.DeserializeAsync<HashSet<FrameIndexItem>>(_frameIndexStream);
+                if (set != null)
+                {
+                    FrameIndex = set.ToConcurrentDictionary(x => x.FilePath);
+                }
             }
         }
         catch (Exception ex)
         {
             LogManager.Error(ex);
+            var errorDialog = new ErrorsDialog(ex.ToString());
+            errorDialog.ShowDialog();
         }
     }
 
     public async Task UpdateIndexAsync(string[] directories, bool removeInvalid)
     {
         IsIndexing = true;
-        var imageHasher = new ImageHasher();
         var files = GetFiles(directories);
         if (removeInvalid)
         {
@@ -114,7 +124,17 @@ public sealed class ImageIndexService : Disposable
                 {
                     try
                     {
-                        _ = Index.GetOrAdd(file, _ => imageHasher.DifferenceHash256(file));
+                        var image = Image.Load<L8>(new DecoderOptions
+                        {
+                            TargetSize = new Size(160),
+                            SkipMetadata = true
+                        }, file);
+                        var indexItem = new IndexItem(file)
+                        {
+                            DctHash = image.DctHash(),
+                            DifferenceHash = image.DifferenceHash256()
+                        };
+                        Index[file] = indexItem;
                         var size = new FileInfo(file).Length;
                         Interlocked.Add(ref totalSize, size);
                         local.Value++;
@@ -136,27 +156,34 @@ public sealed class ImageIndexService : Disposable
             });
 
             // 索引GIF动画
-            filesToIndex.Where(s => s.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase)).Chunk(Environment.ProcessorCount * 2).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 2).ForAll(g =>
+            filesToIndex.Where(s => s.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase)).Chunk(Environment.ProcessorCount * 4).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).ForAll(g =>
             {
                 foreach (var file in g.TakeWhile(_ => IsIndexing))
                 {
                     try
                     {
+                        var indexItem = new FrameIndexItem(file);
                         using var gif = Image.Load<L8>(new DecoderOptions
                         {
-                            TargetSize = new Size(144),
+                            TargetSize = new Size(160),
                             SkipMetadata = true
                         }, file);
 
-                        var hashes = new List<ulong[]>();
+                        indexItem.DifferenceHash = new List<ulong[]>();
                         for (var i = 0; i < gif.Frames.Count; i++)
                         {
                             using var frame = gif.Frames.ExportFrame(i);
-                            var hash = imageHasher.DifferenceHash256(frame);
-                            hashes.Add(hash);
+                            var hash = frame.DifferenceHash256();
+                            indexItem.DifferenceHash.Add(hash);
                         }
-
-                        FrameIndex.GetOrAdd(file, _ => new List<ulong[]>()).AddRange(hashes);
+                        indexItem.DctHash = new List<ulong>();
+                        for (var i = 0; i < gif.Frames.Count; i++)
+                        {
+                            using var frame = gif.Frames.ExportFrame(i);
+                            var hash = frame.DctHash();
+                            indexItem.DctHash.Add(hash);
+                        }
+                        FrameIndex[file] = indexItem;
 
                         var size = new FileInfo(file).Length;
                         Interlocked.Add(ref totalSize, size);
@@ -265,8 +292,8 @@ public sealed class ImageIndexService : Disposable
             _indexStream!.Seek(0, SeekOrigin.Begin);
             _frameIndexStream!.Seek(0, SeekOrigin.Begin);
 
-            await JsonSerializer.SerializeAsync(_indexStream, Index);
-            await JsonSerializer.SerializeAsync(_frameIndexStream, FrameIndex);
+            await JsonSerializer.SerializeAsync(_indexStream, Index.Values);
+            await JsonSerializer.SerializeAsync(_frameIndexStream, FrameIndex.Values);
 
             _indexStream.SetLength(_indexStream.Position);
             _frameIndexStream.SetLength(_frameIndexStream.Position);
@@ -324,4 +351,16 @@ public sealed class ImageIndexService : Disposable
         // 清理令牌源
         _cancellationTokenSource?.Dispose();
     }
+}
+
+public record IndexItem(string FilePath)
+{
+    public ulong[] DifferenceHash { get; set; }
+    public ulong DctHash { get; set; }
+}
+
+public sealed record FrameIndexItem(string FilePath)
+{
+    public List<ulong[]> DifferenceHash { get; set; } = new List<ulong[]>();
+    public List<ulong> DctHash { get; set; } = new List<ulong>();
 }

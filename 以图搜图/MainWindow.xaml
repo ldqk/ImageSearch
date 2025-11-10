@@ -661,6 +661,10 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="20" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
@@ -703,6 +707,48 @@
                            FontSize="12"
                            FontWeight="SemiBold"
                            Foreground="#FF6B6B"
+                           VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <!-- 最大吞吐量 -->
+                            <StackPanel Grid.Column="4"
+                          Orientation="Horizontal">
+                                <Path Data="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"
+                      Fill="#FFA500"
+                      Width="14"
+                      Height="14"
+                      Stretch="Uniform"
+                      Margin="0,0,6,0"
+                      VerticalAlignment="Center" />
+                                <TextBlock Text="最大吞吐: "
+                           FontSize="12"
+                           Foreground="#666666"
+                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding MaxThroughputText}"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="#FFA500"
+                           VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <!-- 预估剩余时间 -->
+                            <StackPanel Grid.Column="6"
+                          Orientation="Horizontal">
+                                <Path Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6V12L16.7,14.6L15.3,16L11,13.5V6Z"
+                      Fill="#9C27B0"
+                      Width="14"
+                      Height="14"
+                      Stretch="Uniform"
+                      Margin="0,0,6,0"
+                      VerticalAlignment="Center" />
+                                <TextBlock Text="预估剩余时间: "
+                           FontSize="12"
+                           Foreground="#666666"
+                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding EstimatedRemainingTimeText}"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="#9C27B0"
                            VerticalAlignment="Center" />
                             </StackPanel>
                         </Grid>
@@ -898,6 +944,9 @@
                                   Width="100" />
                             <DataGridTextColumn Header="文件夹大小"
                                   Binding="{Binding 所属文件夹大小}"
+                                  Width="100" />
+                            <DataGridTextColumn Header="算法"
+                                  Binding="{Binding 匹配算法}"
                                   Width="100" />
                         </DataGrid.Columns>
                         <DataGrid.ContextMenu>
