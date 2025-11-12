@@ -68,7 +68,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private int similarity = 80;
 
-    private ModelsMatchAlgorithm _matchAlgorithm = ModelsMatchAlgorithm.None;
+    private ModelsMatchAlgorithm _matchAlgorithm = ModelsMatchAlgorithm.All;
 
     public ModelsMatchAlgorithm MatchAlgorithm
     {

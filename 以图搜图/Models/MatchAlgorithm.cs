@@ -2,14 +2,15 @@
 
 namespace 以图搜图.Models;
 
+[Flags]
 public enum MatchAlgorithm
 {
-    [Description("全部")]
-    None,
-
     [Description("DifferenceHash")]
-    DifferenceHash,
+    DifferenceHash = 1,
 
     [Description("DctHash")]
-    DctHash
+    DctHash = 2,
+
+    [Description("全部")]
+    All = DifferenceHash | DctHash
 }

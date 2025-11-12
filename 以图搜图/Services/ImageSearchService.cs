@@ -21,8 +21,6 @@ public class ImageSearchService
             var defHashs = new ConcurrentBag<ulong[]>();
             var dctHashs = new ConcurrentBag<ulong>();
             var actions = new List<Action>();
-            var includeDifference = algorithm == MatchAlgorithm.None || algorithm == MatchAlgorithm.DifferenceHash;
-            var includeDct = algorithm == MatchAlgorithm.None || algorithm == MatchAlgorithm.DctHash;
 
             if (filename.EndsWith("gif", StringComparison.OrdinalIgnoreCase))
             {
@@ -37,12 +35,12 @@ public class ImageSearchService
                         var frame = gif.Frames.ExportFrame(i);
                         actions.Add(() =>
                         {
-                            if (includeDifference)
+                            if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                             {
                                 defHashs.Add(frame.DifferenceHash256());
                             }
 
-                            if (includeDct)
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                             {
                                 dctHashs.Add(frame.DctHash());
                             }
@@ -61,12 +59,12 @@ public class ImageSearchService
                     TargetSize = new Size(160)
                 }, filename))
                 {
-                    if (includeDifference)
+                    if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                     {
                         defHashs.Add(image.DifferenceHash256());
                     }
 
-                    if (includeDct)
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                     {
                         dctHashs.Add(image.DctHash());
                     }
@@ -75,12 +73,12 @@ public class ImageSearchService
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Rotate(90));
-                            if (includeDifference)
+                            if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                             {
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (includeDct)
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                             {
                                 dctHashs.Add(clone.DctHash());
                             }
@@ -88,12 +86,12 @@ public class ImageSearchService
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Rotate(180));
-                            if (includeDifference)
+                            if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                             {
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (includeDct)
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                             {
                                 dctHashs.Add(clone.DctHash());
                             }
@@ -101,12 +99,12 @@ public class ImageSearchService
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Rotate(270));
-                            if (includeDifference)
+                            if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                             {
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (includeDct)
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                             {
                                 dctHashs.Add(clone.DctHash());
                             }
@@ -118,12 +116,12 @@ public class ImageSearchService
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Flip(FlipMode.Horizontal));
-                            if (includeDifference)
+                            if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                             {
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (includeDct)
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                             {
                                 dctHashs.Add(clone.DctHash());
                             }
@@ -131,12 +129,12 @@ public class ImageSearchService
                         actions.Add(() =>
                         {
                             using var clone = image.Clone(c => c.Flip(FlipMode.Vertical));
-                            if (includeDifference)
+                            if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                             {
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (includeDct)
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                             {
                                 dctHashs.Add(clone.DctHash());
                             }
@@ -151,7 +149,7 @@ public class ImageSearchService
 
             if (filename.EndsWith("gif", StringComparison.OrdinalIgnoreCase))
             {
-                if (includeDifference)
+                if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                 {
                     list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
                     {
@@ -161,9 +159,9 @@ public class ImageSearchService
                     }).Where(x => x.匹配度 >= similarity));
                 }
 
-                if (includeDct)
+                if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                 {
-                    var sim = Math.Max(85, similarity);
+                    var sim = Math.Max(0.85, similarity);
                     list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
                     {
                         路径 = x.Key,
@@ -174,7 +172,7 @@ public class ImageSearchService
             }
             else
             {
-                if (includeDifference)
+                if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                 {
                     list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
                     {
@@ -191,9 +189,9 @@ public class ImageSearchService
                     }).Where(x => x.匹配度 >= similarity));
                 }
 
-                if (includeDct)
+                if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                 {
-                    var sim = Math.Max(85, similarity);
+                    var sim = Math.Max(0.85, similarity);
                     list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
                     {
                         路径 = x.Key,
@@ -210,7 +208,7 @@ public class ImageSearchService
                 }
             }
 
-            if (algorithm != MatchAlgorithm.None)
+            if (algorithm != MatchAlgorithm.All)
             {
                 var algorithmName = algorithm.ToString();
                 list = list.Where(item => string.Equals(item.匹配算法, algorithmName, StringComparison.Ordinal)).ToList();
