@@ -31,6 +31,7 @@
         <converters:ProgressWidthConverter x:Key="ProgressWidthConverter" />
         <converters:SpeedHistoryToPathConverter x:Key="SpeedHistoryToPathConverter" />
         <converters:ImagePathToBitmapConverter x:Key="ImagePathToBitmapConverter" />
+        <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
 
         <!-- 全局字体大小设置 -->
         <Style TargetType="TextBlock">
@@ -244,6 +245,53 @@
                   Value="#F5F5F5" />
                     <Setter Property="Foreground"
                   Value="#AAAAAA" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ModernComboBoxStyle"
+           TargetType="ComboBox">
+            <Setter Property="FontSize"
+              Value="13" />
+            <Setter Property="Foreground"
+              Value="#333333" />
+            <Setter Property="Padding"
+              Value="8,0,8,0" />
+            <Setter Property="Height"
+              Value="36" />
+            <Setter Property="Background"
+              Value="White" />
+            <Setter Property="BorderBrush"
+              Value="#CCCCCC" />
+            <Setter Property="BorderThickness"
+              Value="1" />
+            <Setter Property="HorizontalContentAlignment"
+              Value="Left" />
+            <Setter Property="VerticalContentAlignment"
+              Value="Center" />
+            <Setter Property="SnapsToDevicePixels"
+              Value="True" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver"
+                 Value="True">
+                    <Setter Property="BorderBrush"
+                  Value="#007ACC" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin"
+                 Value="True">
+                    <Setter Property="BorderBrush"
+                  Value="#007ACC" />
+                    <Setter Property="BorderThickness"
+                  Value="2" />
+                </Trigger>
+                <Trigger Property="IsEnabled"
+                 Value="False">
+                    <Setter Property="Background"
+                  Value="#F5F5F5" />
+                    <Setter Property="Foreground"
+                  Value="#AAAAAA" />
+                    <Setter Property="BorderBrush"
+                  Value="#DDDDDD" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -572,6 +620,7 @@
                   Content="{Binding UpdateIndexButtonText}"
                   Style="{StaticResource PrimaryButtonStyle}"
                   Command="{Binding UpdateIndexCommand}"
+                  IsEnabled="{Binding UpdateIndexButtonEnabled}"
                   Width="125"
                   Height="36"
                   Margin="0,0,15,0" />
@@ -805,7 +854,7 @@
 
                     <TextBlock Grid.Column="0"
                      Text="相似度"
-                     Style="{StaticResource LabelStyle}" />
+                     Style="{StaticResource LabelStyle}" MinWidth="50" />
 
                     <!-- 滑块控件 -->
                     <Grid Grid.Column="1"
@@ -816,9 +865,9 @@
                         </Grid.ColumnDefinitions>
 
                         <Slider Grid.Column="0"
-                    Value="{Binding Similarity}"
-                    Minimum="70"
-                    Maximum="100"
+          Value="{Binding Similarity}"
+          Minimum="{Binding SimilarityMinimum}"
+          Maximum="100"
                     TickFrequency="1"
                     IsSnapToTickEnabled="True"
                     Style="{StaticResource ModernSliderStyle}"
@@ -841,14 +890,37 @@
                         </Border>
                     </Grid>
 
-                    <CheckBox Grid.Column="2"
-                    Content="🔄 查找已旋转"
-                    IsChecked="{Binding FindRotated}"
-                    Margin="0,0,15,0" />
+                    <!-- 匹配算法选择下拉框 -->
+                    <StackPanel Grid.Column="2"
+                      Orientation="Horizontal"
+                      VerticalAlignment="Center">
+
+                        <TextBlock
+ Text="匹配算法"
+ Style="{StaticResource LabelStyle}" MinWidth="55" />
+                        <ComboBox
+          ItemsSource="{Binding MatchAlgorithms}"
+          SelectedItem="{Binding MatchAlgorithm}"
+          Style="{StaticResource ModernComboBoxStyle}"
+          Margin="0,0,15,0"
+          MinWidth="100">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}"
+             FontSize="13" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
                     <CheckBox Grid.Column="3"
-                    Content="↔️ 查找已翻转"
-                    IsChecked="{Binding FindFlipped}"
-                    Margin="0,0,20,0" />
+          Content="🔄 查找已旋转"
+          IsChecked="{Binding FindRotated}"
+          Margin="0,0,15,0" />
+                    <CheckBox Grid.Column="4"
+          Content="↔️ 查找已翻转"
+          IsChecked="{Binding FindFlipped}"
+          Margin="0,0,20,0" />
 
                     <StackPanel Grid.Column="5"
                       Orientation="Horizontal"
@@ -945,7 +1017,7 @@
                             <DataGridTextColumn Header="文件夹大小"
                                   Binding="{Binding 所属文件夹大小}"
                                   Width="100" />
-                            <DataGridTextColumn Header="算法"
+                            <DataGridTextColumn Header="匹配算法"
                                   Binding="{Binding 匹配算法}"
                                   Width="100" />
                         </DataGrid.Columns>

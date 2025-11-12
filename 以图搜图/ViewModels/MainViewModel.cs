@@ -4,6 +4,8 @@ using Masuit.Tools.Files;
 using Masuit.Tools.Files.FileDetector;
 using Masuit.Tools.Systems;
 using SixLabors.ImageSharp;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -12,6 +14,7 @@ using System.Windows;
 using System.Windows.Input;
 using 以图搜图.Models;
 using 以图搜图.Services;
+using ModelsMatchAlgorithm = 以图搜图.Models.MatchAlgorithm;
 
 namespace 以图搜图.ViewModels;
 
@@ -65,6 +68,33 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private int similarity = 80;
 
+    private ModelsMatchAlgorithm _matchAlgorithm = ModelsMatchAlgorithm.None;
+
+    public ModelsMatchAlgorithm MatchAlgorithm
+    {
+        get => _matchAlgorithm;
+        set
+        {
+            if (SetProperty(ref _matchAlgorithm, value))
+            {
+                if (Similarity < SimilarityMinimum)
+                {
+                    Similarity = SimilarityMinimum;
+                }
+
+                if (value == MatchAlgorithm.DctHash)
+                {
+                    Similarity = 90;
+                }
+                OnPropertyChanged(nameof(SimilarityMinimum));
+            }
+        }
+    }
+
+    public IReadOnlyList<ModelsMatchAlgorithm> MatchAlgorithms { get; } = Enum.GetValues<ModelsMatchAlgorithm>();
+
+    public int SimilarityMinimum => MatchAlgorithm == ModelsMatchAlgorithm.DctHash ? 85 : 70;
+
     [ObservableProperty]
     private string sourceImageInfo = string.Empty;
 
@@ -73,6 +103,9 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string updateIndexButtonText = "🔄 更新索引";
+
+    [ObservableProperty]
+    private bool updateIndexButtonEnabled = true;
 
     [ObservableProperty]
     private bool isSearching;
@@ -151,6 +184,15 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    partial void OnSimilarityChanged(int value)
+    {
+        var minimum = SimilarityMinimum;
+        if (value < minimum)
+        {
+            Similarity = minimum;
+        }
+    }
+
     private async void LoadIndexAsync()
     {
         await _indexService.LoadIndexAsync();
@@ -196,6 +238,7 @@ public partial class MainViewModel : ObservableObject
         {
             _indexService.StopIndexing();
             UpdateIndexButtonText = "🔄 更新索引";
+            UpdateIndexButtonEnabled = false;
             //MessageBox.Show(Application.Current.MainWindow!, "已发送停止请求，请等待完成...", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -751,7 +794,14 @@ public partial class MainViewModel : ObservableObject
                 var sw = Stopwatch.StartNew();
                 var sim = Similarity / 100f;
 
-                var resultList = await _searchService.SearchAsync(filename, _indexService.Index, _indexService.FrameIndex, sim, FindRotated, FindFlipped);
+                var resultList = await _searchService.SearchAsync(
+                    filename,
+                    _indexService.Index,
+                    _indexService.FrameIndex,
+                    MatchAlgorithm,
+                    sim,
+                    FindRotated,
+                    FindFlipped);
 
                 sw.Stop();
                 return (resultList, sw.ElapsedMilliseconds);
@@ -876,6 +926,7 @@ public partial class MainViewModel : ObservableObject
             MaxThroughputText = string.Empty;
             EstimatedRemainingTimeText = string.Empty;
             UpdateIndexButtonText = "🔄 更新索引";
+            UpdateIndexButtonEnabled = true;
             maxThroughput = 0;
             SpeedHistory.Clear();
         });

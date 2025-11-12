@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows7.0</TargetFramework>
     <AssemblyName>以图搜图</AssemblyName>
     <RootNamespace>以图搜图</RootNamespace>
     <UseWPF>true</UseWPF>
