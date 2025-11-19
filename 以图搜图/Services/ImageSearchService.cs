@@ -4,7 +4,6 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using System;
 using System.Collections.Concurrent;
 using System.IO;
 using 以图搜图.Models;
@@ -16,6 +15,7 @@ public class ImageSearchService
 {
     public async Task<List<SearchResult>> SearchAsync(string filename, ConcurrentDictionary<string, IndexItem> index, ConcurrentDictionary<string, FrameIndexItem> frameIndex, MatchAlgorithm algorithm, float similarity, bool checkRotated, bool checkFlipped)
     {
+        var parallelism = Environment.ProcessorCount * 4;
         return await Task.Run(() =>
         {
             var defHashs = new ConcurrentBag<ulong[]>();
@@ -151,7 +151,7 @@ public class ImageSearchService
             {
                 if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                 {
-                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
+                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
                     {
                         路径 = x.Key,
                         匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= similarity).OrderDescending().Take(10).DefaultIfEmpty().Average(),
@@ -162,7 +162,7 @@ public class ImageSearchService
                 if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                 {
                     var sim = Math.Max(0.85, similarity);
-                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
+                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
                     {
                         路径 = x.Key,
                         匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= sim).OrderDescending().Take(10).DefaultIfEmpty().Average(),
@@ -174,14 +174,14 @@ public class ImageSearchService
             {
                 if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                 {
-                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
+                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
                     {
                         路径 = x.Key,
                         匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh))).Max(),
                         匹配算法 = "DifferenceHash"
                     }).Where(x => x.匹配度 >= similarity));
 
-                    list.AddRange(index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
+                    list.AddRange(index.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
                     {
                         路径 = x.Key,
                         匹配度 = defHashs.Select(h => ImageHasher.Compare(x.Value.DifferenceHash, h)).Max(),
@@ -192,14 +192,14 @@ public class ImageSearchService
                 if (algorithm.HasFlag(MatchAlgorithm.DctHash))
                 {
                     var sim = Math.Max(0.85, similarity);
-                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
+                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
                     {
                         路径 = x.Key,
                         匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh))).Max(),
                         匹配算法 = "DctHash"
                     }).Where(x => x.匹配度 >= sim));
 
-                    list.AddRange(index.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(x => new SearchResult
+                    list.AddRange(index.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
                     {
                         路径 = x.Key,
                         匹配度 = dctHashs.Select(h => ImageHasher.Compare(x.Value.DctHash, h)).Max(),
@@ -216,7 +216,7 @@ public class ImageSearchService
 
             list = list.OrderByDescending(a => a.匹配度).DistinctBy(e => e.路径).ToList();
 
-            var dic = list.Where(e => File.Exists(e.路径)).GroupBy(r => new FileInfo(r.路径).DirectoryName).Where(g => g.Key != null).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).Select(g =>
+            var dic = list.Where(e => File.Exists(e.路径)).GroupBy(r => new FileInfo(r.路径).DirectoryName).Where(g => g.Key != null).AsParallel().WithDegreeOfParallelism(parallelism).Select(g =>
             {
                 var files = new DirectoryInfo(g.Key!).GetFiles("*.*", SearchOption.AllDirectories);
                 return new

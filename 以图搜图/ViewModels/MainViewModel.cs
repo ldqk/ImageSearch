@@ -138,6 +138,9 @@ public partial class MainViewModel : ObservableObject
     private string estimatedRemainingTimeText = string.Empty;
 
     [ObservableProperty]
+    private string processingFilename = string.Empty;
+
+    [ObservableProperty]
     private ObservableCollection<double> speedHistory = new();
 
     [ObservableProperty]
@@ -861,6 +864,7 @@ public partial class MainViewModel : ObservableObject
 
             if (e.Speed > 0)
             {
+                ProcessingFilename = "正在处理：" + e.Filename;
                 IndexSpeed = $"索引速度: {e.Speed:F0} items/s ({e.ThroughputMB:F2}MB/s)";
                 IndexSpeedText = $"{e.Speed:F0} items/s";
                 IndexThroughputText = $"{e.ThroughputMB:F2} MB/s";
@@ -927,6 +931,7 @@ public partial class MainViewModel : ObservableObject
             EstimatedRemainingTimeText = string.Empty;
             UpdateIndexButtonText = "🔄 更新索引";
             UpdateIndexButtonEnabled = true;
+            ProcessingFilename = string.Empty;
             maxThroughput = 0;
             SpeedHistory.Clear();
         });

@@ -1,15 +1,16 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.IO;
-using System.Text.Json;
-using System.Text.RegularExpressions;
-using Masuit.Tools;
+﻿using Masuit.Tools;
 using Masuit.Tools.Logging;
 using Masuit.Tools.Media;
 using Masuit.Tools.Systems;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.PixelFormats;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.IO;
+using System.Management;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Size = SixLabors.ImageSharp.Size;
 
 namespace 以图搜图.Services;
@@ -22,6 +23,15 @@ public sealed class ImageIndexService : Disposable
     private readonly FileStream? _indexStream;
     private readonly CancellationTokenSource? _cancellationTokenSource;
     private readonly Task? _writeTask;
+    private static readonly Dictionary<char, string> DriveType = new();
+
+    static ImageIndexService()
+    {
+        foreach (var drive in "CDEFGHIJKLMNOPQRSTUVWXYZ".Where(drive => Directory.Exists(drive + ":")))
+        {
+            DriveType[drive] = GetDriveMediaType(drive);
+        }
+    }
 
     public ImageIndexService()
     {
@@ -109,6 +119,13 @@ public sealed class ImageIndexService : Disposable
 
         var filesToIndex = files.Except(Index.Keys).Except(FrameIndex.Keys).Where(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase)).ToArray();
         var filesCount = filesToIndex.Length;
+        if (filesCount == 0)
+        {
+            IsIndexing = false;
+            OnIndexCompleted(new IndexCompletedEventArgs());
+            return;
+        }
+
         var errors = new List<string>();
         var sw = Stopwatch.StartNew();
         long totalSize = 0;
@@ -117,8 +134,53 @@ public sealed class ImageIndexService : Disposable
         using var local = new ThreadLocal<int>(true);
         await Task.Run(() =>
         {
+            var parallelism = Environment.ProcessorCount * 4;
             // 索引静态图片
-            filesToIndex.Where(s => _picRegex.IsMatch(s)).Chunk(Environment.ProcessorCount * 4).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).ForAll(g =>
+            // 机械硬盘按文件夹分组扫描
+            foreach (var grouping in filesToIndex.Where(s => _picRegex.IsMatch(s) && DriveType[s[0]] == "HDD").GroupBy(Path.GetDirectoryName).TakeWhile(_ => IsIndexing))
+            {
+                var lism = Math.Min(grouping.Count(), 32);
+                grouping.Chunk(lism).AsParallel().WithDegreeOfParallelism(lism).ForAll(g =>
+                {
+                    foreach (var file in g.TakeWhile(_ => IsIndexing))
+                    {
+                        try
+                        {
+                            var image = Image.Load<L8>(new DecoderOptions
+                            {
+                                TargetSize = new Size(160),
+                                SkipMetadata = true
+                            }, file);
+                            var indexItem = new IndexItem(file)
+                            {
+                                DctHash = image.DctHash(),
+                                DifferenceHash = image.DifferenceHash256()
+                            };
+                            Index[file] = indexItem;
+                            var size = new FileInfo(file).Length;
+                            Interlocked.Add(ref totalSize, size);
+                            local.Value++;
+
+                            OnProgressChanged(new IndexProgressEventArgs
+                            {
+                                Filename = file,
+                                Message = $"{local.Values.Sum()}/{filesCount}",
+                                Speed = local.Values.Sum() / sw.Elapsed.TotalSeconds,
+                                ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
+                                ProcessedFiles = local.Values.Sum(),
+                                TotalFiles = filesCount
+                            });
+                        }
+                        catch
+                        {
+                            errors.Add(file);
+                        }
+                    }
+                });
+            }
+
+            // 非机械硬盘普通扫描
+            filesToIndex.Where(s => _picRegex.IsMatch(s) && DriveType[s[0]] != "HDD").Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).ForAll(g =>
             {
                 foreach (var file in g.TakeWhile(_ => IsIndexing))
                 {
@@ -141,6 +203,7 @@ public sealed class ImageIndexService : Disposable
 
                         OnProgressChanged(new IndexProgressEventArgs
                         {
+                            Filename = file,
                             Message = $"{local.Values.Sum()}/{filesCount}",
                             Speed = local.Values.Sum() / sw.Elapsed.TotalSeconds,
                             ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
@@ -156,7 +219,7 @@ public sealed class ImageIndexService : Disposable
             });
 
             // 索引GIF动画
-            filesToIndex.Where(s => s.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase)).Chunk(Environment.ProcessorCount * 4).AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount * 4).ForAll(g =>
+            filesToIndex.Where(s => s.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase)).Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).ForAll(g =>
             {
                 foreach (var file in g.TakeWhile(_ => IsIndexing))
                 {
@@ -191,6 +254,7 @@ public sealed class ImageIndexService : Disposable
 
                         OnProgressChanged(new IndexProgressEventArgs
                         {
+                            Filename = file,
                             Message = $"{local.Values.Sum()}/{filesCount}",
                             Speed = local.Values.Sum() / sw.Elapsed.TotalSeconds,
                             ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
@@ -311,8 +375,52 @@ public sealed class ImageIndexService : Disposable
         }
     }
 
+    private static string GetDriveMediaType(char driveLetter)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher($"SELECT * FROM Win32_LogicalDisk WHERE DeviceID = '{driveLetter}:'");
+            foreach (ManagementObject logicalDisk in searcher.Get())
+            {
+                // 获取关联的物理磁盘
+                foreach (ManagementObject partition in logicalDisk.GetRelated("Win32_DiskPartition"))
+                {
+                    foreach (ManagementObject diskDrive in partition.GetRelated("Win32_DiskDrive"))
+                    {
+                        string model = diskDrive["Model"]?.ToString() ?? "Unknown";
+                        string mediaType = diskDrive["MediaType"]?.ToString() ?? "Unknown";
+                        string interfaceType = diskDrive["InterfaceType"]?.ToString() ?? "Unknown";
+
+                        // 判断逻辑
+                        if (model.Contains("SSD", StringComparison.CurrentCultureIgnoreCase) || mediaType.Contains("SSD"))
+                            return "SSD";
+
+                        if (mediaType.Contains("Fixed") && !model.Contains("SSD", StringComparison.CurrentCultureIgnoreCase))
+                            return "HDD";
+
+                        if (interfaceType == "USB")
+                            return "USB";
+
+                        return "Unknown";
+                    }
+                }
+            }
+        }
+        catch (Exception)
+        {
+            return "Unknown";
+        }
+
+        return "Unknown";
+    }
+
     private void OnProgressChanged(IndexProgressEventArgs e)
     {
+        if (e.ProcessedFiles % 1000 == 0)
+        {
+            _writeQueue.Enqueue(1);
+        }
+
         ProgressChanged?.Invoke(this, e);
     }
 

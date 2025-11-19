@@ -2,6 +2,8 @@
 
 public class IndexProgressEventArgs : EventArgs
 {
+    public string Filename { get; set; }
+
     public string Message { get; set; } = string.Empty;
     public double Speed { get; set; }
     public double ThroughputMB { get; set; }

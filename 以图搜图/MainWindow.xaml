@@ -663,6 +663,11 @@
                            FontWeight="SemiBold"
                            Foreground="#007ACC"
                            HorizontalAlignment="Left" />
+                                <TextBlock Text="{Binding ProcessingFilename}"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Foreground="#007ACC"
+                           HorizontalAlignment="Center" />
                                 <TextBlock FontSize="13"
                            FontWeight="SemiBold"
                            Foreground="#007ACC"
