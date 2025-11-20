@@ -16,7 +16,7 @@ public partial class MainWindow
     public MainWindow()
     {
         InitializeComponent();
-        
+
         // 订阅 ViewModel 的 SpeedHistory 变化
         Loaded += MainWindow_Loaded;
     }
@@ -62,10 +62,10 @@ public partial class MainWindow
         if (maxSpeed <= 0) maxSpeed = 1;
 
         var points = new PointCollection();
-        
+
         var width = SpeedChartCanvas.ActualWidth;
         var height = SpeedChartCanvas.ActualHeight;
-        
+
         if (width <= 0 || height <= 0)
         {
             width = 500;
@@ -74,20 +74,20 @@ public partial class MainWindow
 
         // 起始点(左下角)
         points.Add(new Point(0, height));
-        
+
         // 绘制数据点
         var step = speeds.Length > 1 ? width / (speeds.Length - 1) : 0;
-        
+
         for (int i = 0; i < speeds.Length; i++)
         {
             var x = i * step;
             var y = height - (speeds[i] / maxSpeed * height * 0.9); // 留10%边距
             points.Add(new Point(x, y));
         }
-        
+
         // 结束点(右下角)
         points.Add(new Point((speeds.Length - 1) * step, height));
-        
+
         _speedPolygon.Points = points;
     }
 

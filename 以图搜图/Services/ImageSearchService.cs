@@ -227,7 +227,7 @@ public class ImageSearchService
                 };
             }).ToDictionary(a => a.Key);
 
-            list.Where(e => File.Exists(e.路径)).ForEach(result =>
+            list.Where(e => File.Exists(e.路径)).OrderBy(e => e.路径).ForEach(result =>
             {
                 var file = new FileInfo(result.路径);
                 result.大小 = $"{file.Length / 1024}KB";

@@ -850,7 +850,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private double maxThroughput;
+    private double _maxThroughput;
 
     private void OnIndexProgressChanged(object? sender, IndexProgressEventArgs e)
     {
@@ -861,17 +861,17 @@ public partial class MainViewModel : ObservableObject
             IndexProgress = e.ProgressPercentage;
             IndexProgressText = $"{e.ProcessedFiles:#,0} / {e.TotalFiles:#,0}";
             IndexProgressVisibility = Visibility.Visible;
+            ProcessingFilename = "正在处理：" + e.Filename;
 
-            if (e.Speed > 0)
+            if (e.Speed > 0 && e.ProcessedFiles % 100 == 0)
             {
-                ProcessingFilename = "正在处理：" + e.Filename;
                 IndexSpeed = $"索引速度: {e.Speed:F0} items/s ({e.ThroughputMB:F2}MB/s)";
                 IndexSpeedText = $"{e.Speed:F0} items/s";
                 IndexThroughputText = $"{e.ThroughputMB:F2} MB/s";
 
                 // 计算最大吞吐量
-                maxThroughput = Math.Max(e.ThroughputMB, maxThroughput);
-                MaxThroughputText = $"{maxThroughput:F2} MB/s";
+                _maxThroughput = Math.Max(e.ThroughputMB, _maxThroughput);
+                MaxThroughputText = $"{_maxThroughput:F2} MB/s";
 
                 // 计算预估剩余时间
                 var remainingFiles = e.TotalFiles - e.ProcessedFiles;
@@ -886,7 +886,7 @@ public partial class MainViewModel : ObservableObject
                 }
 
                 // 添加速度数据点到历史记录 - 显示整个索引过程
-                SpeedHistory.Add(e.Speed);
+                SpeedHistory.Add(e.ThroughputMB);
             }
         });
     }
@@ -932,7 +932,7 @@ public partial class MainViewModel : ObservableObject
             UpdateIndexButtonText = "🔄 更新索引";
             UpdateIndexButtonEnabled = true;
             ProcessingFilename = string.Empty;
-            maxThroughput = 0;
+            _maxThroughput = 0;
             SpeedHistory.Clear();
         });
     }

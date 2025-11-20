@@ -1,4 +1,5 @@
 ﻿using Masuit.Tools;
+using Masuit.Tools.Hardware;
 using Masuit.Tools.Logging;
 using Masuit.Tools.Media;
 using Masuit.Tools.Systems;
@@ -17,7 +18,6 @@ namespace 以图搜图.Services;
 
 public sealed class ImageIndexService : Disposable
 {
-    private readonly Regex _picRegex = new("(jpg|jpeg|png|bmp|webp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private readonly ConcurrentQueue<int> _writeQueue = new();
     private readonly FileStream? _frameIndexStream;
     private readonly FileStream? _indexStream;
@@ -108,8 +108,13 @@ public sealed class ImageIndexService : Disposable
         }
     }
 
+    private int _totalCount;
+    private long _totalSize;
+
     public async Task UpdateIndexAsync(string[] directories, bool removeInvalid)
     {
+        _totalCount = 0;
+        _totalSize = 0;
         IsIndexing = true;
         var files = GetFiles(directories);
         if (removeInvalid)
@@ -117,9 +122,8 @@ public sealed class ImageIndexService : Disposable
             _ = Task.Run(() => RemoveInvalidIndexes(directories, files));
         }
 
-        var filesToIndex = files.Except(Index.Keys).Except(FrameIndex.Keys).Where(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase)).ToArray();
-        var filesCount = filesToIndex.Length;
-        if (filesCount == 0)
+        var filesToIndex = files.Except(Index.Keys).Except(FrameIndex.Keys).Where(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase)).Order().ToArray();
+        if (filesToIndex.Length == 0)
         {
             IsIndexing = false;
             OnIndexCompleted(new IndexCompletedEventArgs());
@@ -128,102 +132,36 @@ public sealed class ImageIndexService : Disposable
 
         var errors = new List<string>();
         var sw = Stopwatch.StartNew();
-        long totalSize = 0;
 
-        // 使用 using 确保 ThreadLocal 被正确释放
-        using var local = new ThreadLocal<int>(true);
         await Task.Run(() =>
         {
-            var parallelism = Environment.ProcessorCount * 4;
-            // 索引静态图片
-            // 机械硬盘按文件夹分组扫描
-            foreach (var grouping in filesToIndex.Where(s => _picRegex.IsMatch(s) && DriveType[s[0]] == "HDD").GroupBy(Path.GetDirectoryName).TakeWhile(_ => IsIndexing))
+            Parallel.Invoke(() => UpdateIndexOnSSD(filesToIndex, sw, errors), () => UpdateIndexOnHDD(filesToIndex, sw, errors));
+            if (_totalCount > 0)
             {
-                var lism = Math.Min(grouping.Count(), 32);
-                grouping.Chunk(lism).AsParallel().WithDegreeOfParallelism(lism).ForAll(g =>
-                {
-                    foreach (var file in g.TakeWhile(_ => IsIndexing))
-                    {
-                        try
-                        {
-                            var image = Image.Load<L8>(new DecoderOptions
-                            {
-                                TargetSize = new Size(160),
-                                SkipMetadata = true
-                            }, file);
-                            var indexItem = new IndexItem(file)
-                            {
-                                DctHash = image.DctHash(),
-                                DifferenceHash = image.DifferenceHash256()
-                            };
-                            Index[file] = indexItem;
-                            var size = new FileInfo(file).Length;
-                            Interlocked.Add(ref totalSize, size);
-                            local.Value++;
-
-                            OnProgressChanged(new IndexProgressEventArgs
-                            {
-                                Filename = file,
-                                Message = $"{local.Values.Sum()}/{filesCount}",
-                                Speed = local.Values.Sum() / sw.Elapsed.TotalSeconds,
-                                ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
-                                ProcessedFiles = local.Values.Sum(),
-                                TotalFiles = filesCount
-                            });
-                        }
-                        catch
-                        {
-                            errors.Add(file);
-                        }
-                    }
-                });
+                _writeQueue.Enqueue(1);
             }
+        });
 
-            // 非机械硬盘普通扫描
-            filesToIndex.Where(s => _picRegex.IsMatch(s) && DriveType[s[0]] != "HDD").Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).ForAll(g =>
+        sw.Stop();
+        IsIndexing = false;
+        OnIndexCompleted(new IndexCompletedEventArgs
+        {
+            ElapsedSeconds = sw.Elapsed.TotalSeconds,
+            FilesProcessed = _totalCount,
+            Errors = errors
+        });
+    }
+
+    private void UpdateIndexOnSSD(string[] filesToIndex, Stopwatch sw, List<string> errors)
+    {
+        var parallelism = Environment.ProcessorCount * 4;
+        filesToIndex.Where(s => DriveType[s[0]] != "HDD").Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).ForAll(g =>
+        {
+            foreach (var file in g.TakeWhile(_ => IsIndexing))
             {
-                foreach (var file in g.TakeWhile(_ => IsIndexing))
+                try
                 {
-                    try
-                    {
-                        var image = Image.Load<L8>(new DecoderOptions
-                        {
-                            TargetSize = new Size(160),
-                            SkipMetadata = true
-                        }, file);
-                        var indexItem = new IndexItem(file)
-                        {
-                            DctHash = image.DctHash(),
-                            DifferenceHash = image.DifferenceHash256()
-                        };
-                        Index[file] = indexItem;
-                        var size = new FileInfo(file).Length;
-                        Interlocked.Add(ref totalSize, size);
-                        local.Value++;
-
-                        OnProgressChanged(new IndexProgressEventArgs
-                        {
-                            Filename = file,
-                            Message = $"{local.Values.Sum()}/{filesCount}",
-                            Speed = local.Values.Sum() / sw.Elapsed.TotalSeconds,
-                            ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
-                            ProcessedFiles = local.Values.Sum(),
-                            TotalFiles = filesCount
-                        });
-                    }
-                    catch
-                    {
-                        errors.Add(file);
-                    }
-                }
-            });
-
-            // 索引GIF动画
-            filesToIndex.Where(s => s.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase)).Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).ForAll(g =>
-            {
-                foreach (var file in g.TakeWhile(_ => IsIndexing))
-                {
-                    try
+                    if (file.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase))
                     {
                         var indexItem = new FrameIndexItem(file);
                         using var gif = Image.Load<L8>(new DecoderOptions
@@ -239,6 +177,7 @@ public sealed class ImageIndexService : Disposable
                             var hash = frame.DifferenceHash256();
                             indexItem.DifferenceHash.Add(hash);
                         }
+
                         indexItem.DctHash = new List<ulong>();
                         for (var i = 0; i < gif.Frames.Count; i++)
                         {
@@ -246,43 +185,134 @@ public sealed class ImageIndexService : Disposable
                             var hash = frame.DctHash();
                             indexItem.DctHash.Add(hash);
                         }
+
                         FrameIndex[file] = indexItem;
-
-                        var size = new FileInfo(file).Length;
-                        Interlocked.Add(ref totalSize, size);
-                        local.Value++;
-
-                        OnProgressChanged(new IndexProgressEventArgs
-                        {
-                            Filename = file,
-                            Message = $"{local.Values.Sum()}/{filesCount}",
-                            Speed = local.Values.Sum() / sw.Elapsed.TotalSeconds,
-                            ThroughputMB = totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
-                            ProcessedFiles = local.Values.Sum(),
-                            TotalFiles = filesCount
-                        });
                     }
-                    catch
+                    else
                     {
-                        errors.Add(file);
+                        using var image = Image.Load<L8>(new DecoderOptions
+                        {
+                            TargetSize = new Size(160),
+                            SkipMetadata = true
+                        }, file);
+                        var indexItem = new IndexItem(file)
+                        {
+                            DctHash = image.DctHash(),
+                            DifferenceHash = image.DifferenceHash256()
+                        };
+                        Index[file] = indexItem;
                     }
-                }
-            });
+                    var size = new FileInfo(file).Length;
+                    _totalCount++;
+                    _totalSize += size;
 
-            if (totalSize > 0)
-            {
-                _writeQueue.Enqueue(1);
+                    OnProgressChanged(new IndexProgressEventArgs
+                    {
+                        Filename = file,
+                        Message = $"{_totalCount}/{filesToIndex.Length}",
+                        Speed = _totalCount / sw.Elapsed.TotalSeconds,
+                        ThroughputMB = _totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
+                        ProcessedFiles = _totalCount,
+                        TotalFiles = filesToIndex.Length
+                    });
+                }
+                catch
+                {
+                    errors.Add(file);
+                }
             }
         });
+    }
 
-        sw.Stop();
-        IsIndexing = false;
-        OnIndexCompleted(new IndexCompletedEventArgs
+    private void UpdateIndexOnHDD(string[] filesToIndex, Stopwatch sw, List<string> errors)
+    {
+        var queue = new ConcurrentQueue<KeyValuePair<string, MemoryStream>>();
+        bool loading = true;
+        Task.Run(() =>
         {
-            ElapsedSeconds = sw.Elapsed.TotalSeconds,
-            FilesProcessed = local.Values.Sum(),
-            Errors = errors
+            var memoryAvailable = Math.Min(RamInfo.Local.MemoryAvailable / 2, 8589934592d);
+            foreach (var file in filesToIndex.Where(s => DriveType[s[0]] == "HDD").Order().TakeWhile(_ => IsIndexing))
+            {
+                queue.Enqueue(KeyValuePair.Create(file, new MemoryStream(File.ReadAllBytes(file))));
+                while (queue.Sum(t => t.Value.Length) > memoryAvailable)
+                {
+                    Thread.Sleep(500);
+                }
+            }
+            loading = false;
         });
+        while (loading)
+        {
+            Parallel.For(1, Math.Min(Environment.ProcessorCount * 4, queue.Count), _ =>
+            {
+                if (!queue.TryDequeue(out var item))
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (item.Key.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        var indexItem = new FrameIndexItem(item.Key);
+                        using var gif = Image.Load<L8>(new DecoderOptions
+                        {
+                            TargetSize = new Size(160),
+                            SkipMetadata = true
+                        }, item.Value);
+
+                        indexItem.DifferenceHash = new List<ulong[]>();
+                        for (var i = 0; i < gif.Frames.Count; i++)
+                        {
+                            using var frame = gif.Frames.ExportFrame(i);
+                            var hash = frame.DifferenceHash256();
+                            indexItem.DifferenceHash.Add(hash);
+                        }
+
+                        indexItem.DctHash = new List<ulong>();
+                        for (var i = 0; i < gif.Frames.Count; i++)
+                        {
+                            using var frame = gif.Frames.ExportFrame(i);
+                            var hash = frame.DctHash();
+                            indexItem.DctHash.Add(hash);
+                        }
+
+                        FrameIndex[item.Key] = indexItem;
+                    }
+                    else
+                    {
+                        using var image = Image.Load<L8>(new DecoderOptions
+                        {
+                            TargetSize = new Size(160),
+                            SkipMetadata = true
+                        }, item.Value);
+                        var indexItem = new IndexItem(item.Key)
+                        {
+                            DctHash = image.DctHash(),
+                            DifferenceHash = image.DifferenceHash256()
+                        };
+                        Index[item.Key] = indexItem;
+                    }
+
+                    _totalCount++;
+                    _totalSize += item.Value.Length;
+                    OnProgressChanged(new IndexProgressEventArgs
+                    {
+                        Filename = item.Key,
+                        Message = $"{_totalCount}/{filesToIndex.Length}",
+                        Speed = _totalCount / sw.Elapsed.TotalSeconds,
+                        ThroughputMB = _totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
+                        ProcessedFiles = _totalCount,
+                        TotalFiles = filesToIndex.Length
+                    });
+                    item.Value.Dispose();
+                }
+                catch (Exception)
+                {
+                    errors.Add(item.Key);
+                }
+            });
+        }
     }
 
     public void StopIndexing()
