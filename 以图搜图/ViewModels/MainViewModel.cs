@@ -4,8 +4,6 @@ using Masuit.Tools.Files;
 using Masuit.Tools.Files.FileDetector;
 using Masuit.Tools.Systems;
 using SixLabors.ImageSharp;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;

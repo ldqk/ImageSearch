@@ -241,9 +241,9 @@ public sealed class ImageIndexService : Disposable
             }
             loading = false;
         });
-        while (loading)
+        while (loading || queue.Count > 0)
         {
-            Parallel.For(1, Math.Min(Environment.ProcessorCount * 4, queue.Count), _ =>
+            Parallel.For(0, Math.Min(Environment.ProcessorCount * 4, queue.Count), _ =>
             {
                 if (!queue.TryDequeue(out var item))
                 {
