@@ -170,20 +170,11 @@ public sealed class ImageIndexService : Disposable
                             SkipMetadata = true
                         }, file);
 
-                        indexItem.DifferenceHash = new List<ulong[]>();
                         for (var i = 0; i < gif.Frames.Count; i++)
                         {
                             using var frame = gif.Frames.ExportFrame(i);
-                            var hash = frame.DifferenceHash256();
-                            indexItem.DifferenceHash.Add(hash);
-                        }
-
-                        indexItem.DctHash = new List<ulong>();
-                        for (var i = 0; i < gif.Frames.Count; i++)
-                        {
-                            using var frame = gif.Frames.ExportFrame(i);
-                            var hash = frame.DctHash();
-                            indexItem.DctHash.Add(hash);
+                            indexItem.DifferenceHash.Add(frame.DifferenceHash256());
+                            indexItem.DctHash.Add(frame.DctHash());
                         }
 
                         FrameIndex[file] = indexItem;
@@ -260,21 +251,11 @@ public sealed class ImageIndexService : Disposable
                             TargetSize = new Size(160),
                             SkipMetadata = true
                         }, item.Value);
-
-                        indexItem.DifferenceHash = new List<ulong[]>();
                         for (var i = 0; i < gif.Frames.Count; i++)
                         {
                             using var frame = gif.Frames.ExportFrame(i);
-                            var hash = frame.DifferenceHash256();
-                            indexItem.DifferenceHash.Add(hash);
-                        }
-
-                        indexItem.DctHash = new List<ulong>();
-                        for (var i = 0; i < gif.Frames.Count; i++)
-                        {
-                            using var frame = gif.Frames.ExportFrame(i);
-                            var hash = frame.DctHash();
-                            indexItem.DctHash.Add(hash);
+                            indexItem.DifferenceHash.Add(frame.DifferenceHash256());
+                            indexItem.DctHash.Add(frame.DctHash());
                         }
 
                         FrameIndex[item.Key] = indexItem;

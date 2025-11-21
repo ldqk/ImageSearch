@@ -155,7 +155,7 @@ public class ImageSearchService
                     {
                         路径 = x.Key,
                         匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= similarity).OrderDescending().Take(10).DefaultIfEmpty().Average(),
-                        匹配算法 = "DifferenceHash"
+                        匹配算法 = "Difference Hash"
                     }).Where(x => x.匹配度 >= similarity));
                 }
 
@@ -166,7 +166,7 @@ public class ImageSearchService
                     {
                         路径 = x.Key,
                         匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= sim).OrderDescending().Take(10).DefaultIfEmpty().Average(),
-                        匹配算法 = "DctHash"
+                        匹配算法 = "DCT Hash"
                     }).Where(x => x.匹配度 >= sim));
                 }
             }
@@ -178,14 +178,14 @@ public class ImageSearchService
                     {
                         路径 = x.Key,
                         匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh))).Max(),
-                        匹配算法 = "DifferenceHash"
+                        匹配算法 = "Difference Hash"
                     }).Where(x => x.匹配度 >= similarity));
 
                     list.AddRange(index.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
                     {
                         路径 = x.Key,
                         匹配度 = defHashs.Select(h => ImageHasher.Compare(x.Value.DifferenceHash, h)).Max(),
-                        匹配算法 = "DifferenceHash"
+                        匹配算法 = "Difference Hash"
                     }).Where(x => x.匹配度 >= similarity));
                 }
 
@@ -196,14 +196,14 @@ public class ImageSearchService
                     {
                         路径 = x.Key,
                         匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh))).Max(),
-                        匹配算法 = "DctHash"
+                        匹配算法 = "DCT Hash"
                     }).Where(x => x.匹配度 >= sim));
 
                     list.AddRange(index.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
                     {
                         路径 = x.Key,
                         匹配度 = dctHashs.Select(h => ImageHasher.Compare(x.Value.DctHash, h)).Max(),
-                        匹配算法 = "DctHash"
+                        匹配算法 = "DCT Hash"
                     }).Where(x => x.匹配度 >= sim));
                 }
             }

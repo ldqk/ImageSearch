@@ -5,10 +5,10 @@ namespace 以图搜图.Models;
 [Flags]
 public enum MatchAlgorithm
 {
-    [Description("DifferenceHash")]
+    [Description("Difference Hash")]
     DifferenceHash = 1,
 
-    [Description("DctHash")]
+    [Description("DCT Hash")]
     DctHash = 2,
 
     [Description("全部")]
