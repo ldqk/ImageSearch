@@ -208,12 +208,6 @@ public class ImageSearchService
                 }
             }
 
-            if (algorithm != MatchAlgorithm.All)
-            {
-                var algorithmName = algorithm.ToString();
-                list = list.Where(item => string.Equals(item.匹配算法, algorithmName, StringComparison.Ordinal)).ToList();
-            }
-
             list = list.OrderByDescending(a => a.匹配度).DistinctBy(e => e.路径).ToList();
 
             var dic = list.Where(e => File.Exists(e.路径)).GroupBy(r => new FileInfo(r.路径).DirectoryName).Where(g => g.Key != null).AsParallel().WithDegreeOfParallelism(parallelism).Select(g =>
