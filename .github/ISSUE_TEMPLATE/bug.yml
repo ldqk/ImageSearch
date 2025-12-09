@@ -32,9 +32,9 @@ body:
       required: true
   - type: checkboxes
     attributes:
-      label: 系统已安装everything
+      label: 系统已安装everything并正在运行？
       options:
-        - label: 系统已安装everything并正在运行？
+        - label: 已安装everything
           required: false
   - type: textarea
     attributes:
