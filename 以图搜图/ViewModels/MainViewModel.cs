@@ -66,32 +66,31 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private int similarity = 80;
 
-    private ModelsMatchAlgorithm _matchAlgorithm = ModelsMatchAlgorithm.All;
-
     public ModelsMatchAlgorithm MatchAlgorithm
     {
-        get => _matchAlgorithm;
+        get;
         set
         {
-            if (SetProperty(ref _matchAlgorithm, value))
+            if (SetProperty(ref field, value))
             {
                 if (Similarity < SimilarityMinimum)
                 {
                     Similarity = SimilarityMinimum;
                 }
 
-                if (value == MatchAlgorithm.DctHash)
+                if (value == MatchAlgorithm.DctHash32)
                 {
                     Similarity = 90;
                 }
+
                 OnPropertyChanged(nameof(SimilarityMinimum));
             }
         }
-    }
+    } = ModelsMatchAlgorithm.All;
 
     public IReadOnlyList<ModelsMatchAlgorithm> MatchAlgorithms { get; } = Enum.GetValues<ModelsMatchAlgorithm>();
 
-    public int SimilarityMinimum => MatchAlgorithm == ModelsMatchAlgorithm.DctHash ? 85 : 70;
+    public int SimilarityMinimum => MatchAlgorithm.HasFlag(ModelsMatchAlgorithm.DifferenceHash) ? 70 : 85;
 
     [ObservableProperty]
     private string sourceImageInfo = string.Empty;
@@ -161,6 +160,7 @@ public partial class MainViewModel : ObservableObject
 
         _indexService.ProgressChanged += OnIndexProgressChanged;
         _indexService.IndexCompleted += OnIndexCompleted;
+        _indexService.IndexUpdated += (sender, args) => Application.Current.Dispatcher.Invoke(UpdateIndexCount);
 
         // 异步初始化性能监测，避免阻塞 UI 线程
         _ = Task.Run(InitializePerformanceMonitoring);
@@ -859,10 +859,10 @@ public partial class MainViewModel : ObservableObject
             IndexProgress = e.ProgressPercentage;
             IndexProgressText = $"{e.ProcessedFiles:#,0} / {e.TotalFiles:#,0}";
             IndexProgressVisibility = Visibility.Visible;
-            ProcessingFilename = "正在处理：" + e.Filename;
 
-            if (e.Speed > 0 && e.ProcessedFiles % 100 == 0)
+            if (e.ProcessedFiles > 0)
             {
+                ProcessingFilename = "正在处理：" + e.Filename;
                 IndexSpeed = $"索引速度: {e.Speed:F0} items/s ({e.ThroughputMB:F2}MB/s)";
                 IndexSpeedText = $"{e.Speed:F0} items/s";
                 IndexThroughputText = $"{e.ThroughputMB:F2} MB/s";
@@ -875,7 +875,7 @@ public partial class MainViewModel : ObservableObject
                 var remainingFiles = e.TotalFiles - e.ProcessedFiles;
                 if (remainingFiles > 0 && e.Speed > 0)
                 {
-                    var estimatedSeconds = remainingFiles / e.Speed;
+                    var estimatedSeconds = remainingFiles / e.Speed / 0.9;
                     EstimatedRemainingTimeText = FormatTimespan(TimeSpan.FromSeconds(estimatedSeconds));
                 }
                 else
@@ -884,7 +884,15 @@ public partial class MainViewModel : ObservableObject
                 }
 
                 // 添加速度数据点到历史记录 - 显示整个索引过程
-                SpeedHistory.Add(e.ThroughputMB);
+                switch (e.TotalFiles)
+                {
+                    case <= 1000:
+                    case <= 10000 when e.ProcessedFiles % 10 == 0:
+                    case <= 100000 when e.ProcessedFiles % 100 == 0:
+                    case > 100000 when e.ProcessedFiles % 200 == 0:
+                        SpeedHistory.Add(e.ThroughputMB);
+                        break;
+                }
             }
         });
     }
@@ -909,7 +917,7 @@ public partial class MainViewModel : ObservableObject
     {
         Application.Current.Dispatcher.Invoke(() =>
         {
-            UpdateIndexCount();
+            //UpdateIndexCount();
 
             if (e.Errors.Count > 0)
             {

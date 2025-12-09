@@ -20,6 +20,7 @@ public class ImageSearchService
         {
             var defHashs = new ConcurrentBag<ulong[]>();
             var dctHashs = new ConcurrentBag<ulong>();
+            var pHashs = new ConcurrentBag<ulong>();
             var actions = new List<Action>();
 
             if (filename.EndsWith("gif", StringComparison.OrdinalIgnoreCase))
@@ -40,9 +41,13 @@ public class ImageSearchService
                                 defHashs.Add(frame.DifferenceHash256());
                             }
 
-                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
                             {
                                 dctHashs.Add(frame.DctHash());
+                            }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                            {
+                                pHashs.Add(frame.DctHash64());
                             }
                             frame.Dispose();
                         });
@@ -61,12 +66,16 @@ public class ImageSearchService
                 {
                     if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                     {
-                        defHashs.Add(image.DifferenceHash256());
+                        actions.Add(() => defHashs.Add(image.DifferenceHash256()));
                     }
 
-                    if (algorithm.HasFlag(MatchAlgorithm.DctHash))
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
                     {
-                        dctHashs.Add(image.DctHash());
+                        actions.Add(() => dctHashs.Add(image.DctHash()));
+                    }
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                    {
+                        actions.Add(() => pHashs.Add(image.DctHash64()));
                     }
                     if (checkRotated)
                     {
@@ -78,9 +87,13 @@ public class ImageSearchService
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
                             {
                                 dctHashs.Add(clone.DctHash());
+                            }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                            {
+                                pHashs.Add(clone.DctHash64());
                             }
                         });
                         actions.Add(() =>
@@ -91,9 +104,13 @@ public class ImageSearchService
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
                             {
                                 dctHashs.Add(clone.DctHash());
+                            }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                            {
+                                pHashs.Add(clone.DctHash64());
                             }
                         });
                         actions.Add(() =>
@@ -104,9 +121,13 @@ public class ImageSearchService
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
                             {
                                 dctHashs.Add(clone.DctHash());
+                            }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                            {
+                                pHashs.Add(clone.DctHash64());
                             }
                         });
                     }
@@ -121,9 +142,13 @@ public class ImageSearchService
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
                             {
                                 dctHashs.Add(clone.DctHash());
+                            }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                            {
+                                pHashs.Add(clone.DctHash64());
                             }
                         });
                         actions.Add(() =>
@@ -134,9 +159,13 @@ public class ImageSearchService
                                 defHashs.Add(clone.DifferenceHash256());
                             }
 
-                            if (algorithm.HasFlag(MatchAlgorithm.DctHash))
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
                             {
                                 dctHashs.Add(clone.DctHash());
+                            }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                            {
+                                pHashs.Add(clone.DctHash64());
                             }
                         });
                     }
@@ -149,67 +178,130 @@ public class ImageSearchService
 
             if (filename.EndsWith("gif", StringComparison.OrdinalIgnoreCase))
             {
-                if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
+                list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).SelectMany(x =>
                 {
-                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
+                    var items = new List<SearchResult>(4);
+                    if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                     {
-                        路径 = x.Key,
-                        匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= similarity).OrderDescending().Take(10).DefaultIfEmpty().Average(),
-                        匹配算法 = "Difference Hash"
-                    }).Where(x => x.匹配度 >= similarity));
-                }
-
-                if (algorithm.HasFlag(MatchAlgorithm.DctHash))
-                {
+                        items.Add(new SearchResult
+                        {
+                            路径 = x.Key,
+                            匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh)).Where(f => f >= similarity)).OrderDescending().Take(10).DefaultIfEmpty().Average(),
+                            匹配算法 = "Difference Hash"
+                        });
+                    }
                     var sim = Math.Max(0.85, similarity);
-                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
                     {
-                        路径 = x.Key,
-                        匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh))).Where(f => f >= sim).OrderDescending().Take(10).DefaultIfEmpty().Average(),
-                        匹配算法 = "DCT Hash"
-                    }).Where(x => x.匹配度 >= sim));
-                }
+                        items.Add(new SearchResult
+                        {
+                            路径 = x.Key,
+                            匹配度 = x.Value.DctHash64.SelectMany(h => pHashs.Select(hh => ImageHasher.Compare(h, hh)).Where(f => f >= sim)).OrderDescending().Take(10).DefaultIfEmpty().Average(),
+                            匹配算法 = "DCT Hash 64"
+                        });
+                    }
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
+                    {
+                        items.Add(new SearchResult
+                        {
+                            路径 = x.Key,
+                            匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh)).Where(f => f >= sim)).OrderDescending().Take(10).DefaultIfEmpty().Average(),
+                            匹配算法 = "DCT Hash 32"
+                        });
+                    }
+                    return items;
+                }).Where(x => x.匹配度 >= similarity));
             }
             else
             {
-                if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
+                var sim = Math.Max(0.85, similarity);
+                list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).SelectMany(x =>
                 {
-                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
+                    var items = new List<SearchResult>(4);
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
                     {
-                        路径 = x.Key,
-                        匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh))).Max(),
-                        匹配算法 = "Difference Hash"
-                    }).Where(x => x.匹配度 >= similarity));
-
-                    list.AddRange(index.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
+                        items.Add(new SearchResult
+                        {
+                            路径 = x.Key,
+                            匹配度 = x.Value.DctHash64.SelectMany(h => pHashs.Select(hh => ImageHasher.Compare(h, hh)).Where(f => f >= sim)).MaxOrDefault(),
+                            匹配算法 = "DCT Hash 64"
+                        });
+                        return items;
+                    }
+                    if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
                     {
-                        路径 = x.Key,
-                        匹配度 = defHashs.Select(h => ImageHasher.Compare(x.Value.DifferenceHash, h)).Max(),
-                        匹配算法 = "Difference Hash"
-                    }).Where(x => x.匹配度 >= similarity));
-                }
+                        items.Add(new SearchResult
+                        {
+                            路径 = x.Key,
+                            匹配度 = x.Value.DifferenceHash.SelectMany(h => defHashs.Select(hh => ImageHasher.Compare(h, hh)).Where(f => f >= similarity)).MaxOrDefault(),
+                            匹配算法 = "Difference Hash"
+                        });
+                        return items;
+                    }
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
+                    {
+                        items.Add(new SearchResult
+                        {
+                            路径 = x.Key,
+                            匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh)).Where(f => f >= sim)).MaxOrDefault(),
+                            匹配算法 = "DCT Hash 32"
+                        });
+                    }
+                    return items;
+                }).Where(x => x.匹配度 >= similarity));
 
-                if (algorithm.HasFlag(MatchAlgorithm.DctHash))
+                list.AddRange(index.Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).SelectMany(grouping =>
                 {
-                    var sim = Math.Max(0.85, similarity);
-                    list.AddRange(frameIndex.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
+                    var items = new List<SearchResult>();
+                    foreach (var (key, value) in grouping)
                     {
-                        路径 = x.Key,
-                        匹配度 = x.Value.DctHash.SelectMany(h => dctHashs.Select(hh => ImageHasher.Compare(h, hh))).Max(),
-                        匹配算法 = "DCT Hash"
-                    }).Where(x => x.匹配度 >= sim));
-
-                    list.AddRange(index.AsParallel().WithDegreeOfParallelism(parallelism).Select(x => new SearchResult
-                    {
-                        路径 = x.Key,
-                        匹配度 = dctHashs.Select(h => ImageHasher.Compare(x.Value.DctHash, h)).Max(),
-                        匹配算法 = "DCT Hash"
-                    }).Where(x => x.匹配度 >= sim));
-                }
+                        if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                        {
+                            var match = pHashs.Max(h => ImageHasher.Compare(value.DctHash64, h));
+                            if (match > sim)
+                            {
+                                items.Add(new SearchResult
+                                {
+                                    路径 = key,
+                                    匹配度 = match,
+                                    匹配算法 = "DCT Hash 64"
+                                });
+                                continue;
+                            }
+                        }
+                        if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
+                        {
+                            var match = defHashs.Max(h => ImageHasher.Compare(value.DifferenceHash, h));
+                            if (match > similarity)
+                            {
+                                items.Add(new SearchResult
+                                {
+                                    路径 = key,
+                                    匹配度 = match,
+                                    匹配算法 = "Difference Hash"
+                                });
+                                continue;
+                            }
+                        }
+                        if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
+                        {
+                            var match = dctHashs.Max(h => ImageHasher.Compare(value.DctHash, h));
+                            if (match > sim)
+                            {
+                                items.Add(new SearchResult
+                                {
+                                    路径 = key,
+                                    匹配度 = match,
+                                    匹配算法 = "DCT Hash 32"
+                                });
+                            }
+                        }
+                    }
+                    return items;
+                }));
             }
 
             list = list.OrderByDescending(a => a.匹配度).DistinctBy(e => e.路径).ToList();
-
             var dic = list.Where(e => File.Exists(e.路径)).GroupBy(r => new FileInfo(r.路径).DirectoryName).Where(g => g.Key != null).AsParallel().WithDegreeOfParallelism(parallelism).Select(g =>
             {
                 var files = new DirectoryInfo(g.Key!).GetFiles("*.*", SearchOption.AllDirectories);

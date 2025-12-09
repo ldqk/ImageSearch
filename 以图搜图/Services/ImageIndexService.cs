@@ -18,12 +18,12 @@ namespace 以图搜图.Services;
 
 public sealed class ImageIndexService : Disposable
 {
-    private readonly ConcurrentQueue<int> _writeQueue = new();
+    private readonly ConcurrentHashQueue<int> _writeQueue = new();
     private readonly FileStream? _frameIndexStream;
     private readonly FileStream? _indexStream;
     private readonly CancellationTokenSource? _cancellationTokenSource;
     private readonly Task? _writeTask;
-    private static readonly Dictionary<char, string> DriveType = new();
+    private static readonly Dictionary<char, (string type, string index)> DriveType = new() { ['\\'] = ("HDD", "Unknown"), ['/'] = ("HDD", "Unknown") };
 
     static ImageIndexService()
     {
@@ -49,12 +49,9 @@ public sealed class ImageIndexService : Disposable
             {
                 if (_writeQueue.TryDequeue(out _))
                 {
-                    // 清空队列中的所有项
-                    while (_writeQueue.TryDequeue(out _))
-                    {
-                    }
-
+                    _writeQueue.Clear();
                     await WriteIndexAsync();
+                    IndexUpdated?.Invoke(this, EventArgs.Empty);
                 }
 
                 await Task.Delay(1000, cancellationToken);
@@ -75,6 +72,8 @@ public sealed class ImageIndexService : Disposable
     public event EventHandler<IndexProgressEventArgs>? ProgressChanged;
 
     public event EventHandler<IndexCompletedEventArgs>? IndexCompleted;
+
+    public event EventHandler? IndexUpdated;
 
     public async Task LoadIndexAsync()
     {
@@ -119,7 +118,13 @@ public sealed class ImageIndexService : Disposable
         var files = GetFiles(directories);
         if (removeInvalid)
         {
-            _ = Task.Run(() => RemoveInvalidIndexes(directories, files));
+            _ = Task.Run(() => RemoveInvalidIndexes(directories, files)).ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                {
+                    LogManager.Error(t.Exception);
+                }
+            });
         }
 
         var filesToIndex = files.Except(Index.Keys).Except(FrameIndex.Keys).Where(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase)).Order().ToArray();
@@ -140,7 +145,13 @@ public sealed class ImageIndexService : Disposable
             {
                 _writeQueue.Enqueue(1);
             }
-        });
+        }).ContinueWith(t =>
+        {
+            if (t.IsFaulted)
+            {
+                LogManager.Error(t.Exception);
+            }
+        }); ;
 
         sw.Stop();
         IsIndexing = false;
@@ -155,9 +166,9 @@ public sealed class ImageIndexService : Disposable
     private void UpdateIndexOnSSD(string[] filesToIndex, Stopwatch sw, List<string> errors)
     {
         var parallelism = Environment.ProcessorCount * 4;
-        filesToIndex.Where(s => DriveType[s[0]] != "HDD").Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).ForAll(g =>
+        filesToIndex.Where(s => DriveType[s[0]].type != "HDD").Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).ForAll(g =>
         {
-            foreach (var file in g.TakeWhile(_ => IsIndexing))
+            foreach (var file in g.Where(File.Exists).TakeWhile(_ => IsIndexing))
             {
                 try
                 {
@@ -175,6 +186,7 @@ public sealed class ImageIndexService : Disposable
                             using var frame = gif.Frames.ExportFrame(i);
                             indexItem.DifferenceHash.Add(frame.DifferenceHash256());
                             indexItem.DctHash.Add(frame.DctHash());
+                            indexItem.DctHash64.Add(frame.DctHash64());
                         }
 
                         FrameIndex[file] = indexItem;
@@ -189,7 +201,8 @@ public sealed class ImageIndexService : Disposable
                         var indexItem = new IndexItem(file)
                         {
                             DctHash = image.DctHash(),
-                            DifferenceHash = image.DifferenceHash256()
+                            DifferenceHash = image.DifferenceHash256(),
+                            DctHash64 = image.DctHash64()
                         };
                         Index[file] = indexItem;
                     }
@@ -222,15 +235,56 @@ public sealed class ImageIndexService : Disposable
         Task.Run(() =>
         {
             var memoryAvailable = Math.Min(RamInfo.Local.MemoryAvailable / 2, 8589934592d);
-            foreach (var file in filesToIndex.Where(s => DriveType[s[0]] == "HDD").Order().TakeWhile(_ => IsIndexing))
+            var diskCount = DriveType.Values.Where(t => t.type == "HDD").Select(t => t.index).Distinct().Count();
+            switch (diskCount)
             {
-                queue.Enqueue(KeyValuePair.Create(file, new MemoryStream(File.ReadAllBytes(file))));
-                while (queue.Sum(t => t.Value.Length) > memoryAvailable)
-                {
-                    Thread.Sleep(500);
-                }
+                case 1:
+                    foreach (var file in filesToIndex.Where(s => DriveType[s[0]].type == "HDD" && File.Exists(s)).Order().TakeWhile(_ => IsIndexing))
+                    {
+                        try
+                        {
+                            queue.Enqueue(KeyValuePair.Create(file, new MemoryStream(File.ReadAllBytes(file))));
+                            while (queue.Sum(t => t.Value.Length) > memoryAvailable)
+                            {
+                                Thread.Sleep(500);
+                            }
+                        }
+                        catch
+                        {
+                            errors.Add(file);
+                        }
+                    }
+                    break;
+
+                case > 1:
+                    filesToIndex.Where(s => DriveType[s[0]].type == "HDD").GroupBy(s => DriveType[s[0]].index).AsParallel().WithDegreeOfParallelism(diskCount).ForAll(grouping =>
+                    {
+                        foreach (var file in grouping.Where(File.Exists).Order().TakeWhile(_ => IsIndexing))
+                        {
+                            try
+                            {
+                                queue.Enqueue(KeyValuePair.Create(file, new MemoryStream(File.ReadAllBytes(file))));
+                                while (queue.Sum(t => t.Value.Length) > memoryAvailable)
+                                {
+                                    Thread.Sleep(500);
+                                }
+                            }
+                            catch
+                            {
+                                errors.Add(file);
+                            }
+                        }
+                    });
+                    break;
             }
+
             loading = false;
+        }).ContinueWith(t =>
+        {
+            if (t.IsFaulted)
+            {
+                LogManager.Error(t.Exception);
+            }
         });
         while (loading || queue.Count > 0)
         {
@@ -256,6 +310,7 @@ public sealed class ImageIndexService : Disposable
                             using var frame = gif.Frames.ExportFrame(i);
                             indexItem.DifferenceHash.Add(frame.DifferenceHash256());
                             indexItem.DctHash.Add(frame.DctHash());
+                            indexItem.DctHash64.Add(frame.DctHash64());
                         }
 
                         FrameIndex[item.Key] = indexItem;
@@ -270,7 +325,8 @@ public sealed class ImageIndexService : Disposable
                         var indexItem = new IndexItem(item.Key)
                         {
                             DctHash = image.DctHash(),
-                            DifferenceHash = image.DifferenceHash256()
+                            DifferenceHash = image.DifferenceHash256(),
+                            DctHash64 = image.DctHash64()
                         };
                         Index[item.Key] = indexItem;
                     }
@@ -386,7 +442,7 @@ public sealed class ImageIndexService : Disposable
         }
     }
 
-    private static string GetDriveMediaType(char driveLetter)
+    private static (string type, string index) GetDriveMediaType(char driveLetter)
     {
         try
         {
@@ -401,28 +457,29 @@ public sealed class ImageIndexService : Disposable
                         string model = diskDrive["Model"]?.ToString() ?? "Unknown";
                         string mediaType = diskDrive["MediaType"]?.ToString() ?? "Unknown";
                         string interfaceType = diskDrive["InterfaceType"]?.ToString() ?? "Unknown";
+                        string diskIndex = diskDrive["Index"]?.ToString() ?? "Unknown";
 
                         // 判断逻辑
                         if (model.Contains("SSD", StringComparison.CurrentCultureIgnoreCase) || mediaType.Contains("SSD"))
-                            return "SSD";
+                            return ("SSD", diskIndex);
 
                         if (mediaType.Contains("Fixed") && !model.Contains("SSD", StringComparison.CurrentCultureIgnoreCase))
-                            return "HDD";
+                            return ("HDD", diskIndex);
 
                         if (interfaceType == "USB")
-                            return "USB";
+                            return ("USB", diskIndex);
 
-                        return "Unknown";
+                        return ("Unknown", diskIndex);
                     }
                 }
             }
         }
         catch (Exception)
         {
-            return "Unknown";
+            return ("Unknown", "Unknown");
         }
 
-        return "Unknown";
+        return ("Unknown", "Unknown");
     }
 
     private void OnProgressChanged(IndexProgressEventArgs e)
@@ -458,6 +515,7 @@ public sealed class ImageIndexService : Disposable
         // 清理事件订阅
         ProgressChanged = null;
         IndexCompleted = null;
+        IndexUpdated = null;
 
         // 清理数据
         FrameIndex?.Clear();
@@ -476,10 +534,12 @@ public record IndexItem(string FilePath)
 {
     public ulong[] DifferenceHash { get; set; }
     public ulong DctHash { get; set; }
+    public ulong DctHash64 { get; set; }
 }
 
 public sealed record FrameIndexItem(string FilePath)
 {
     public List<ulong[]> DifferenceHash { get; set; } = new List<ulong[]>();
     public List<ulong> DctHash { get; set; } = new List<ulong>();
+    public List<ulong> DctHash64 { get; set; } = new List<ulong>();
 }
