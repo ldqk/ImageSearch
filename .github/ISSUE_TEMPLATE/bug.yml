@@ -30,6 +30,12 @@ body:
         - 其他
     validations:
       required: true
+  - type: checkboxes
+    attributes:
+      label: 系统已安装everything
+      options:
+        - label: 系统已安装everything并正在运行？
+          required: false
   - type: textarea
     attributes:
       label: 如何复现
