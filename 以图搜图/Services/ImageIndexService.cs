@@ -112,10 +112,10 @@ public sealed class ImageIndexService : Disposable
 
     public async Task UpdateIndexAsync(string[] directories, bool removeInvalid)
     {
+        var files = GetFiles(directories);
         _totalCount = 0;
         _totalSize = 0;
         IsIndexing = true;
-        var files = GetFiles(directories);
         if (removeInvalid)
         {
             _ = Task.Run(() => RemoveInvalidIndexes(directories, files)).ContinueWith(t =>
@@ -380,7 +380,17 @@ public sealed class ImageIndexService : Disposable
             }).ToArray();
         }
 
-        return directories.SelectMany(s => Directory.GetFiles(s, "*", SearchOption.AllDirectories)).ToArray();
+        return directories.SelectMany(static s =>
+        {
+            try
+            {
+                return Directory.GetFiles(s, "*", SearchOption.AllDirectories);
+            }
+            catch
+            {
+                return [];
+            }
+        }).ToArray();
     }
 
     private void RemoveInvalidIndexes(string[] newDirs, string[] allFiles)

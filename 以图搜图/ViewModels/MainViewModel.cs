@@ -269,10 +269,14 @@ public partial class MainViewModel : ObservableObject
                 var dirs = string.IsNullOrWhiteSpace(DirectoryPath) ? PathPrefixFinder.FindLongestCommonPathPrefixes(paths, 3).Where(Directory.Exists).ToArray() : [DirectoryPath];
 
                 // 切回 UI 线程执行异步索引操作
-                await Application.Current.Dispatcher.InvokeAsync(async () =>
+                await Application.Current.Dispatcher.InvokeAsync(() => _indexService.UpdateIndexAsync(dirs, RemoveInvalidIndex).ContinueWith(t =>
                 {
-                    await _indexService.UpdateIndexAsync(dirs, RemoveInvalidIndex);
-                });
+                    if (t.IsFaulted)
+                    {
+                        MessageBox.Show(t.Exception.Message);
+                    }
+                    OnIndexCompleted(this, new IndexCompletedEventArgs());
+                }));
             }
             finally
             {
