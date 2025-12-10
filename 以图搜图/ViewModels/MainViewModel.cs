@@ -12,7 +12,10 @@ using System.Windows;
 using System.Windows.Input;
 using 以图搜图.Models;
 using 以图搜图.Services;
+using 以图搜图.WebAPI;
+using 以图搜图.WebAPI.Controllers;
 using ModelsMatchAlgorithm = 以图搜图.Models.MatchAlgorithm;
+using Timer = System.Timers.Timer;
 
 namespace 以图搜图.ViewModels;
 
@@ -149,13 +152,17 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private double memoryUsage;
 
+    [ObservableProperty]
+    private bool webApiServerRunning;
+
     private Process? _currentProcess;
     private PerformanceCounter? _cpuCounter;
     private System.Timers.Timer? _performanceTimer;
+    private System.Timers.Timer? _updateIndexTimer;
 
     public MainViewModel()
     {
-        _indexService = new ImageIndexService();
+        _indexService = ImageIndexService.Instance;
         _searchService = new ImageSearchService();
 
         _indexService.ProgressChanged += OnIndexProgressChanged;
@@ -164,7 +171,21 @@ public partial class MainViewModel : ObservableObject
 
         // 异步初始化性能监测，避免阻塞 UI 线程
         _ = Task.Run(InitializePerformanceMonitoring);
+        WebApiServerRunning = WebApiStartup.ServerRunning;
         LoadIndexAsync();
+        HomeController.MainViewModel = this;
+        if (new IniFile("config.ini").GetValue("Global", "IndexAutoUpdate", false))
+        {
+            _updateIndexTimer = new Timer(TimeSpan.FromSeconds(10));
+            _updateIndexTimer.Elapsed += (sender, args) =>
+            {
+                if (UpdateIndexCommand.CanExecute(sender))
+                {
+                    UpdateIndexCommand.Execute(sender);
+                }
+            };
+            _updateIndexTimer.Start();
+        }
     }
 
     partial void OnImagePathChanged(string value)
@@ -1049,5 +1070,6 @@ public partial class MainViewModel : ObservableObject
         _performanceTimer?.Dispose();
         _cpuCounter?.Dispose();
         _currentProcess?.Dispose();
+        _updateIndexTimer?.Dispose();
     }
 }

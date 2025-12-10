@@ -24,6 +24,7 @@ public sealed class ImageIndexService : Disposable
     private readonly CancellationTokenSource? _cancellationTokenSource;
     private readonly Task? _writeTask;
     private static readonly Dictionary<char, (string type, string index)> DriveType = new() { ['\\'] = ("HDD", "Unknown"), ['/'] = ("HDD", "Unknown") };
+    public static ImageIndexService Instance { get; }
 
     static ImageIndexService()
     {
@@ -31,9 +32,10 @@ public sealed class ImageIndexService : Disposable
         {
             DriveType[drive] = GetDriveMediaType(drive);
         }
+        Instance = new ImageIndexService();
     }
 
-    public ImageIndexService()
+    private ImageIndexService()
     {
         _indexStream = File.Open("index.json", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
         _frameIndexStream = File.Open("frame_index.json", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);

@@ -13,7 +13,7 @@
     <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="logo.ico">
@@ -21,10 +21,15 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+      <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Masuit.Tools.Abstractions" Version="2025.6.5" />
+    <PackageReference Include="Scalar.AspNetCore.Swashbuckle" Version="2.11.3" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="config.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Everything64.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

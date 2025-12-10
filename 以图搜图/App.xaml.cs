@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Windows;
+using Masuit.Tools.Files;
 using Masuit.Tools.Logging;
+using 以图搜图.WebAPI;
 
 namespace 以图搜图;
 
@@ -11,6 +13,33 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        var isAdmin = new IniFile("config.ini").GetValue("Global", "RunAsAdmin", false);
+        if (isAdmin && !IsRunAsAdmin())
+        {
+            // 以管理员权限重新启动应用程序
+            var exeName = Process.GetCurrentProcess().MainModule?.FileName;
+            if (exeName != null)
+            {
+                var startInfo = new ProcessStartInfo(exeName)
+                {
+                    UseShellExecute = true,
+                    Verb = "runas" // 提升权限
+                };
+                try
+                {
+                    Process.Start(startInfo);
+                }
+                catch (Exception ex)
+                {
+                    LogManager.Error(ex);
+                    MessageBox.Show("需要管理员权限才能运行此应用程序。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                Current.Shutdown();
+                return;
+            }
+        }
+
+        WebApiStartup.Run(e.Args);
 #if !DEBUG
         // 检查单实例
         _mutex = new Mutex(true, MutexName, out bool isNewInstance);
@@ -56,6 +85,21 @@ public partial class App : Application
         base.OnExit(e);
         _mutex?.ReleaseMutex();
         _mutex?.Dispose();
+        WebApiStartup.Stop().Wait();
+    }
+
+    public static bool IsRunAsAdmin()
+    {
+        try
+        {
+            var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var principal = new System.Security.Principal.WindowsPrincipal(identity);
+            return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static void ActivateExistingWindow()
