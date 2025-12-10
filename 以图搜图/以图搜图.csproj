@@ -13,6 +13,7 @@
     <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="logo.ico">
