@@ -16,7 +16,8 @@ public class WebApiStartup
 
     public static Task Run(params string[] args)
     {
-        var runServer = new IniFile("config.ini").GetValue("Global", "RunServer", false);
+        var config = new IniFile("config.ini");
+        var runServer = config.GetValue("Global", "RunServer", false);
         if (!runServer)
         {
             return Task.CompletedTask;
@@ -38,12 +39,14 @@ public class WebApiStartup
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
             c.IncludeXmlComments(xmlPath);
         });
+        builder.Services.AddCors(options => options.AddDefaultPolicy(p => p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()));
         var app = builder.Build();
         _application = app;
+        app.UseCors();
         app.UseSwagger(options => options.RouteTemplate = "/openapi/{documentName}.json");
         app.MapScalarApiReference("/api");
         app.MapControllers();
-        return app.RunAsync("http://0.0.0.0:5000");
+        return app.RunAsync("http://0.0.0.0:" + config.GetValue("Global", "HttpPort", 5000));
     }
 
     public static async Task Stop()

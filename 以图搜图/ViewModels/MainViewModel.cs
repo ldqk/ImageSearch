@@ -176,10 +176,10 @@ public partial class MainViewModel : ObservableObject
         HomeController.MainViewModel = this;
         if (new IniFile("config.ini").GetValue("Global", "IndexAutoUpdate", false))
         {
-            _updateIndexTimer = new Timer(TimeSpan.FromSeconds(10));
+            _updateIndexTimer = new Timer(TimeSpan.FromHours(1));
             _updateIndexTimer.Elapsed += (sender, args) =>
             {
-                if (UpdateIndexCommand.CanExecute(sender))
+                if (UpdateIndexCommand.CanExecute(sender) && !_indexService.IsIndexing)
                 {
                     UpdateIndexCommand.Execute(sender);
                 }
