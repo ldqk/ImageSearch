@@ -163,11 +163,11 @@ public partial class MainWindow
 
     private void SourceImage_Click(object sender, MouseButtonEventArgs e)
     {
-        if (!string.IsNullOrEmpty(ViewModel.ImagePath) && File.Exists(ViewModel.ImagePath))
+        if (!string.IsNullOrEmpty(ViewModel.SourceImagePath) && File.Exists(ViewModel.SourceImagePath))
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = ViewModel.ImagePath,
+                FileName = ViewModel.SourceImagePath,
                 UseShellExecute = true
             });
         }
