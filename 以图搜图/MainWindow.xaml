@@ -1267,11 +1267,11 @@
          Margin="2,0,0,0" />
                         <TextBlock VerticalAlignment="Center"
              Margin="0,0,8,0">
-<Hyperlink NavigateUri="http://localhost:5000/api"
+<Hyperlink NavigateUri="{Binding WebApiServer}"
            RequestNavigate="Hyperlink_RequestNavigate"
            Foreground="#007ACC"
            TextDecorations="None">
-  <Run Text="http://localhost:5000/api"
+  <Run Text="{Binding WebApiServer}"
        FontSize="12" />
 </Hyperlink>
                         </TextBlock>

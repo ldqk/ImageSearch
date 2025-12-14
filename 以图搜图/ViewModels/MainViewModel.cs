@@ -153,12 +153,16 @@ public partial class MainViewModel : ObservableObject
     private double memoryUsage;
 
     [ObservableProperty]
+    private string webApiServer;
+
+    [ObservableProperty]
     private bool webApiServerRunning;
 
     private Process? _currentProcess;
     private PerformanceCounter? _cpuCounter;
-    private System.Timers.Timer? _performanceTimer;
-    private System.Timers.Timer? _updateIndexTimer;
+    private Timer? _performanceTimer;
+    private Timer? _updateIndexTimer;
+    private readonly IniFile _config = new IniFile("config.ini");
 
     public MainViewModel()
     {
@@ -174,7 +178,8 @@ public partial class MainViewModel : ObservableObject
         WebApiServerRunning = WebApiStartup.ServerRunning;
         LoadIndexAsync();
         HomeController.MainViewModel = this;
-        if (new IniFile("config.ini").GetValue("Global", "IndexAutoUpdate", false))
+        WebApiServer = $"http://127.0.0.1:{_config.GetValue("Global", "HttpPort", 5000)}/api";
+        if (_config.GetValue("Global", "IndexAutoUpdate", false))
         {
             _updateIndexTimer = new Timer(TimeSpan.FromHours(1));
             _updateIndexTimer.Elapsed += (sender, args) =>
