@@ -181,7 +181,7 @@ public partial class MainViewModel : ObservableObject
         WebApiServer = _config.GetValue("Global", "RunServer", false) ? $"http://127.0.0.1:{_config.GetValue("Global", "HttpPort", 5000)}/api" : "";
         if (_config.GetValue("Global", "IndexAutoUpdate", false))
         {
-            _updateIndexTimer = new Timer(TimeSpan.FromSeconds(10));
+            _updateIndexTimer = new Timer(TimeSpan.FromHours(1));
             _updateIndexTimer.Elapsed += (sender, args) =>
             {
                 if (UpdateIndexCommand.CanExecute(sender) && IndexProgressVisibility != Visibility.Visible)
