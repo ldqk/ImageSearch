@@ -28,7 +28,7 @@ public sealed class ImageIndexService : Disposable
 
     static ImageIndexService()
     {
-        foreach (var drive in "CDEFGHIJKLMNOPQRSTUVWXYZ".Where(drive => Directory.Exists(drive + ":")))
+        foreach (var drive in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".Where(drive => Directory.Exists(drive + ":")))
         {
             DriveType[drive] = GetDriveMediaType(drive);
         }
