@@ -1263,8 +1263,8 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             "最小文件" => files.OrderBy(file => file.Length).ThenBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase).First(),
             "最新修改" => files.OrderByDescending(file => file.Modified).ThenBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase).First(),
             "最早修改" => files.OrderBy(file => file.Modified).ThenBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase).First(),
-            "文件名最短" => files.OrderBy(file => file.Name.Length).ThenBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase).First(),
-            "文件名最长" => files.OrderByDescending(file => file.Name.Length).ThenBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase).First(),
+            "文件名最短" => files.OrderBy(file => file.FilePath.Length).ThenBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase).First(),
+            "文件名最长" => files.OrderByDescending(file => file.FilePath.Length).ThenBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase).First(),
             _ => files.OrderByDescending(file => file.Length).ThenBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase).First()
         };
     }

@@ -499,7 +499,7 @@
             </Grid.RowDefinitions>
             <WrapPanel Grid.Row="0">
                 <TextBlock Text="每组保留" Margin="0,0,8,0" />
-                <ComboBox x:Name="KeepRuleCombo" Width="90" SelectedIndex="0" Margin="0,0,12,0"
+                <ComboBox x:Name="KeepRuleCombo" Width="100" SelectedIndex="0" Margin="0,0,12,0"
                           VerticalAlignment="Center">
                     <ComboBoxItem Content="最大文件" />
                     <ComboBoxItem Content="最小文件" />
@@ -528,14 +528,14 @@
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
-                    <TextBlock Text="缩略图大小" Margin="0,0,8,0" />
-                    <Slider x:Name="ThumbnailSizeSlider" Width="130" Minimum="120" Maximum="360"
+                    <TextBlock Text="大小" Margin="0,0,5,0" />
+                    <Slider x:Name="ThumbnailSizeSlider" Width="120" Minimum="120" Maximum="360"
                             TickFrequency="20" IsSnapToTickEnabled="False" VerticalAlignment="Center"
                             Value="{Binding ThumbnailSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Text="{Binding ThumbnailSize, StringFormat={}{0:F0}px}" Width="55" Margin="8,0,0,0" />
                 </StackPanel>
                 <TextBlock Text="筛选" Margin="10,0,6,0" />
-                <ComboBox x:Name="FilterCombo" Width="120" SelectedIndex="0"
+                <ComboBox x:Name="FilterCombo" Width="140" SelectedIndex="0"
                           SelectionChanged="FilterCombo_SelectionChanged" VerticalAlignment="Center">
                     <ComboBoxItem Content="全部文件" />
                     <ComboBoxItem Content="仅已标记文件" />
@@ -553,6 +553,7 @@
                 <TabItem Header="重复文件">
                     <ListBox x:Name="ResultsList" ItemsSource="{Binding VisibleGroups}" BorderThickness="0"
                              Background="Transparent"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True"
                              VirtualizingPanel.VirtualizationMode="Recycling"
                              PreviewMouseWheel="ResultsList_PreviewMouseWheel">
@@ -579,8 +580,10 @@
                                                   Style="{StaticResource GroupListStyle}"
                                                   ColumnHeaderStyle="{StaticResource ResultColumnHeaderStyle}"
                                                   AutoGenerateColumns="False" IsReadOnly="False" CanUserAddRows="False"
-                                                  HeadersVisibility="Column" RowHeight="34" MinHeight="40"
-                                                  MaxHeight="300"
+                                                  HeadersVisibility="Column" MinRowHeight="40" MinHeight="40"
+                                                  HorizontalAlignment="Stretch"
+                                                  MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ListBox}}}"
+                                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                   MouseDoubleClick="FileList_MouseDoubleClick">
                                             <DataGrid.RowStyle>
                                                 <Style TargetType="DataGridRow"
@@ -627,10 +630,18 @@
                                                         </DataTemplate>
                                                     </DataGridTemplateColumn.CellTemplate>
                                                 </DataGridTemplateColumn>
-                                                <DataGridTextColumn Header="文件名" Binding="{Binding Name}" Width="150"
-                                                                    IsReadOnly="True" />
-                                                <DataGridTemplateColumn Header="路径"
-                                                                        MinWidth="360">
+                                                <DataGridTemplateColumn Header="文件名" Width="2*" MinWidth="100"
+                                                                        IsReadOnly="True">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding Name}"
+                                                                       TextWrapping="Wrap"
+                                                                       Padding="8,5"
+                                                                       VerticalAlignment="Center" />
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTemplateColumn Header="路径" Width="5*" MinWidth="180">
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding FilePath}"
