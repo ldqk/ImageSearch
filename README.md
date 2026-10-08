@@ -6,6 +6,7 @@
 <img width="1165" height="840" alt="image" src="https://github.com/user-attachments/assets/9f295f3b-3edf-4227-bbd8-a4b386b59251" />
 <img width="1307" height="1040" alt="image" src="https://github.com/user-attachments/assets/68aefef0-b143-4385-a7f9-fb9dbcaf073d" />
 <img width="1377" height="911" alt="image" src="https://github.com/user-attachments/assets/34a37f96-a665-43ef-a4c9-c4f3a63c8b0e" />
+<img width="1266" height="813" alt="image" src="https://github.com/user-attachments/assets/f3cdbc54-89c4-4492-8f4c-eabb82e4b197" />
 
 
 ## 环境要求
