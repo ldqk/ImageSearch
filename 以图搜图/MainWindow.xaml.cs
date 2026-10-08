@@ -218,4 +218,12 @@ public partial class MainWindow
             e.Cancel = true;
         }
     }
+
+    /// <summary>Raises the <see cref="E:System.Windows.Window.Closed" /> event.</summary>
+    /// <param name="e">An <see cref="T:System.EventArgs" /> that contains the event data.</param>
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        Application.Current.Shutdown();
+    }
 }

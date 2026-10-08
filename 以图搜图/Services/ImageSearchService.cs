@@ -40,9 +40,8 @@ public class ImageSearchService
             var indexedPositions = Enumerable.Range(0, paths.Length).Where(position => entries[position] != null).ToArray();
             var useDifferenceBuckets = algorithm.HasFlag(MatchAlgorithm.DifferenceHash) && similarity >= 0.88f;
             var hasDctAlgorithm = algorithm.HasFlag(MatchAlgorithm.DctHash32) || algorithm.HasFlag(MatchAlgorithm.DctHash64);
-            var useDctCandidates = hasDctAlgorithm;
-            var canRestrictCandidates = useDifferenceBuckets || (useDctCandidates && !algorithm.HasFlag(MatchAlgorithm.DifferenceHash));
-            var dctCandidateIndex = useDctCandidates ? GetCandidateIndex(index) : null;
+            var canRestrictCandidates = useDifferenceBuckets || (hasDctAlgorithm && !algorithm.HasFlag(MatchAlgorithm.DifferenceHash));
+            var dctCandidateIndex = hasDctAlgorithm ? GetCandidateIndex(index) : null;
             var positionsByPath = paths.Select((path, position) => (path, position)).ToDictionary(item => item.path, item => item.position, StringComparer.OrdinalIgnoreCase);
             var animatedPositions = indexedPositions.Where(position => entries[position]!.IsAnimated).ToArray();
             var differenceBuckets = useDifferenceBuckets ? BuildDifferenceHashBuckets(entries, cancellationToken) : null;

@@ -4,7 +4,7 @@
 
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 
-        xmlns:converters="clr-namespace:以图搜图.Converters"
+        xmlns:controls="clr-namespace:以图搜图.Controls"
         Title="相似文件查找"
         Width="1280"
         Height="820"
@@ -13,7 +13,6 @@
         WindowStartupLocation="CenterOwner"
         Background="#F5F5F5">
     <Window.Resources>
-        <converters:ImagePathToBitmapConverter x:Key="ImageConverter" />
         <SolidColorBrush x:Key="AccentBrush" Color="#007ACC" />
         <SolidColorBrush x:Key="AccentHoverBrush" Color="#005A9E" />
         <SolidColorBrush x:Key="ControlBorderBrush" Color="#CCD7E2" />
@@ -622,9 +621,9 @@
                                                 <DataGridTemplateColumn Header="预览" Width="60">
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
-                                                            <Image
-                                                                Source="{Binding FilePath, Converter={StaticResource ImageConverter}, ConverterParameter=48}"
-                                                                Width="44" Height="28" Stretch="Uniform" />
+                                                            <controls:AsyncImage ImagePath="{Binding FilePath}"
+                                                                                 DecodePixelSize="36" Width="44"
+                                                                                 Height="28" Stretch="Uniform" />
                                                         </DataTemplate>
                                                     </DataGridTemplateColumn.CellTemplate>
                                                 </DataGridTemplateColumn>
@@ -701,10 +700,10 @@
                                                             </ContextMenu>
                                                         </Border.ContextMenu>
                                                         <StackPanel>
-                                                            <Image
-                                                                Source="{Binding FilePath, Converter={StaticResource ImageConverter}, ConverterParameter=360}"
-                                                                Height="{Binding DataContext.ThumbnailSize, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
-                                                                Stretch="Uniform" />
+                                                            <controls:AsyncImage ImagePath="{Binding FilePath}"
+                                                                                 DecodePixelSize="360"
+                                                                                 Height="{Binding DataContext.ThumbnailSize, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                                                 Stretch="Uniform" />
                                                             <CheckBox Content="标记清理"
                                                                       IsChecked="{Binding IsMarked, Mode=TwoWay}"
                                                                       Margin="0,6,0,3" />

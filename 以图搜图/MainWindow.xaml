@@ -5,6 +5,7 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:viewmodels="clr-namespace:以图搜图.ViewModels"
   xmlns:converters="clr-namespace:以图搜图.Converters"
+  xmlns:controls="clr-namespace:以图搜图.Controls"
         mc:Ignorable="d"
         Title="以图搜图 - 本地图像检索工具WPF版 by 懒得勤快 (评估版本)"
         Height="850"
@@ -28,7 +29,6 @@
     <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
     <converters:ProgressWidthConverter x:Key="ProgressWidthConverter" />
     <converters:SpeedHistoryToPathConverter x:Key="SpeedHistoryToPathConverter" />
-    <converters:ImagePathToBitmapConverter x:Key="ImagePathToBitmapConverter" />
     <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
     <converters:ServerStatusColorConverter x:Key="BoolToColorConverter" />
     <!-- 全局字体大小设置 -->
@@ -1086,11 +1086,12 @@
                       BorderThickness="1"
                       Background="#FAFAFA"
                       CornerRadius="4">
-                <Image Source="{Binding SourceImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
-                       Stretch="Uniform"
-                       Cursor="Hand"
-                       MouseLeftButtonDown="SourceImage_Click"
-                       Margin="5" />
+                <controls:AsyncImage ImagePath="{Binding SourceImagePath}"
+                                     DecodePixelSize="800"
+                                     Stretch="Uniform"
+                                     Cursor="Hand"
+                                     MouseLeftButtonDown="SourceImage_Click"
+                                     Margin="5" />
               </Border>
               <TextBlock Grid.Row="2"
                          Text="{Binding SourceImageInfo}"
@@ -1127,11 +1128,12 @@
                       BorderThickness="1"
                       Background="#FAFAFA"
                       CornerRadius="4">
-                <Image Source="{Binding DestImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
-                       Stretch="Uniform"
-                       Cursor="Hand"
-                       MouseLeftButtonDown="DestImage_Click"
-                       Margin="5" />
+                <controls:AsyncImage ImagePath="{Binding DestImagePath}"
+                                     DecodePixelSize="800"
+                                     Stretch="Uniform"
+                                     Cursor="Hand"
+                                     MouseLeftButtonDown="DestImage_Click"
+                                     Margin="5" />
               </Border>
               <TextBlock Grid.Row="2"
                          Text="{Binding DestImageInfo}"
