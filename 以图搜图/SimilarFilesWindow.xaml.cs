@@ -36,13 +36,33 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     private bool _isDeleting;
     private bool _filterRefreshPending;
     private readonly HashSet<SimilarFileGroup> _pendingFilterGroups = [];
-    private ScrollViewer? _resultsScrollViewer;
+    private string[] _scannedImagePaths = [];
+    private List<SimilarImagePair> _similarImagePairs = [];
 
     public ObservableCollection<string> Directories { get; } = [];
     public BulkObservableCollection<SimilarFileGroup> Groups { get; } = [];
     public BulkObservableCollection<SimilarFileGroup> VisibleGroups { get; } = [];
     public BulkObservableCollection<SimilarDirectoryGroup> DuplicateDirectoryGroups { get; } = [];
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public int DuplicateGroupCount => Groups.Count;
+    public int DuplicateFileCount => Groups.Sum(group => group.Files.Count);
+    public int MarkedFileCount => Groups.Sum(group => group.Files.Count(file => file.IsMarked));
+
+    private int _scannedImageCount;
+
+    public int ScannedImageCount
+    {
+        get => _scannedImageCount;
+        private set
+        {
+            if (_scannedImageCount != value)
+            {
+                _scannedImageCount = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ScannedImageCount)));
+            }
+        }
+    }
 
     public bool HasDuplicateDirectories => DuplicateDirectoryGroups.Count > 0;
 
@@ -83,7 +103,50 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         InitializeComponent();
         DataContext = this;
         SimilaritySlider.ValueChanged += (_, _) => SimilarityLabel.Text = $"{SimilaritySlider.Value:F0}%";
-        Loaded += (_, _) => _resultsScrollViewer = FindVisualChild<ScrollViewer>(ResultsList);
+    }
+
+    private void ResultsList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not ListBox listBox || e.Delta == 0)
+        {
+            return;
+        }
+
+        var scrollViewer = FindVisualChild<ScrollViewer>(listBox);
+        if (scrollViewer == null)
+        {
+            return;
+        }
+
+        var scrollLines = SystemParameters.WheelScrollLines;
+        if (scrollLines == 0)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var scrollDistance = scrollLines < 0 ? scrollViewer.ViewportHeight : scrollLines * 16d;
+        scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta / 120d * scrollDistance);
+        e.Handled = true;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            if (FindVisualChild<T>(child) is { } descendant)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 
     public static void ShowSingle()
@@ -112,55 +175,6 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             }
         };
         window.Show();
-    }
-
-    private void ResultsList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
-    {
-        _resultsScrollViewer ??= FindVisualChild<ScrollViewer>(ResultsList);
-        if (_resultsScrollViewer == null || e.Delta == 0)
-        {
-            return;
-        }
-
-        var scrollLines = SystemParameters.WheelScrollLines;
-        if (scrollLines == 0)
-        {
-            return;
-        }
-
-        var steps = Math.Max(1, (int) Math.Round(Math.Abs(e.Delta) / 120d));
-        for (var step = 0; step < steps; step++)
-        {
-            if (e.Delta > 0)
-            {
-                _resultsScrollViewer.LineUp();
-            }
-            else
-            {
-                _resultsScrollViewer.LineDown();
-            }
-        }
-
-        e.Handled = true;
-    }
-
-    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
-    {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, index);
-            if (child is T match)
-            {
-                return match;
-            }
-
-            if (FindVisualChild<T>(child) is { } descendant)
-            {
-                return descendant;
-            }
-        }
-
-        return null;
     }
 
     private void AddDirectory_Click(object sender, RoutedEventArgs e)
@@ -257,6 +271,71 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
     }
 
+    private async void RefreshResults_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingMarks || _isDeleting || !ScanButton.IsEnabled)
+        {
+            SetStatus("当前操作尚未完成，请稍后再刷新结果。", true);
+            return;
+        }
+
+        var files = Groups.SelectMany(group => group.Files).ToArray();
+        if (files.Length == 0)
+        {
+            SetStatus("当前没有重复文件结果可刷新。");
+            return;
+        }
+
+        ScanButton.IsEnabled = false;
+        DeleteMarkedButton.IsEnabled = false;
+        RefreshResultsButton.IsEnabled = false;
+        try
+        {
+            SetStatus("正在检查重复文件是否仍然存在…");
+            var missingFiles = await Task.Run(() => files.Where(file => !File.Exists(file.FilePath)).ToHashSet());
+            var remainingGroups = new List<SimilarFileGroup>(Groups.Count);
+            var removedGroups = 0;
+            foreach (var group in Groups)
+            {
+                foreach (var file in group.Files.Where(missingFiles.Contains).ToArray())
+                {
+                    group.Files.Remove(file);
+                    group.VisibleFiles.Remove(file);
+                    file.PropertyChanged -= FileItem_PropertyChanged;
+                }
+
+                if (group.Files.Count >= 2)
+                {
+                    remainingGroups.Add(group);
+                }
+                else
+                {
+                    foreach (var file in group.Files)
+                    {
+                        file.PropertyChanged -= FileItem_PropertyChanged;
+                    }
+
+                    removedGroups++;
+                }
+            }
+
+            Groups.ReplaceAll(remainingGroups);
+            RefreshVisibleGroups();
+            await RefreshDuplicateDirectoryGroupsAsync(missingFiles.Select(file => file.FilePath));
+            SetStatus($"刷新完成：移除 {missingFiles.Count:N0} 个不存在的文件，移除 {removedGroups:N0} 个不足两项的组。");
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"刷新结果失败：{ex.Message}", true);
+        }
+        finally
+        {
+            ScanButton.IsEnabled = true;
+            DeleteMarkedButton.IsEnabled = true;
+            RefreshResultsButton.IsEnabled = true;
+        }
+    }
+
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingMarks || _isDeleting)
@@ -287,12 +366,15 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         Groups.Clear();
         VisibleGroups.Clear();
         DuplicateDirectoryGroups.Clear();
+        _scannedImagePaths = [];
+        _similarImagePairs = [];
+        ScannedImageCount = 0;
+        NotifyResultSummary();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDuplicateDirectories)));
         try
         {
             SetStatus("正在检查扫描位置和索引…");
-            var includeSubfolders = IncludeSubfoldersCheckBox.IsChecked == true;
-            var files = await Task.Run(() => EnumerateImageFiles(scanDirectories, includeSubfolders, cancellationToken).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(), cancellationToken);
+            var files = GetFiles(scanDirectories);
             cancellationToken.ThrowIfCancellationRequested();
             var missing = await Task.Run(() => files.Where(path => !_indexService.Index.ContainsKey(path) && !_indexService.FrameIndex.ContainsKey(path)).ToArray(), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
@@ -305,9 +387,11 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
             var indexedPaths = await Task.Run(() => files.Where(path => _indexService.Index.ContainsKey(path) || _indexService.FrameIndex.ContainsKey(path)).ToArray(), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
+            ScannedImageCount = indexedPaths.Length;
             if (indexedPaths.Length < 2)
             {
                 SetStatus($"扫描位置共有 {files.Length:N0} 张图片，已索引 {indexedPaths.Length:N0} 张，至少需要两张图片。", true);
+                MainTabControl.SelectedIndex = 1;
                 return;
             }
 
@@ -322,10 +406,13 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             var duplicateDirectoryGroups = await Task.Run(() => BuildDuplicateDirectoryGroups(indexedPaths, pairs, cancellationToken), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             Groups.ReplaceAll(groups);
+            _scannedImagePaths = indexedPaths;
+            _similarImagePairs = pairs;
             DuplicateDirectoryGroups.ReplaceAll(duplicateDirectoryGroups);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDuplicateDirectories)));
             SetStatus($"扫描完成：检查 {indexedPaths.Length:N0} 张图片，找到 {Groups.Count:N0} 组相似文件、{Groups.Sum(group => group.Files.Count):N0} 个文件。");
             RefreshVisibleGroups();
+            MainTabControl.SelectedIndex = 1;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -349,57 +436,28 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
     }
 
-    private static IEnumerable<string> EnumerateImageFiles(IEnumerable<string> roots, bool includeSubfolders, CancellationToken cancellationToken)
+    private static string[] GetFiles(string[] directories)
     {
-        var pending = new Queue<string>(roots);
-        while (pending.TryDequeue(out var directory))
+        if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            string[] files;
-            try
+            return directories.SelectMany(s =>
             {
-                files = Directory.GetFiles(directory);
-            }
-            catch
-            {
-                continue;
-            }
-
-            foreach (var file in files.Where(path => ImageExtensions.Contains(Path.GetExtension(path))))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                yield return file;
-            }
-
-            if (!includeSubfolders)
-            {
-                continue;
-            }
-
-            string[] subdirectories;
-            try
-            {
-                subdirectories = Directory.GetDirectories(directory);
-            }
-            catch
-            {
-                continue;
-            }
-
-            foreach (var subdirectory in subdirectories)
-            {
-                try
-                {
-                    if ((File.GetAttributes(subdirectory) & FileAttributes.ReparsePoint) == 0)
-                    {
-                        pending.Enqueue(subdirectory);
-                    }
-                }
-                catch
-                {
-                }
-            }
+                var array = EverythingHelper.EnumerateFiles(s).ToArray();
+                return array.Length == 0 ? Directory.GetFiles(s, "*", SearchOption.AllDirectories) : array;
+            }).ToArray();
         }
+
+        return directories.SelectMany(static s =>
+        {
+            try
+            {
+                return Directory.GetFiles(s, "*", SearchOption.AllDirectories);
+            }
+            catch
+            {
+                return [];
+            }
+        }).ToArray();
     }
 
     private MatchAlgorithm GetSelectedAlgorithm()
@@ -632,6 +690,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             _isUpdatingMarks = false;
         }
 
+        NotifyResultSummary();
         if (GetCurrentFilter() != "全部文件")
         {
             RefreshVisibleGroups();
@@ -642,9 +701,13 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
     private void FileItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (!_isUpdatingMarks && e.PropertyName == nameof(SimilarFileItem.IsMarked) && sender is SimilarFileItem file && GetCurrentFilter() != "全部文件")
+        if (!_isUpdatingMarks && e.PropertyName == nameof(SimilarFileItem.IsMarked) && sender is SimilarFileItem file)
         {
-            ScheduleFilterRefresh(file.Group);
+            NotifyResultSummary();
+            if (GetCurrentFilter() != "全部文件")
+            {
+                ScheduleFilterRefresh(file.Group);
+            }
         }
     }
 
@@ -712,6 +775,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             return;
         }
 
+        NotifyResultSummary();
         var filter = GetCurrentFilter();
         if (filter == "全部文件")
         {
@@ -885,6 +949,24 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDuplicateDirectories)));
     }
 
+    private async Task RefreshDuplicateDirectoryGroupsAsync(IEnumerable<string> removedPaths)
+    {
+        var removed = removedPaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (removed.Count == 0)
+        {
+            return;
+        }
+
+        _scannedImagePaths = _scannedImagePaths.Where(path => !removed.Contains(path)).ToArray();
+        _similarImagePairs = _similarImagePairs.Where(pair => !removed.Contains(pair.FirstPath) && !removed.Contains(pair.SecondPath)).ToList();
+
+        var paths = _scannedImagePaths;
+        var pairs = _similarImagePairs;
+        var updatedGroups = await Task.Run(() => BuildDuplicateDirectoryGroups(paths, pairs, CancellationToken.None));
+        DuplicateDirectoryGroups.ReplaceAll(updatedGroups);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDuplicateDirectories)));
+    }
+
     private void OpenFile(string path)
     {
         if (!File.Exists(path))
@@ -984,6 +1066,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             _isUpdatingMarks = false;
         }
 
+        NotifyResultSummary();
         if (GetCurrentFilter() != "全部文件")
         {
             RefreshVisibleGroups();
@@ -1054,6 +1137,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                 _isUpdatingMarks = false;
             }
 
+            NotifyResultSummary();
             if (GetCurrentFilter() != "全部文件")
             {
                 RefreshVisibleGroups();
@@ -1161,14 +1245,10 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
 
         Groups.ReplaceAll(remainingGroups);
-        if (deleted.Count > 0)
-        {
-            DuplicateDirectoryGroups.Clear();
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDuplicateDirectories)));
-        }
+        await RefreshDuplicateDirectoryGroupsAsync(deleted.Select(file => file.FilePath));
 
         RefreshVisibleGroups();
-        SetStatus(errors.Count == 0 ? $"已{(toRecycleBin ? "移入回收站" : "永久删除")} {deleted.Count} 个文件。{(deleted.Count > 0 ? "请重新扫描以刷新重复目录。" : string.Empty)}" : $"已处理 {deleted.Count} 个文件，{errors.Count} 个失败：{errors[0]}", errors.Count > 0);
+        SetStatus(errors.Count == 0 ? $"已{(toRecycleBin ? "移入回收站" : "永久删除")} {deleted.Count} 个文件。" : $"已处理 {deleted.Count} 个文件，{errors.Count} 个失败：{errors[0]}", errors.Count > 0);
     }
 
     private async void MarkByRule_Click(object sender, RoutedEventArgs e)
@@ -1200,6 +1280,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             _isUpdatingMarks = false;
         }
 
+        NotifyResultSummary();
         SetStatus($"已按“{rule}”标记 {Groups.Sum(group => group.Files.Count(file => file.IsMarked)):N0} 个待清理文件；文件尚未删除。");
         if (GetCurrentFilter() != "全部文件")
         {
@@ -1248,6 +1329,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             _isUpdatingMarks = false;
         }
 
+        NotifyResultSummary();
         if (GetCurrentFilter() != "全部文件")
         {
             RefreshVisibleGroups();
@@ -1270,6 +1352,13 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     }
 
     private string GetKeepRule() => (KeepRuleCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "最大文件";
+
+    private void NotifyResultSummary()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DuplicateGroupCount)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DuplicateFileCount)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MarkedFileCount)));
+    }
 
     private void SetStatus(string message, bool isError = false)
     {

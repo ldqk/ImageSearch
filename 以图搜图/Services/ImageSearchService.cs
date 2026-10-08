@@ -21,12 +21,12 @@ public class ImageSearchService
         {
             cancellationToken.ThrowIfCancellationRequested();
             var entries = new SimilarityHashes?[paths.Length];
-            var preprocessingOptions = new ParallelOptions
+            var parallelOptions = new ParallelOptions
             {
-                MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount * 2),
+                MaxDegreeOfParallelism = Environment.ProcessorCount,
                 CancellationToken = cancellationToken
             };
-            Parallel.For(0, paths.Length, preprocessingOptions, position =>
+            Parallel.For(0, paths.Length, parallelOptions, position =>
             {
                 try
                 {
@@ -48,12 +48,7 @@ public class ImageSearchService
             var pairs = new ConcurrentBag<SimilarImagePair>();
             var completed = 0;
             var dctThreshold = Math.Max(0.85f, similarity);
-            var parallelOptions = new ParallelOptions
-            {
-                MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount * 2),
-                CancellationToken = cancellationToken
-            };
-            Parallel.ForEach(indexedPositions, parallelOptions, position =>
+            Parallel.ForEach(Partitioner.Create(indexedPositions, loadBalance: true), parallelOptions, position =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var source = entries[position]!;
@@ -78,15 +73,19 @@ public class ImageSearchService
                     }
                 }
 
-                for (var candidatePosition = position + 1; candidatePosition < paths.Length; candidatePosition++)
+                var candidatePositions = allowedPositions is null
+                    ? Enumerable.Range(position + 1, paths.Length - position - 1)
+                    : allowedPositions.Where(candidatePosition => candidatePosition > position);
+                var candidatesExamined = 0;
+                foreach (var candidatePosition in candidatePositions)
                 {
-                    if ((candidatePosition & 0xFFF) == 0)
+                    if ((candidatesExamined++ & 0xFFF) == 0)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                     }
 
                     var candidate = entries[candidatePosition];
-                    if (candidate == null || (allowedPositions != null && !allowedPositions.Contains(candidatePosition)) || (ignoreSameFolder && string.Equals(source.Directory, candidate.Directory, StringComparison.OrdinalIgnoreCase)))
+                    if (candidate == null || (ignoreSameFolder && string.Equals(source.Directory, candidate.Directory, StringComparison.OrdinalIgnoreCase)))
                     {
                         continue;
                     }

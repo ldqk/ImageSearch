@@ -425,136 +425,165 @@
     </Window.Resources>
     <Grid Margin="14">
         <Grid.RowDefinitions>
-            <RowDefinition Height="175" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Border Grid.Row="0" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="10"
-                Margin="0,0,0,10">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <Grid Grid.Row="0" Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="扫描位置" FontWeight="SemiBold" Margin="0,0,10,0" />
-                    <TextBox x:Name="DirectoryPathBox" Grid.Column="1" Height="34" Padding="7,4"
-                             VerticalContentAlignment="Center" KeyDown="DirectoryPathBox_KeyDown" />
-                    <Button Grid.Column="2" Content="浏览…" Click="AddDirectory_Click" Margin="8,0,0,0" />
-                    <Button Grid.Column="3" Content="添加路径" Click="AddPath_Click" Margin="8,0,0,0" />
-                    <Button Grid.Column="4" Content="清空位置" Click="ClearDirectories_Click" Margin="8,0,0,0" />
+        <TabControl x:Name="MainTabControl" Grid.Row="0">
+            <TabItem Header="扫描设置">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="10"
+                            Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="扫描位置" FontWeight="SemiBold" Margin="0,0,10,0" />
+                                <TextBox x:Name="DirectoryPathBox" Grid.Column="1" Height="34" Padding="7,4"
+                                         VerticalContentAlignment="Center" KeyDown="DirectoryPathBox_KeyDown" />
+                                <Button Grid.Column="2" Content="浏览…" Click="AddDirectory_Click" Margin="8,0,0,0" />
+                                <Button Grid.Column="3" Content="添加路径" Click="AddPath_Click" Margin="8,0,0,0" />
+                                <Button Grid.Column="4" Content="清空位置" Click="ClearDirectories_Click" Margin="8,0,0,0" />
+                            </Grid>
+                            <ListBox x:Name="DirectoryList" Grid.Row="1" BorderBrush="#E4E8EC"
+                                     ItemsSource="{Binding Directories}" AllowDrop="True" Drop="DirectoryList_Drop">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel Margin="4,2">
+                                            <Button Content="移除" Tag="{Binding}" Click="RemoveDirectory_Click"
+                                                    DockPanel.Dock="Right" Padding="7,2" MinHeight="24" />
+                                            <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding}" />
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Row="1" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <WrapPanel VerticalAlignment="Center">
+                                <TextBlock Text="相似度" Margin="0,0,8,0" />
+                                <Slider x:Name="SimilaritySlider" Width="170" Minimum="70" Maximum="100" Value="93"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" />
+                                <TextBlock x:Name="SimilarityLabel" Text="93%" Width="48" Margin="8,0,18,0" />
+                                <TextBlock Text="匹配算法" Margin="0,0,8,0" />
+                                <ComboBox x:Name="AlgorithmCombo" Width="155" SelectedIndex="0" Margin="0,0,18,0"
+                                          VerticalAlignment="Center">
+                                    <ComboBoxItem Content="全部算法" />
+                                    <ComboBoxItem Content="Difference Hash" />
+                                    <ComboBoxItem Content="DCT Hash 32" />
+                                    <ComboBoxItem Content="DCT Hash 64" />
+                                </ComboBox>
+                                <CheckBox x:Name="IncludeSubfoldersCheckBox" Content="包括子文件夹" IsChecked="True"
+                                          VerticalAlignment="Center" Margin="0,0,14,0" />
+                                <CheckBox x:Name="IgnoreSameFolderCheckBox" Content="忽略同一文件夹内的重复"
+                                          VerticalAlignment="Center" Margin="0,0,14,0" />
+                            </WrapPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
+                                        Margin="16,0,0,0">
+                                <Button x:Name="ScanButton" Content="🔍 开始扫描" Click="Scan_Click"
+                                        Style="{StaticResource PrimaryWindowButtonStyle}" />
+                                <Button x:Name="StopScanButton" Content="⏸️ 停止扫描" Click="StopScan_Click"
+                                        IsEnabled="False" Visibility="Collapsed" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
-                <ListBox x:Name="DirectoryList" Grid.Row="1" BorderBrush="#E4E8EC" ItemsSource="{Binding Directories}"
-                         AllowDrop="True" Drop="DirectoryList_Drop">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel Margin="4,2">
-                                <Button Content="移除" Tag="{Binding}" Click="RemoveDirectory_Click"
-                                        DockPanel.Dock="Right" Padding="7,2" MinHeight="24" />
-                                <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip="{Binding}" />
-                            </DockPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-        </Border>
-        <Border Grid.Row="1" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="12"
-                Margin="0,0,0,10">
-            <WrapPanel VerticalAlignment="Center">
-                <TextBlock Text="相似度" Margin="0,0,8,0" />
-                <Slider x:Name="SimilaritySlider" Width="170" Minimum="70" Maximum="100" Value="93" TickFrequency="1"
-                        IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}"
-                        VerticalAlignment="Center" />
-                <TextBlock x:Name="SimilarityLabel" Text="93%" Width="48" Margin="8,0,18,0" />
-                <TextBlock Text="匹配算法" Margin="0,0,8,0" />
-                <ComboBox x:Name="AlgorithmCombo" Width="155" SelectedIndex="0" Margin="0,0,18,0"
-                          VerticalAlignment="Center">
-                    <ComboBoxItem Content="全部算法" />
-                    <ComboBoxItem Content="Difference Hash" />
-                    <ComboBoxItem Content="DCT Hash 32" />
-                    <ComboBoxItem Content="DCT Hash 64" />
-                </ComboBox>
-                <CheckBox x:Name="IncludeSubfoldersCheckBox" Content="包括子文件夹" IsChecked="True"
-                          VerticalAlignment="Center" Margin="0,0,14,0" />
-                <CheckBox x:Name="IgnoreSameFolderCheckBox" Content="忽略同一文件夹内的重复" VerticalAlignment="Center"
-                          Margin="0,0,14,0" />
-                <Button x:Name="ScanButton" Content="🔍 开始扫描" Click="Scan_Click"
-                        Style="{StaticResource PrimaryWindowButtonStyle}" />
-                <Button x:Name="StopScanButton" Content="⏸️ 停止扫描" Click="StopScan_Click"
-                        IsEnabled="False" Visibility="Collapsed" />
-            </WrapPanel>
-        </Border>
-        <Grid Grid.Row="2" Margin="0,0,0,10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <WrapPanel Grid.Row="0">
-                <TextBlock Text="每组保留" Margin="0,0,8,0" />
-                <ComboBox x:Name="KeepRuleCombo" Width="100" SelectedIndex="0" Margin="0,0,12,0"
-                          VerticalAlignment="Center">
-                    <ComboBoxItem Content="最大文件" />
-                    <ComboBoxItem Content="最小文件" />
-                    <ComboBoxItem Content="最新修改" />
-                    <ComboBoxItem Content="最早修改" />
-                    <ComboBoxItem Content="文件名最短" />
-                    <ComboBoxItem Content="文件名最长" />
-                </ComboBox>
-                <Button Content="按规则标记每组" Click="MarkByRule_Click" />
-                <Button Content="取消所有标记" Click="ClearAllMarks_Click" />
-                <Button Content="反选所有标记" Click="InvertAllMarks_Click" />
-                <Button x:Name="DeleteMarkedButton" Content="删除已标记" Click="DeleteMarked_Click"
-                        Style="{StaticResource DangerWindowButtonStyle}" />
-                <RadioButton x:Name="ListViewOption" Content="列表" IsChecked="True" GroupName="ResultView"
-                             Checked="ResultView_Checked" VerticalAlignment="Center" Margin="8,0" />
-                <RadioButton Content="缩略图" GroupName="ResultView" Checked="ResultView_Checked"
-                             VerticalAlignment="Center" Margin="8,0" />
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,4,0">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsThumbnailMode}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
-                    <TextBlock Text="大小" Margin="0,0,5,0" />
-                    <Slider x:Name="ThumbnailSizeSlider" Width="120" Minimum="120" Maximum="360"
-                            TickFrequency="20" IsSnapToTickEnabled="False" VerticalAlignment="Center"
-                            Value="{Binding ThumbnailSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="{Binding ThumbnailSize, StringFormat={}{0:F0}px}" Width="55" Margin="8,0,0,0" />
-                </StackPanel>
-                <TextBlock Text="筛选" Margin="10,0,6,0" />
-                <ComboBox x:Name="FilterCombo" Width="140" SelectedIndex="0"
-                          SelectionChanged="FilterCombo_SelectionChanged" VerticalAlignment="Center">
-                    <ComboBoxItem Content="全部文件" />
-                    <ComboBoxItem Content="仅已标记文件" />
-                    <ComboBoxItem Content="仅未标记文件" />
-                    <ComboBoxItem Content="含已标记文件的组" />
-                    <ComboBoxItem Content="没有标记文件的组" />
-                    <ComboBoxItem Content="组内全部已标记" />
-                </ComboBox>
-            </WrapPanel>
-            <TextBlock x:Name="StatusText" Grid.Row="1" Text="添加一个或多个扫描位置。" Foreground="#59636E"
-                       VerticalAlignment="Center" Margin="2,5,0,0" />
-        </Grid>
-        <Border Grid.Row="3" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="8">
+            </TabItem>
+            <TabItem Header="扫描结果">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="White" BorderBrush="#D8DEE5" BorderThickness="1"
+                            Padding="10" Margin="0,0,0,8">
+                        <WrapPanel VerticalAlignment="Center">
+                            <RadioButton x:Name="ListViewOption" Content="列表" IsChecked="True" GroupName="ResultView"
+                                         Checked="ResultView_Checked" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <RadioButton Content="缩略图" GroupName="ResultView" Checked="ResultView_Checked"
+                                         VerticalAlignment="Center" Margin="0,0,14,0" />
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsThumbnailMode}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="缩略图大小" Margin="0,0,5,0" />
+                                <Slider x:Name="ThumbnailSizeSlider" Width="120" Minimum="120" Maximum="640"
+                                        TickFrequency="20" IsSnapToTickEnabled="False" VerticalAlignment="Center"
+                                        Value="{Binding ThumbnailSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text="{Binding ThumbnailSize, StringFormat={}{0:F0}px}" Width="55"
+                                           Margin="8,0,0,0" />
+                            </StackPanel>
+                            <TextBlock Text="筛选" Margin="0,0,6,0" />
+                            <ComboBox x:Name="FilterCombo" Width="160" SelectedIndex="0"
+                                      SelectionChanged="FilterCombo_SelectionChanged" VerticalAlignment="Center">
+                                <ComboBoxItem Content="全部文件" />
+                                <ComboBoxItem Content="仅已标记文件" />
+                                <ComboBoxItem Content="仅未标记文件" />
+                                <ComboBoxItem Content="含已标记文件的组" />
+                                <ComboBoxItem Content="没有标记文件的组" />
+                                <ComboBoxItem Content="组内全部已标记" />
+                            </ComboBox>
+                            <Button x:Name="RefreshResultsButton" Content="刷新结果" Click="RefreshResults_Click"
+                                    Margin="16,0,0,0"
+                                    ToolTip="移除已在资源管理器中删除的文件，并更新重复文件组" />
+                        </WrapPanel>
+                    </Border>
+                    <Border Grid.Row="1" Background="White" BorderBrush="#D8DEE5" BorderThickness="1"
+                            Padding="10,8" Margin="0,0,0,8">
+                        <WrapPanel VerticalAlignment="Center">
+                            <TextBlock Text="每组保留" Margin="0,0,8,0" />
+                            <ComboBox x:Name="KeepRuleCombo" Width="120" SelectedIndex="0" Margin="0,0,10,0"
+                                      VerticalAlignment="Center">
+                                <ComboBoxItem Content="最大文件" />
+                                <ComboBoxItem Content="最小文件" />
+                                <ComboBoxItem Content="最新修改" />
+                                <ComboBoxItem Content="最早修改" />
+                                <ComboBoxItem Content="文件名最短" />
+                                <ComboBoxItem Content="文件名最长" />
+                            </ComboBox>
+                            <Button Content="按规则标记" Click="MarkByRule_Click"
+                                    Style="{StaticResource PrimaryWindowButtonStyle}" />
+                            <Button Content="取消标记" Click="ClearAllMarks_Click" />
+                            <Button Content="反选标记" Click="InvertAllMarks_Click" />
+                            <Button x:Name="DeleteMarkedButton" Content="删除已标记"
+                                    Click="DeleteMarked_Click"
+                                    Style="{StaticResource DangerWindowButtonStyle}" />
+                        </WrapPanel>
+                    </Border>
+                    <Border Grid.Row="2" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="8">
             <TabControl x:Name="ResultsTabControl">
                 <TabItem Header="重复文件">
                     <ListBox x:Name="ResultsList" ItemsSource="{Binding VisibleGroups}" BorderThickness="0"
                              Background="Transparent"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True"
+                             ScrollViewer.CanContentScroll="False" VirtualizingPanel.IsVirtualizing="True"
                              VirtualizingPanel.VirtualizationMode="Recycling"
                              PreviewMouseWheel="ResultsList_PreviewMouseWheel">
                         <ListBox.ItemContainerStyle>
@@ -663,6 +692,7 @@
                                         </DataGrid>
                                         <ListBox ItemsSource="{Binding VisibleFiles}"
                                                  Style="{StaticResource GroupThumbnailStyle}" BorderThickness="0"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                                  ScrollViewer.CanContentScroll="True"
                                                  VirtualizingPanel.IsVirtualizing="True"
@@ -750,9 +780,11 @@
                             </Style.Triggers>
                         </Style>
                     </TabItem.Style>
-                    <ListBox ItemsSource="{Binding DuplicateDirectoryGroups}" BorderThickness="0"
-                             ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True"
-                             VirtualizingPanel.VirtualizationMode="Recycling">
+                    <ListBox x:Name="DuplicateDirectoryResultsList" ItemsSource="{Binding DuplicateDirectoryGroups}"
+                             BorderThickness="0"
+                             ScrollViewer.CanContentScroll="False" VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             PreviewMouseWheel="ResultsList_PreviewMouseWheel">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
                                 <Setter Property="Padding" Value="0" />
@@ -796,6 +828,37 @@
                     </ListBox>
                 </TabItem>
             </TabControl>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+        <Border Grid.Row="1" Background="#EEF2F6" BorderBrush="#D8DEE5" BorderThickness="1"
+                Padding="12,7" Margin="0,8,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="当前统计" FontWeight="SemiBold" Foreground="#45596B" Margin="0,0,16,0" />
+                    <TextBlock Text="重复组：" Foreground="#637282" />
+                    <TextBlock Text="{Binding DuplicateGroupCount, StringFormat={}{0:N0}}"
+                               Foreground="#263746" Margin="0,0,18,0" />
+                    <TextBlock Text="重复文件：" Foreground="#637282" />
+                    <TextBlock Text="{Binding DuplicateFileCount, StringFormat={}{0:N0}}"
+                               Foreground="#263746" Margin="0,0,18,0" />
+                    <TextBlock Text="已标记：" Foreground="#637282" />
+                    <TextBlock Text="{Binding MarkedFileCount, StringFormat={}{0:N0}}"
+                               Foreground="#263746" Margin="0,0,18,0" />
+                    <TextBlock Text="已检查图片：" Foreground="#637282" />
+                    <TextBlock Text="{Binding ScannedImageCount, StringFormat={}{0:N0}}"
+                               Foreground="#263746" />
+                </StackPanel>
+                <TextBlock x:Name="StatusText" Grid.Column="1" Text="添加一个或多个扫描位置。"
+                           Foreground="#59636E" TextAlignment="Right" TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
+                           Margin="16,0,0,0" VerticalAlignment="Center" />
+            </Grid>
         </Border>
     </Grid>
 </Window>
