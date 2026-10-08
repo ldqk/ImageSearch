@@ -45,6 +45,11 @@ public partial class MainWindow
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
+    private void SimilarFiles_Click(object sender, RoutedEventArgs e)
+    {
+        SimilarFilesWindow.ShowSingle();
+    }
+
     private void UpdateSpeedChart()
     {
         if (_speedPolygon == null || ViewModel.SpeedHistory.Count == 0)

@@ -18,7 +18,7 @@ public class ImagePathToBitmapConverter : IValueConverter
             bitmap.BeginInit();
             bitmap.UriSource = new Uri(path, UriKind.Absolute);
             bitmap.CacheOption = BitmapCacheOption.OnLoad; // 关键:加载后立即释放文件
-            bitmap.DecodePixelWidth = 800; // 限制解码宽度以节省内存
+            bitmap.DecodePixelWidth = parameter is string widthText && int.TryParse(widthText, out var width) && width > 0 ? width : 800;
             bitmap.EndInit();
             bitmap.Freeze(); // 冻结以提高性能并允许跨线程访问
             return bitmap;

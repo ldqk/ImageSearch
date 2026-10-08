@@ -10,12 +10,240 @@ namespace 以图搜图.Services;
 
 public class ImageSearchService
 {
-    private readonly object _candidateIndexLock = new();
+    private readonly Lock _candidateIndexLock = new();
     private HashCandidateIndex? _candidateIndex;
     private ConcurrentDictionary<string, IndexItem>? _candidateIndexSource;
     private int _candidateIndexSourceCount;
 
-    public async Task<List<SearchResult>> SearchAsync(string filename, ConcurrentDictionary<string, IndexItem> index, ConcurrentDictionary<string, FrameIndexItem> frameIndex, MatchAlgorithm algorithm, float similarity, bool checkRotated, bool checkFlipped)
+    public async Task<List<SimilarImagePair>> FindSimilarPairsAsync(string[] paths, ConcurrentDictionary<string, IndexItem> index, ConcurrentDictionary<string, FrameIndexItem> frameIndex, MatchAlgorithm algorithm, float similarity, bool ignoreSameFolder, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    {
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var entries = new SimilarityHashes?[paths.Length];
+            var preprocessingOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount * 2),
+                CancellationToken = cancellationToken
+            };
+            Parallel.For(0, paths.Length, preprocessingOptions, position =>
+            {
+                try
+                {
+                    entries[position] = CreateSimilarityHashes(paths[position], index, frameIndex, algorithm);
+                }
+                catch
+                {
+                }
+            });
+
+            var indexedPositions = Enumerable.Range(0, paths.Length).Where(position => entries[position] != null).ToArray();
+            var useDifferenceBuckets = algorithm.HasFlag(MatchAlgorithm.DifferenceHash) && similarity >= 0.88f;
+            var hasDctAlgorithm = algorithm.HasFlag(MatchAlgorithm.DctHash32) || algorithm.HasFlag(MatchAlgorithm.DctHash64);
+            var useDctCandidates = hasDctAlgorithm;
+            var canRestrictCandidates = useDifferenceBuckets || (useDctCandidates && !algorithm.HasFlag(MatchAlgorithm.DifferenceHash));
+            var dctCandidateIndex = useDctCandidates ? GetCandidateIndex(index) : null;
+            var positionsByPath = paths.Select((path, position) => (path, position)).ToDictionary(item => item.path, item => item.position, StringComparer.OrdinalIgnoreCase);
+            var animatedPositions = indexedPositions.Where(position => entries[position]!.IsAnimated).ToArray();
+            var differenceBuckets = useDifferenceBuckets ? BuildDifferenceHashBuckets(entries, cancellationToken) : null;
+            var pairs = new ConcurrentBag<SimilarImagePair>();
+            var completed = 0;
+            var dctThreshold = Math.Max(0.85f, similarity);
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount * 2),
+                CancellationToken = cancellationToken
+            };
+            Parallel.ForEach(indexedPositions, parallelOptions, position =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var source = entries[position]!;
+                HashSet<int>? allowedPositions = null;
+                if (canRestrictCandidates && !source.IsAnimated)
+                {
+                    allowedPositions = new HashSet<int>(animatedPositions);
+                    if (differenceBuckets != null)
+                    {
+                        AddDifferenceHashCandidates(source.DifferenceHashes, differenceBuckets, similarity, allowedPositions, cancellationToken);
+                    }
+
+                    if (dctCandidateIndex != null)
+                    {
+                        foreach (var candidatePath in dctCandidateIndex.FindCandidates(source.DctHashes, source.DctHash64s))
+                        {
+                            if (positionsByPath.TryGetValue(candidatePath, out var candidatePosition))
+                            {
+                                allowedPositions.Add(candidatePosition);
+                            }
+                        }
+                    }
+                }
+
+                for (var candidatePosition = position + 1; candidatePosition < paths.Length; candidatePosition++)
+                {
+                    if ((candidatePosition & 0xFFF) == 0)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    var candidate = entries[candidatePosition];
+                    if (candidate == null || (allowedPositions != null && !allowedPositions.Contains(candidatePosition)) || (ignoreSameFolder && string.Equals(source.Directory, candidate.Directory, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+
+                    var bestMatch = 0f;
+                    if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
+                    {
+                        bestMatch = Math.Max(bestMatch, MaxDifferenceMatch(source.DifferenceHashes, candidate.DifferenceHashes));
+                    }
+
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
+                    {
+                        bestMatch = Math.Max(bestMatch, MaxDctMatch(source.DctHashes, candidate.DctHashes, dctThreshold));
+                    }
+
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                    {
+                        bestMatch = Math.Max(bestMatch, MaxDctMatch(source.DctHash64s, candidate.DctHash64s, dctThreshold));
+                    }
+
+                    if (bestMatch >= similarity)
+                    {
+                        pairs.Add(new SimilarImagePair(source.Path, candidate.Path, bestMatch));
+                    }
+                }
+
+                var current = Interlocked.Increment(ref completed);
+                if (current % 256 == 0 || current == indexedPositions.Length)
+                {
+                    progress?.Report(current);
+                }
+            });
+
+            return pairs.ToList();
+        }, cancellationToken);
+    }
+
+    private static SimilarityHashes? CreateSimilarityHashes(string path, ConcurrentDictionary<string, IndexItem> index, ConcurrentDictionary<string, FrameIndexItem> frameIndex, MatchAlgorithm algorithm)
+    {
+        if (frameIndex.TryGetValue(path, out var frameItem))
+        {
+            return new SimilarityHashes(path, Path.GetDirectoryName(path) ?? string.Empty, algorithm.HasFlag(MatchAlgorithm.DifferenceHash) ? frameItem.DifferenceHash.ToArray() : [], algorithm.HasFlag(MatchAlgorithm.DctHash32) ? frameItem.DctHash.ToArray() : [], algorithm.HasFlag(MatchAlgorithm.DctHash64) ? frameItem.DctHash64.ToArray() : [], true);
+        }
+
+        if (!index.TryGetValue(path, out var item))
+        {
+            return null;
+        }
+
+        return new SimilarityHashes(path, Path.GetDirectoryName(path) ?? string.Empty, algorithm.HasFlag(MatchAlgorithm.DifferenceHash) && item.DifferenceHash is {Length: > 0} ? [item.DifferenceHash] : [], algorithm.HasFlag(MatchAlgorithm.DctHash32) ? [item.DctHash] : [], algorithm.HasFlag(MatchAlgorithm.DctHash64) ? [item.DctHash64] : [], false);
+    }
+
+    private static Dictionary<byte, List<int>>[] BuildDifferenceHashBuckets(SimilarityHashes?[] entries, CancellationToken cancellationToken)
+    {
+        var buckets = Enumerable.Range(0, 32).Select(_ => new Dictionary<byte, List<int>>()).ToArray();
+        for (var position = 0; position < entries.Length; position++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (entries[position] is not { } entry || entry.IsAnimated)
+            {
+                continue;
+            }
+
+            for (var table = 0; table < buckets.Length; table++)
+            {
+                foreach (var bucket in entry.DifferenceHashes.Select(hash => GetDifferenceHashByte(hash, table)).Distinct())
+                {
+                    if (!buckets[table].TryGetValue(bucket, out var positions))
+                    {
+                        positions = [];
+                        buckets[table][bucket] = positions;
+                    }
+
+                    positions.Add(position);
+                }
+            }
+        }
+
+        return buckets;
+    }
+
+    private static void AddDifferenceHashCandidates(ulong[][] sourceHashes, Dictionary<byte, List<int>>[] buckets, float similarity, HashSet<int> candidates, CancellationToken cancellationToken)
+    {
+        var maximumChangedBits = (int) Math.Ceiling((1 - similarity) * 256);
+        var minimumSharedBuckets = Math.Max(1, buckets.Length - maximumChangedBits);
+        foreach (var sourceHash in sourceHashes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var sharedBuckets = new Dictionary<int, int>();
+            for (var table = 0; table < buckets.Length; table++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!buckets[table].TryGetValue(GetDifferenceHashByte(sourceHash, table), out var positions))
+                {
+                    continue;
+                }
+
+                foreach (var position in positions)
+                {
+                    sharedBuckets.TryGetValue(position, out var count);
+                    sharedBuckets[position] = count + 1;
+                }
+            }
+
+            foreach (var (position, count) in sharedBuckets)
+            {
+                if (count >= minimumSharedBuckets)
+                {
+                    candidates.Add(position);
+                }
+            }
+        }
+    }
+
+    private static byte GetDifferenceHashByte(ulong[] hash, int bucket)
+    {
+        var word = bucket / 8;
+        var bitOffset = bucket % 8 * 8;
+        return word < hash.Length ? (byte) (hash[word] >> bitOffset) : (byte) 0;
+    }
+
+    private static float MaxDifferenceMatch(ulong[][] first, ulong[][] second)
+    {
+        var max = 0f;
+        foreach (var firstHash in first)
+        {
+            foreach (var secondHash in second)
+            {
+                max = Math.Max(max, ImageHasher.Compare(firstHash, secondHash));
+            }
+        }
+
+        return max;
+    }
+
+    private static float MaxDctMatch(ulong[] first, ulong[] second, float threshold)
+    {
+        var max = 0f;
+        foreach (var firstHash in first)
+        {
+            foreach (var secondHash in second)
+            {
+                var match = ImageHasher.Compare(firstHash, secondHash);
+                if (match >= threshold)
+                {
+                    max = Math.Max(max, match);
+                }
+            }
+        }
+
+        return max;
+    }
+
+    private sealed record SimilarityHashes(string Path, string Directory, ulong[][] DifferenceHashes, ulong[] DctHashes, ulong[] DctHash64s, bool IsAnimated);
+
+    public async Task<List<SearchResult>> SearchAsync(string filename, ConcurrentDictionary<string, IndexItem> index, ConcurrentDictionary<string, FrameIndexItem> frameIndex, MatchAlgorithm algorithm, float similarity, bool checkRotated, bool checkFlipped, bool includeDirectoryStatistics = true)
     {
         var parallelism = Environment.ProcessorCount * 4;
         return await Task.Run(() =>
@@ -261,7 +489,7 @@ public class ImageSearchService
                     return items;
                 }).Where(x => x.匹配度 >= similarity));
 
-                var indexSearchParallelism = Math.Max(1, Environment.ProcessorCount*2);
+                var indexSearchParallelism = Math.Max(1, Environment.ProcessorCount * 2);
                 var indexSearchOptions = new ParallelOptions
                 {
                     MaxDegreeOfParallelism = indexSearchParallelism
@@ -329,28 +557,31 @@ public class ImageSearchService
             }
 
             list = list.OrderByDescending(a => a.匹配度).DistinctBy(e => e.路径).ToList();
-            var dic = list.Where(e => File.Exists(e.路径)).GroupBy(r => new FileInfo(r.路径).DirectoryName).Where(g => g.Key != null).AsParallel().WithDegreeOfParallelism(parallelism).Select(g =>
+            if (includeDirectoryStatistics)
             {
-                var files = new DirectoryInfo(g.Key!).GetFiles("*.*", SearchOption.AllDirectories);
-                return new
+                var dic = list.Where(e => File.Exists(e.路径)).GroupBy(r => new FileInfo(r.路径).DirectoryName).Where(g => g.Key != null).AsParallel().WithDegreeOfParallelism(parallelism).Select(g =>
                 {
-                    Key = g.Key!,
-                    files.Length,
-                    Size = files.Sum(s => s.Length) / 1048576f
-                };
-            }).ToDictionary(a => a.Key);
+                    var files = new DirectoryInfo(g.Key!).GetFiles("*.*", SearchOption.AllDirectories);
+                    return new
+                    {
+                        Key = g.Key!,
+                        files.Length,
+                        Size = files.Sum(s => s.Length) / 1048576f
+                    };
+                }).ToDictionary(a => a.Key);
 
-            list.Where(e => File.Exists(e.路径)).OrderBy(e => e.路径).ForEach(result =>
-            {
-                var file = new FileInfo(result.路径);
-                result.大小 = $"{file.Length / 1024}KB";
-                var dirName = file.DirectoryName!;
-                if (dic.ContainsKey(dirName))
+                list.Where(e => File.Exists(e.路径)).OrderBy(e => e.路径).ForEach(result =>
                 {
-                    result.所属文件夹文件数 = dic[dirName].Length;
-                    result.所属文件夹大小 = $"{dic[dirName].Size:F2}MB";
-                }
-            });
+                    var file = new FileInfo(result.路径);
+                    result.大小 = $"{file.Length / 1024}KB";
+                    var dirName = file.DirectoryName!;
+                    if (dic.ContainsKey(dirName))
+                    {
+                        result.所属文件夹文件数 = dic[dirName].Length;
+                        result.所属文件夹大小 = $"{dic[dirName].Size:F2}MB";
+                    }
+                });
+            }
 
             return list;
         });
@@ -397,24 +628,6 @@ public class ImageSearchService
             if (match > max)
             {
                 max = match;
-            }
-        }
-
-        return max;
-    }
-
-    private static float MaxCompare(List<ulong> values, ulong[] queryHashes)
-    {
-        var max = 0f;
-        foreach (var value in values)
-        {
-            foreach (var queryHash in queryHashes)
-            {
-                var match = ImageHasher.Compare(value, queryHash);
-                if (match > max)
-                {
-                    max = match;
-                }
             }
         }
 
@@ -535,6 +748,8 @@ public class ImageSearchService
         return total / count;
     }
 }
+
+public sealed record SimilarImagePair(string FirstPath, string SecondPath, float Similarity);
 
 internal sealed class DisposeCollection<T>(IEnumerable<T> items) : IEnumerable<T>, IDisposable where T : IDisposable
 {

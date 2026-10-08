@@ -1,10 +1,10 @@
 ﻿<Window x:Class="以图搜图.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:viewmodels="clr-namespace:以图搜图.ViewModels"
-        xmlns:converters="clr-namespace:以图搜图.Converters"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:viewmodels="clr-namespace:以图搜图.ViewModels"
+  xmlns:converters="clr-namespace:以图搜图.Converters"
         mc:Ignorable="d"
         Title="以图搜图 - 本地图像检索工具WPF版 by 懒得勤快 (评估版本)"
         Height="850"
@@ -20,400 +20,385 @@
         TextOptions.TextRenderingMode="ClearType"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
-    <Window.DataContext>
-        <viewmodels:MainViewModel />
-    </Window.DataContext>
-
-    <Window.Resources>
-
-        <!-- 转换器 -->
-        <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
-        <converters:ProgressWidthConverter x:Key="ProgressWidthConverter" />
-        <converters:SpeedHistoryToPathConverter x:Key="SpeedHistoryToPathConverter" />
-        <converters:ImagePathToBitmapConverter x:Key="ImagePathToBitmapConverter" />
-        <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
-        <converters:ServerStatusColorConverter x:Key="BoolToColorConverter" />
-
-        <!-- 全局字体大小设置 -->
-        <Style TargetType="TextBlock">
-            <Setter Property="FontSize"
+  <Window.DataContext>
+    <viewmodels:MainViewModel />
+  </Window.DataContext>
+  <Window.Resources>
+    <!-- 转换器 -->
+    <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+    <converters:ProgressWidthConverter x:Key="ProgressWidthConverter" />
+    <converters:SpeedHistoryToPathConverter x:Key="SpeedHistoryToPathConverter" />
+    <converters:ImagePathToBitmapConverter x:Key="ImagePathToBitmapConverter" />
+    <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
+    <converters:ServerStatusColorConverter x:Key="BoolToColorConverter" />
+    <!-- 全局字体大小设置 -->
+    <Style TargetType="TextBlock">
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="TextOptions.TextFormattingMode"
+      <Setter Property="TextOptions.TextFormattingMode"
               Value="Ideal" />
-            <Setter Property="TextOptions.TextRenderingMode"
+      <Setter Property="TextOptions.TextRenderingMode"
               Value="ClearType" />
-        </Style>
-
-        <!-- 区域标题样式 -->
-        <Style x:Key="SectionHeaderStyle"
+    </Style>
+    <!-- 区域标题样式 -->
+    <Style x:Key="SectionHeaderStyle"
            TargetType="TextBlock">
-            <Setter Property="FontSize"
+      <Setter Property="FontSize"
               Value="15" />
-            <Setter Property="FontWeight"
+      <Setter Property="FontWeight"
               Value="SemiBold" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="#2C3E50" />
-            <Setter Property="Margin"
+      <Setter Property="Margin"
               Value="0" />
-        </Style>
-
-        <!-- 标签文字样式 -->
-        <Style x:Key="LabelStyle"
+    </Style>
+    <!-- 标签文字样式 -->
+    <Style x:Key="LabelStyle"
            TargetType="TextBlock">
-            <Setter Property="FontSize"
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="#555555" />
-            <Setter Property="VerticalAlignment"
+      <Setter Property="VerticalAlignment"
               Value="Center" />
-            <Setter Property="Margin"
+      <Setter Property="Margin"
               Value="0" />
-            <Setter Property="MinWidth"
+      <Setter Property="MinWidth"
               Value="75" />
-        </Style>
-
-        <!-- 信息文字样式 -->
-        <Style x:Key="InfoTextStyle"
+    </Style>
+    <!-- 信息文字样式 -->
+    <Style x:Key="InfoTextStyle"
            TargetType="TextBlock">
-            <Setter Property="FontSize"
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="#777777" />
-            <Setter Property="VerticalAlignment"
+      <Setter Property="VerticalAlignment"
               Value="Center" />
-        </Style>
-
-        <!-- 强调文字样式 -->
-        <Style x:Key="AccentTextStyle"
+    </Style>
+    <!-- 强调文字样式 -->
+    <Style x:Key="AccentTextStyle"
            TargetType="TextBlock">
-            <Setter Property="FontSize"
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="FontWeight"
+      <Setter Property="FontWeight"
               Value="SemiBold" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="#007ACC" />
-            <Setter Property="VerticalAlignment"
+      <Setter Property="VerticalAlignment"
               Value="Center" />
-        </Style>
-
-        <!-- 主要按钮样式 -->
-        <Style x:Key="PrimaryButtonStyle"
+    </Style>
+    <!-- 主要按钮样式 -->
+    <Style x:Key="PrimaryButtonStyle"
            TargetType="Button">
-            <Setter Property="Background"
+      <Setter Property="Background"
               Value="#007ACC" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="White" />
-            <Setter Property="BorderThickness"
+      <Setter Property="BorderThickness"
               Value="0" />
-            <Setter Property="Padding"
+      <Setter Property="Padding"
               Value="20,10" />
-            <Setter Property="FontSize"
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="FontWeight"
+      <Setter Property="FontWeight"
               Value="Medium" />
-            <Setter Property="Cursor"
+      <Setter Property="Cursor"
               Value="Hand" />
-            <Setter Property="MinHeight"
+      <Setter Property="MinHeight"
               Value="36" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}"
                     CornerRadius="5"
                     Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
+              <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center" />
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver"
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver"
                  Value="True">
-                    <Setter Property="Background"
+          <Setter Property="Background"
                   Value="#005A9E" />
-                </Trigger>
-                <Trigger Property="IsPressed"
+        </Trigger>
+        <Trigger Property="IsPressed"
                  Value="True">
-                    <Setter Property="Background"
+          <Setter Property="Background"
                   Value="#004B87" />
-                </Trigger>
-                <Trigger Property="IsEnabled"
+        </Trigger>
+        <Trigger Property="IsEnabled"
                  Value="False">
-                    <Setter Property="Background"
+          <Setter Property="Background"
                   Value="#CCCCCC" />
-                    <Setter Property="Foreground"
+          <Setter Property="Foreground"
                   Value="#888888" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- 次要按钮样式 -->
-        <Style x:Key="SecondaryButtonStyle"
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <!-- 次要按钮样式 -->
+    <Style x:Key="SecondaryButtonStyle"
            TargetType="Button">
-            <Setter Property="Background"
+      <Setter Property="Background"
               Value="#FFFFFF" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="#333333" />
-            <Setter Property="BorderBrush"
+      <Setter Property="BorderBrush"
               Value="#CCCCCC" />
-            <Setter Property="BorderThickness"
+      <Setter Property="BorderThickness"
               Value="1" />
-            <Setter Property="Padding"
+      <Setter Property="Padding"
               Value="18,9" />
-            <Setter Property="FontSize"
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="Cursor"
+      <Setter Property="Cursor"
               Value="Hand" />
-            <Setter Property="MinHeight"
+      <Setter Property="MinHeight"
               Value="36" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
                     CornerRadius="5"
                     Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
+              <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center" />
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver"
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver"
                  Value="True">
-                    <Setter Property="Background"
+          <Setter Property="Background"
                   Value="#F0F0F0" />
-                    <Setter Property="BorderBrush"
+          <Setter Property="BorderBrush"
                   Value="#999999" />
-                </Trigger>
-                <Trigger Property="IsEnabled"
+        </Trigger>
+        <Trigger Property="IsEnabled"
                  Value="False">
-                    <Setter Property="Background"
+          <Setter Property="Background"
                   Value="#F5F5F5" />
-                    <Setter Property="Foreground"
+          <Setter Property="Foreground"
                   Value="#AAAAAA" />
-                    <Setter Property="BorderBrush"
+          <Setter Property="BorderBrush"
                   Value="#DDDDDD" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- 文本框样式 -->
-        <Style x:Key="ModernTextBoxStyle"
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <!-- 文本框样式 -->
+    <Style x:Key="ModernTextBoxStyle"
            TargetType="TextBox">
-            <Setter Property="Padding"
+      <Setter Property="Padding"
               Value="5,3" />
-            <Setter Property="FontSize"
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="BorderBrush"
+      <Setter Property="BorderBrush"
               Value="#CCCCCC" />
-            <Setter Property="BorderThickness"
+      <Setter Property="BorderThickness"
               Value="1" />
-            <Setter Property="Background"
+      <Setter Property="Background"
               Value="White" />
-            <Setter Property="VerticalContentAlignment"
+      <Setter Property="VerticalContentAlignment"
               Value="Center" />
-            <Setter Property="Height"
+      <Setter Property="Height"
               Value="36" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border Background="{TemplateBinding Background}"
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
                     CornerRadius="4">
-                            <ScrollViewer x:Name="PART_ContentHost"
+              <ScrollViewer x:Name="PART_ContentHost"
                             Margin="{TemplateBinding Padding}"
                             VerticalAlignment="Center" />
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsFocused"
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="IsFocused"
                  Value="True">
-                    <Setter Property="BorderBrush"
+          <Setter Property="BorderBrush"
                   Value="#007ACC" />
-                    <Setter Property="BorderThickness"
+          <Setter Property="BorderThickness"
                   Value="2" />
-                </Trigger>
-                <Trigger Property="IsEnabled"
+        </Trigger>
+        <Trigger Property="IsEnabled"
                  Value="False">
-                    <Setter Property="Background"
+          <Setter Property="Background"
                   Value="#F5F5F5" />
-                    <Setter Property="Foreground"
+          <Setter Property="Foreground"
                   Value="#AAAAAA" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="ModernComboBoxStyle"
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="ModernComboBoxStyle"
            TargetType="ComboBox">
-            <Setter Property="FontSize"
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="#333333" />
-            <Setter Property="Padding"
+      <Setter Property="Padding"
               Value="8,0,8,0" />
-            <Setter Property="Height"
+      <Setter Property="Height"
               Value="36" />
-            <Setter Property="Background"
+      <Setter Property="Background"
               Value="White" />
-            <Setter Property="BorderBrush"
+      <Setter Property="BorderBrush"
               Value="#CCCCCC" />
-            <Setter Property="BorderThickness"
+      <Setter Property="BorderThickness"
               Value="1" />
-            <Setter Property="HorizontalContentAlignment"
+      <Setter Property="HorizontalContentAlignment"
               Value="Left" />
-            <Setter Property="VerticalContentAlignment"
+      <Setter Property="VerticalContentAlignment"
               Value="Center" />
-            <Setter Property="SnapsToDevicePixels"
+      <Setter Property="SnapsToDevicePixels"
               Value="True" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver"
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver"
                  Value="True">
-                    <Setter Property="BorderBrush"
+          <Setter Property="BorderBrush"
                   Value="#007ACC" />
-                </Trigger>
-                <Trigger Property="IsKeyboardFocusWithin"
+        </Trigger>
+        <Trigger Property="IsKeyboardFocusWithin"
                  Value="True">
-                    <Setter Property="BorderBrush"
+          <Setter Property="BorderBrush"
                   Value="#007ACC" />
-                    <Setter Property="BorderThickness"
+          <Setter Property="BorderThickness"
                   Value="2" />
-                </Trigger>
-                <Trigger Property="IsEnabled"
+        </Trigger>
+        <Trigger Property="IsEnabled"
                  Value="False">
-                    <Setter Property="Background"
+          <Setter Property="Background"
                   Value="#F5F5F5" />
-                    <Setter Property="Foreground"
+          <Setter Property="Foreground"
                   Value="#AAAAAA" />
-                    <Setter Property="BorderBrush"
+          <Setter Property="BorderBrush"
                   Value="#DDDDDD" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- 卡片容器样式 -->
-        <Style x:Key="CardStyle"
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <!-- 卡片容器样式 -->
+    <Style x:Key="CardStyle"
            TargetType="Border">
-            <Setter Property="Background"
+      <Setter Property="Background"
               Value="White" />
-            <Setter Property="BorderBrush"
+      <Setter Property="BorderBrush"
               Value="#DDDDDD" />
-            <Setter Property="BorderThickness"
+      <Setter Property="BorderThickness"
               Value="1" />
-            <Setter Property="CornerRadius"
+      <Setter Property="CornerRadius"
               Value="8" />
-            <Setter Property="Padding"
+      <Setter Property="Padding"
               Value="10" />
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect Color="#000000"
+      <Setter Property="Effect">
+        <Setter.Value>
+          <DropShadowEffect Color="#000000"
                             Opacity="0.08"
                             BlurRadius="10"
                             ShadowDepth="2" />
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- DataGrid 样式 -->
-        <Style x:Key="ModernDataGridStyle"
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <!-- DataGrid 样式 -->
+    <Style x:Key="ModernDataGridStyle"
            TargetType="DataGrid">
-            <Setter Property="Background"
+      <Setter Property="Background"
               Value="White" />
-            <Setter Property="BorderBrush"
+      <Setter Property="BorderBrush"
               Value="#DDDDDD" />
-            <Setter Property="BorderThickness"
+      <Setter Property="BorderThickness"
               Value="0" />
-            <Setter Property="RowBackground"
+      <Setter Property="RowBackground"
               Value="White" />
-            <Setter Property="AlternatingRowBackground"
+      <Setter Property="AlternatingRowBackground"
               Value="#FAFAFA" />
-            <Setter Property="GridLinesVisibility"
+      <Setter Property="GridLinesVisibility"
               Value="Horizontal" />
-            <Setter Property="HorizontalGridLinesBrush"
+      <Setter Property="HorizontalGridLinesBrush"
               Value="#F0F0F0" />
-            <Setter Property="HeadersVisibility"
+      <Setter Property="HeadersVisibility"
               Value="Column" />
-            <Setter Property="CanUserResizeRows"
+      <Setter Property="CanUserResizeRows"
               Value="True" />
-            <Setter Property="FontSize"
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="MinRowHeight"
+      <Setter Property="MinRowHeight"
               Value="40" />
-        </Style>
-
-        <!-- DataGrid 行样式 -->
-        <Style x:Key="ModernDataGridRowStyle"
+    </Style>
+    <!-- DataGrid 行样式 -->
+    <Style x:Key="ModernDataGridRowStyle"
            TargetType="DataGridRow">
-            <Setter Property="Background"
+      <Setter Property="Background"
               Value="White" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="#333333" />
-            <Style.Triggers>
-                <!-- 当大小字段为空时的样式 -->
-                <DataTrigger Binding="{Binding 大小}"
+      <Style.Triggers>
+        <!-- 当大小字段为空时的样式 -->
+        <DataTrigger Binding="{Binding 大小}"
                      Value="">
-                    <Setter Property="Foreground"
+          <Setter Property="Foreground"
                   Value="#AAAAAA" />
-                    <Setter Property="IsEnabled"
+          <Setter Property="IsEnabled"
                   Value="False" />
-                    <Setter Property="Focusable"
+          <Setter Property="Focusable"
                   Value="False" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding 大小}"
+        </DataTrigger>
+        <DataTrigger Binding="{Binding 大小}"
                      Value="{x:Null}">
-                    <Setter Property="Foreground"
+          <Setter Property="Foreground"
                   Value="#AAAAAA" />
-                    <Setter Property="IsEnabled"
+          <Setter Property="IsEnabled"
                   Value="False" />
-                    <Setter Property="Focusable"
+          <Setter Property="Focusable"
                   Value="False" />
-                </DataTrigger>
-                <!-- 鼠标悬停效果 (仅对可用行) -->
-                <MultiTrigger>
-                    <MultiTrigger.Conditions>
-                        <Condition Property="IsMouseOver"
+        </DataTrigger>
+        <!-- 鼠标悬停效果 (仅对可用行) -->
+        <MultiTrigger>
+          <MultiTrigger.Conditions>
+            <Condition Property="IsMouseOver"
                        Value="True" />
-                        <Condition Property="IsEnabled"
+            <Condition Property="IsEnabled"
                        Value="True" />
-                    </MultiTrigger.Conditions>
-                    <Setter Property="Background"
+          </MultiTrigger.Conditions>
+          <Setter Property="Background"
                   Value="#E6F3FF" />
-                </MultiTrigger>
-                <!-- 选中效果 (仅对可用行) -->
-                <MultiTrigger>
-                    <MultiTrigger.Conditions>
-                        <Condition Property="IsSelected"
+        </MultiTrigger>
+        <!-- 选中效果 (仅对可用行) -->
+        <MultiTrigger>
+          <MultiTrigger.Conditions>
+            <Condition Property="IsSelected"
                        Value="True" />
-                        <Condition Property="IsEnabled"
+            <Condition Property="IsEnabled"
                        Value="True" />
-                    </MultiTrigger.Conditions>
-                    <Setter Property="Background"
+          </MultiTrigger.Conditions>
+          <Setter Property="Background"
                   Value="#CCE8FF" />
-                </MultiTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- CheckBox 样式 -->
-        <Style TargetType="CheckBox">
-            <Setter Property="FontSize"
+        </MultiTrigger>
+      </Style.Triggers>
+    </Style>
+    <!-- CheckBox 样式 -->
+    <Style TargetType="CheckBox">
+      <Setter Property="FontSize"
               Value="13" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="#555555" />
-            <Setter Property="VerticalAlignment"
+      <Setter Property="VerticalAlignment"
               Value="Center" />
-            <Setter Property="Padding"
+      <Setter Property="Padding"
               Value="6,0,0,0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="CheckBox">
-                        <StackPanel Orientation="Horizontal">
-                            <Border x:Name="CheckBoxBorder"
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CheckBox">
+            <StackPanel Orientation="Horizontal">
+              <Border x:Name="CheckBoxBorder"
                       Width="18"
                       Height="18"
                       Background="White"
@@ -421,203 +406,198 @@
                       BorderThickness="1.5"
                       CornerRadius="3"
                       Margin="0,0,8,0">
-                                <Path x:Name="CheckMark"
+                <Path x:Name="CheckMark"
                       Data="M 2 5 L 6 9 L 12 2"
                       Stroke="#007ACC"
                       StrokeThickness="2"
                       Visibility="Collapsed"
                       Margin="2" />
-                            </Border>
-                            <ContentPresenter VerticalAlignment="Center"
+              </Border>
+              <ContentPresenter VerticalAlignment="Center"
                                 Margin="{TemplateBinding Padding}" />
-                        </StackPanel>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked"
+            </StackPanel>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked"
                        Value="True">
-                                <Setter TargetName="CheckMark"
+                <Setter TargetName="CheckMark"
                         Property="Visibility"
                         Value="Visible" />
-                                <Setter TargetName="CheckBoxBorder"
+                <Setter TargetName="CheckBoxBorder"
                         Property="Background"
                         Value="#E6F3FF" />
-                                <Setter TargetName="CheckBoxBorder"
+                <Setter TargetName="CheckBoxBorder"
                         Property="BorderBrush"
                         Value="#007ACC" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver"
+              </Trigger>
+              <Trigger Property="IsMouseOver"
                        Value="True">
-                                <Setter TargetName="CheckBoxBorder"
+                <Setter TargetName="CheckBoxBorder"
                         Property="BorderBrush"
                         Value="#007ACC" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled"
+              </Trigger>
+              <Trigger Property="IsEnabled"
                        Value="False">
-                                <Setter TargetName="CheckBoxBorder"
+                <Setter TargetName="CheckBoxBorder"
                         Property="Background"
                         Value="#F5F5F5" />
-                                <Setter TargetName="CheckBoxBorder"
+                <Setter TargetName="CheckBoxBorder"
                         Property="BorderBrush"
                         Value="#DDDDDD" />
-                                <Setter Property="Foreground"
+                <Setter Property="Foreground"
                         Value="#AAAAAA" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Slider 样式 -->
-        <Style x:Key="ModernSliderStyle"
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <!-- Slider 样式 -->
+    <Style x:Key="ModernSliderStyle"
            TargetType="Slider">
-            <Setter Property="Height"
+      <Setter Property="Height"
               Value="36" />
-            <Setter Property="Background"
+      <Setter Property="Background"
               Value="#E0E0E0" />
-            <Setter Property="Foreground"
+      <Setter Property="Foreground"
               Value="#007ACC" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Slider">
-                        <Grid VerticalAlignment="Center">
-                            <!-- 轨道背景 -->
-                            <Border Height="6"
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Slider">
+            <Grid VerticalAlignment="Center">
+              <!-- 轨道背景 -->
+              <Border Height="6"
                       Background="#E0E0E0"
                       CornerRadius="3" />
-
-                            <!-- 轨道 -->
-                            <Track x:Name="PART_Track">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton Command="Slider.DecreaseLarge">
-                                        <RepeatButton.Style>
-                                            <Style TargetType="RepeatButton">
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="RepeatButton">
-                                                            <Border Height="6"
+              <!-- 轨道 -->
+              <Track x:Name="PART_Track">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton Command="Slider.DecreaseLarge">
+                    <RepeatButton.Style>
+                      <Style TargetType="RepeatButton">
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="RepeatButton">
+                              <Border Height="6"
                                       Background="#007ACC"
                                       CornerRadius="3,0,0,3" />
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </RepeatButton.Style>
-                                    </RepeatButton>
-                                </Track.DecreaseRepeatButton>
-
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton Command="Slider.IncreaseLarge">
-                                        <RepeatButton.Style>
-                                            <Style TargetType="RepeatButton">
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="RepeatButton">
-                                                            <Border Height="6"
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                      </Style>
+                    </RepeatButton.Style>
+                  </RepeatButton>
+                </Track.DecreaseRepeatButton>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton Command="Slider.IncreaseLarge">
+                    <RepeatButton.Style>
+                      <Style TargetType="RepeatButton">
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="RepeatButton">
+                              <Border Height="6"
                                       Background="Transparent" />
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </RepeatButton.Style>
-                                    </RepeatButton>
-                                </Track.IncreaseRepeatButton>
-
-                                <Track.Thumb>
-                                    <Thumb Width="20"
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                      </Style>
+                    </RepeatButton.Style>
+                  </RepeatButton>
+                </Track.IncreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb Width="20"
                          Height="20">
-                                        <Thumb.Style>
-                                            <Style TargetType="Thumb">
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="Thumb">
-                                                            <Border Background="#007ACC"
+                    <Thumb.Style>
+                      <Style TargetType="Thumb">
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="Thumb">
+                              <Border Background="#007ACC"
                                       BorderBrush="White"
                                       BorderThickness="2"
                                       CornerRadius="10"
                                       Cursor="Hand">
-                                                                <Border.Effect>
-                                                                    <DropShadowEffect Color="#000000"
+                                <Border.Effect>
+                                  <DropShadowEffect Color="#000000"
                                                     Opacity="0.2"
                                                     BlurRadius="6"
                                                     ShadowDepth="1" />
-                                                                </Border.Effect>
-                                                            </Border>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </Thumb.Style>
-                                    </Thumb>
-                                </Track.Thumb>
-                            </Track>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
-
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="5" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="5" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
-        <!-- 索引配置区域 -->
-        <Border Grid.Row="0"
+                                </Border.Effect>
+                              </Border>
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                      </Style>
+                    </Thumb.Style>
+                  </Thumb>
+                </Track.Thumb>
+              </Track>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+  <Grid Margin="10">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="5" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="5" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <!-- 索引配置区域 -->
+    <Border Grid.Row="0"
             Style="{StaticResource CardStyle}">
-            <StackPanel>
-                <!-- 标题栏 - 左侧标题，右侧索引总数 -->
-                <Grid Margin="0,0,0,12">
-                    <TextBlock Text="📁 索引配置"
+      <StackPanel>
+        <!-- 标题栏 - 左侧标题，右侧索引总数 -->
+        <Grid Margin="0,0,0,12">
+          <TextBlock Text="📁 索引配置"
                        Style="{StaticResource SectionHeaderStyle}"
                        HorizontalAlignment="Left"
                        Margin="0" />
-
-                    <StackPanel Orientation="Horizontal"
+          <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center">
-                        <TextBlock Text="索引总数："
+            <Button Content="相似文件查找"
+                          Style="{StaticResource SecondaryButtonStyle}"
+                          Click="SimilarFiles_Click"
+                          Margin="0,0,12,0" />
+            <TextBlock Text="索引总数："
                          Style="{StaticResource InfoTextStyle}"
                          FontSize="13" />
-                        <TextBlock Text="{Binding IndexCount}"
+            <TextBlock Text="{Binding IndexCount}"
                          Style="{StaticResource AccentTextStyle}"
                          FontSize="14"
                          FontWeight="Bold" />
-                    </StackPanel>
-                </Grid>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Column="0"
+          </StackPanel>
+        </Grid>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0"
                      Text="文件夹路径"
                      Style="{StaticResource LabelStyle}" />
-                    <TextBox Grid.Column="1"
+          <TextBox Grid.Column="1"
                    Text="{Binding DirectoryPath, UpdateSourceTrigger=PropertyChanged}"
                    Style="{StaticResource ModernTextBoxStyle}"
                    AllowDrop="True"
                    Drop="TxtDirectory_Drop"
                    DragEnter="Txt_DragEnter"
                    Margin="0,0,10,0" />
-                    <Button Grid.Column="2"
+          <Button Grid.Column="2"
                   Content="📂 选择文件夹"
                   Style="{StaticResource SecondaryButtonStyle}"
                   Command="{Binding SelectDirectoryCommand}"
                   Width="125"
                   Height="36"
                   Margin="0,0,8,0" />
-                    <Button Grid.Column="3"
+          <Button Grid.Column="3"
                   Content="{Binding UpdateIndexButtonText}"
                   Style="{StaticResource PrimaryButtonStyle}"
                   Command="{Binding UpdateIndexCommand}"
@@ -625,252 +605,233 @@
                   Width="125"
                   Height="36"
                   Margin="0,0,15,0" />
-
-                    <!-- 移除无效索引选项 - 与按钮并排 -->
-                    <CheckBox Grid.Column="4"
+          <!-- 移除无效索引选项 - 与按钮并排 -->
+          <CheckBox Grid.Column="4"
                     Content="移除无效索引"
                     IsChecked="{Binding RemoveInvalidIndex}"
                     Visibility="{Binding ShowRemoveInvalidIndex}"
                     VerticalAlignment="Center" />
-                </Grid>
-
-                <!-- 索引进度可视化 -->
-                <Border Visibility="{Binding IndexProgressVisibility}"
+        </Grid>
+        <!-- 索引进度可视化 -->
+        <Border Visibility="{Binding IndexProgressVisibility}"
                 Background="#F8F9FA"
                 BorderBrush="#E0E0E0"
                 BorderThickness="1"
                 CornerRadius="6"
                 Padding="10"
                 Margin="0,15,0,0">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="8" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <!-- 进度条 -->
-                        <Grid Grid.Row="0">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="8" />
-                                <RowDefinition Height="100" />
-                            </Grid.RowDefinitions>
-
-                            <!-- 进度文字 -->
-                            <Grid Grid.Row="0">
-                                <TextBlock Text="{Binding IndexProgressText}"
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="8" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <!-- 进度条 -->
+            <Grid Grid.Row="0">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="8" />
+                <RowDefinition Height="100" />
+              </Grid.RowDefinitions>
+              <!-- 进度文字 -->
+              <Grid Grid.Row="0">
+                <TextBlock Text="{Binding IndexProgressText}"
                            FontSize="13"
                            FontWeight="SemiBold"
                            Foreground="#007ACC"
                            HorizontalAlignment="Left" />
-                                <TextBlock Text="{Binding ProcessingFilename}"
+                <TextBlock Text="{Binding ProcessingFilename}"
                            FontSize="13" MaxWidth="700" TextWrapping="Wrap"
                            FontWeight="SemiBold"
                            Foreground="#007ACC"
                            HorizontalAlignment="Center" />
-                                <TextBlock FontSize="13"
+                <TextBlock FontSize="13"
                            FontWeight="SemiBold"
                            Foreground="#007ACC"
                            HorizontalAlignment="Right">
                   <Run Text="{Binding IndexProgress, StringFormat={}{0:F1}}" />
                   <Run Text="%" />
-                                </TextBlock>
-                            </Grid>
-
-                            <!-- 速度面积图 -->
-                            <Border Grid.Row="2"
+                </TextBlock>
+              </Grid>
+              <!-- 速度面积图 -->
+              <Border Grid.Row="2"
                       Background="#F5F5F5"
                       BorderBrush="#D0D0D0"
                       BorderThickness="1"
                       CornerRadius="4"
                       ClipToBounds="True"
                       Height="100">
-                                <Grid>
-                                    <!-- 背景网格线 -->
-                                    <Canvas>
-                                        <Line X1="0" Y1="20" X2="1000" Y2="20"
+                <Grid>
+                  <!-- 背景网格线 -->
+                  <Canvas>
+                    <Line X1="0" Y1="20" X2="1000" Y2="20"
                           Stroke="#E8E8E8" StrokeThickness="1" StrokeDashArray="2,2" />
-                                        <Line X1="0" Y1="40" X2="1000" Y2="40"
+                    <Line X1="0" Y1="40" X2="1000" Y2="40"
                           Stroke="#E8E8E8" StrokeThickness="1" StrokeDashArray="2,2" />
-                                        <Line X1="0" Y1="60" X2="1000" Y2="60"
+                    <Line X1="0" Y1="60" X2="1000" Y2="60"
                           Stroke="#E8E8E8" StrokeThickness="1" StrokeDashArray="2,2" />
-                                    </Canvas>
-
-                                    <!-- 面积图容器 -->
-                                    <Canvas x:Name="SpeedChartCanvas" ClipToBounds="True">
-                                        <!-- 面积图路径将在代码后置中动态创建 -->
-                                    </Canvas>
-
-                                    <!-- 渐变遮罩效果 -->
-                                    <Border Background="#10007ACC"
+                  </Canvas>
+                  <!-- 面积图容器 -->
+                  <Canvas x:Name="SpeedChartCanvas" ClipToBounds="True">
+                    <!-- 面积图路径将在代码后置中动态创建 -->
+                  </Canvas>
+                  <!-- 渐变遮罩效果 -->
+                  <Border Background="#10007ACC"
                           CornerRadius="4"
                           IsHitTestVisible="False" />
-                                </Grid>
-                            </Border>
-                        </Grid>
-
-                        <!-- 速度信息 -->
-                        <Grid Grid.Row="2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="20" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="20" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="20" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <!-- 处理速度 -->
-                            <StackPanel Grid.Column="0"
+                </Grid>
+              </Border>
+            </Grid>
+            <!-- 速度信息 -->
+            <Grid Grid.Row="2">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <!-- 处理速度 -->
+              <StackPanel Grid.Column="0"
                           Orientation="Horizontal">
-                                <Path Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.7L16.2,16.2Z"
+                <Path Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.7L16.2,16.2Z"
                       Fill="#28A745"
                       Width="14"
                       Height="14"
                       Stretch="Uniform"
                       Margin="0,0,6,0"
                       VerticalAlignment="Center" />
-                                <TextBlock Text="速度: "
+                <TextBlock Text="速度: "
                            FontSize="12"
                            Foreground="#666666"
                            VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding IndexSpeedText}"
+                <TextBlock Text="{Binding IndexSpeedText}"
                            FontSize="12"
                            FontWeight="SemiBold"
                            Foreground="#28A745"
                            VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <!-- 吞吐量 -->
-                            <StackPanel Grid.Column="2"
+              </StackPanel>
+              <!-- 吞吐量 -->
+              <StackPanel Grid.Column="2"
                           Orientation="Horizontal">
-                                <Path Data="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"
+                <Path Data="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"
                       Fill="#FF6B6B"
                       Width="14"
                       Height="14"
                       Stretch="Uniform"
                       Margin="0,0,6,0"
                       VerticalAlignment="Center" />
-                                <TextBlock Text="吞吐: "
+                <TextBlock Text="吞吐: "
                            FontSize="12"
                            Foreground="#666666"
                            VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding IndexThroughputText}"
+                <TextBlock Text="{Binding IndexThroughputText}"
                            FontSize="12"
                            FontWeight="SemiBold"
                            Foreground="#FF6B6B"
                            VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <!-- 最大吞吐量 -->
-                            <StackPanel Grid.Column="4"
+              </StackPanel>
+              <!-- 最大吞吐量 -->
+              <StackPanel Grid.Column="4"
                           Orientation="Horizontal">
-                                <Path Data="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"
+                <Path Data="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"
                       Fill="#FFA500"
                       Width="14"
                       Height="14"
                       Stretch="Uniform"
                       Margin="0,0,6,0"
                       VerticalAlignment="Center" />
-                                <TextBlock Text="最大吞吐: "
+                <TextBlock Text="最大吞吐: "
                            FontSize="12"
                            Foreground="#666666"
                            VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding MaxThroughputText}"
+                <TextBlock Text="{Binding MaxThroughputText}"
                            FontSize="12"
                            FontWeight="SemiBold"
                            Foreground="#FFA500"
                            VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <!-- 预估剩余时间 -->
-                            <StackPanel Grid.Column="6"
+              </StackPanel>
+              <!-- 预估剩余时间 -->
+              <StackPanel Grid.Column="6"
                           Orientation="Horizontal">
-                                <Path Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6V12L16.7,14.6L15.3,16L11,13.5V6Z"
+                <Path Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6V12L16.7,14.6L15.3,16L11,13.5V6Z"
                       Fill="#9C27B0"
                       Width="14"
                       Height="14"
                       Stretch="Uniform"
                       Margin="0,0,6,0"
                       VerticalAlignment="Center" />
-                                <TextBlock Text="预估剩余时间: "
+                <TextBlock Text="预估剩余时间: "
                            FontSize="12"
                            Foreground="#666666"
                            VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding EstimatedRemainingTimeText}"
+                <TextBlock Text="{Binding EstimatedRemainingTimeText}"
                            FontSize="12"
                            FontWeight="SemiBold"
                            Foreground="#9C27B0"
                            VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Grid>
-                    </Grid>
-                </Border>
-            </StackPanel>
+              </StackPanel>
+            </Grid>
+          </Grid>
         </Border>
-
-        <!-- 搜索配置区域 -->
-        <Border Grid.Row="2"
+      </StackPanel>
+    </Border>
+    <!-- 搜索配置区域 -->
+    <Border Grid.Row="2"
             Style="{StaticResource CardStyle}"
             IsEnabled="{Binding IsSearchEnabled}">
-            <StackPanel>
-                <TextBlock Text="🔍 搜索配置"
+      <StackPanel>
+        <TextBlock Text="🔍 搜索配置"
                    Style="{StaticResource SectionHeaderStyle}"
                    Margin="0,0,0,12" />
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Column="0"
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0"
                      Text="图片路径"
                      Style="{StaticResource LabelStyle}" />
-                    <TextBox Grid.Column="1"
+          <TextBox Grid.Column="1"
                    Text="{Binding ImagePath, UpdateSourceTrigger=PropertyChanged}"
                    Style="{StaticResource ModernTextBoxStyle}"
                    AllowDrop="True"
                    Drop="TxtPic_Drop"
                    DragEnter="Txt_DragEnter"
                    Margin="0,0,10,0" />
-                    <Button Grid.Column="2"
+          <Button Grid.Column="2"
                   Content="🖼️ 选择图片"
                   Style="{StaticResource SecondaryButtonStyle}"
                   Command="{Binding SelectImageCommand}"
                   Width="125"
                   Height="36" />
-                </Grid>
-
-                <Grid Margin="0,15,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="200" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Column="0"
+        </Grid>
+        <Grid Margin="0,15,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0"
                      Text="相似度"
                      Style="{StaticResource LabelStyle}" MinWidth="50" />
-
-                    <!-- 滑块控件 -->
-                    <Grid Grid.Column="1"
+          <!-- 滑块控件 -->
+          <Grid Grid.Column="1"
                 Margin="8,0,10,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <Slider Grid.Column="0"
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Slider Grid.Column="0"
           Value="{Binding Similarity}"
           Minimum="{Binding SimilarityMinimum}"
           Maximum="100"
@@ -878,8 +839,7 @@
                     IsSnapToTickEnabled="True"
                     Style="{StaticResource ModernSliderStyle}"
                     VerticalAlignment="Center" />
-
-                        <Border Grid.Column="1"
+            <Border Grid.Column="1"
                     Background="#F8F9FA"
                     BorderBrush="#CCCCCC"
                     BorderThickness="1"
@@ -887,58 +847,53 @@
                     Padding="8,4"
                     MinWidth="45"
                     Margin="8,0,0,0">
-                            <TextBlock Text="{Binding Similarity, StringFormat={}{0:F0}}"
+              <TextBlock Text="{Binding Similarity, StringFormat={}{0:F0}}"
                          FontSize="13"
                          FontWeight="SemiBold"
                          Foreground="#007ACC"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center" />
-                        </Border>
-                    </Grid>
-
-                    <!-- 匹配算法选择下拉框 -->
-                    <StackPanel Grid.Column="2"
+            </Border>
+          </Grid>
+          <!-- 匹配算法选择下拉框 -->
+          <StackPanel Grid.Column="2"
                       Orientation="Horizontal"
                       VerticalAlignment="Center">
-
-                        <TextBlock
+            <TextBlock
  Text="匹配算法"
  Style="{StaticResource LabelStyle}" MinWidth="55" />
-                        <ComboBox
+            <ComboBox
           ItemsSource="{Binding MatchAlgorithms}"
           SelectedItem="{Binding MatchAlgorithm}"
           Style="{StaticResource ModernComboBoxStyle}"
           Margin="0,0,15,0"
           MinWidth="100">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}"
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}"
              FontSize="13" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </StackPanel>
-
-                    <CheckBox Grid.Column="3"
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+          <CheckBox Grid.Column="3"
           Content="🔄 查找已旋转"
           IsChecked="{Binding FindRotated}"
           Margin="0,0,15,0" />
-                    <CheckBox Grid.Column="4"
+          <CheckBox Grid.Column="4"
           Content="↔️ 查找已翻转"
           IsChecked="{Binding FindFlipped}"
           Margin="0,0,20,0" />
-
-                    <StackPanel Grid.Column="5"
+          <StackPanel Grid.Column="5"
                       Orientation="Horizontal"
                       HorizontalAlignment="Right">
-                        <TextBlock Text="⏱️ 耗时："
+            <TextBlock Text="⏱️ 耗时："
                        Style="{StaticResource InfoTextStyle}" />
-                        <TextBlock Text="{Binding ElapsedTime}"
+            <TextBlock Text="{Binding ElapsedTime}"
                        Style="{StaticResource AccentTextStyle}"
                        Foreground="#28A745" />
-                    </StackPanel>
-
-                    <Button Grid.Column="6"
+          </StackPanel>
+          <Button Grid.Column="6"
                   Content="🔍 搜索"
                   Style="{StaticResource PrimaryButtonStyle}"
                   Command="{Binding SearchCommand}"
@@ -946,48 +901,44 @@
                   Width="100"
                   Height="36"
                   Margin="15,0,8,0" />
-                    <Button Grid.Column="7"
+          <Button Grid.Column="7"
                   Content="📋 剪贴板搜索"
                   Style="{StaticResource SecondaryButtonStyle}"
                   Command="{Binding SearchFromClipboardCommand}"
                   IsEnabled="{Binding IsSearching, Converter={StaticResource InverseBoolConverter}}"
                   Width="126"
                   Height="36" />
-                </Grid>
-            </StackPanel>
-        </Border>
-
-        <!-- 主内容区域 -->
-        <Grid Grid.Row="4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*"
+        </Grid>
+      </StackPanel>
+    </Border>
+    <!-- 主内容区域 -->
+    <Grid Grid.Row="4">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="3*"
                           MinWidth="500" />
-                <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="*"
+        <ColumnDefinition Width="5" />
+        <ColumnDefinition Width="*"
                           MinWidth="300" />
-            </Grid.ColumnDefinitions>
-
-            <!-- 搜索结果列表 -->
-            <Border Grid.Column="0"
+      </Grid.ColumnDefinitions>
+      <!-- 搜索结果列表 -->
+      <Border Grid.Column="0"
               Style="{StaticResource CardStyle}"
               Padding="0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <Border Grid.Row="0"
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <Border Grid.Row="0"
                   Background="#F8F9FA"
                   BorderBrush="#E0E0E0"
                   BorderThickness="0,0,0,1"
                   Padding="12,10">
-                        <TextBlock Text="📊 搜索结果"
+            <TextBlock Text="📊 搜索结果"
                        Style="{StaticResource SectionHeaderStyle}"
                        Margin="0" />
-                    </Border>
-
-                    <DataGrid Grid.Row="1"
+          </Border>
+          <DataGrid Grid.Row="1"
                     ItemsSource="{Binding SearchResults}"
                     SelectedItem="{Binding SelectedResult}"
                     Style="{StaticResource ModernDataGridStyle}"
@@ -999,316 +950,298 @@
                     KeyUp="DataGrid_KeyUp"
                     MouseDoubleClick="DataGrid_MouseDoubleClick"
                     BorderThickness="0">
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="路径"
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="路径"
                                       Width="2*">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding 路径}"
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding 路径}"
                                TextWrapping="Wrap"
                                Padding="8,5"
                                VerticalAlignment="Center" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="匹配度"
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="匹配度"
                                   Binding="{Binding 匹配度, StringFormat=P2}"
                                   Width="80" />
-                            <DataGridTextColumn Header="大小"
+              <DataGridTextColumn Header="大小"
                                   Binding="{Binding 大小}"
                                   Width="80" />
-                            <DataGridTextColumn Header="文件夹文件数"
+              <DataGridTextColumn Header="文件夹文件数"
                                   Binding="{Binding 所属文件夹文件数}"
                                   Width="100" />
-                            <DataGridTextColumn Header="文件夹大小"
+              <DataGridTextColumn Header="文件夹大小"
                                   Binding="{Binding 所属文件夹大小}"
                                   Width="100" />
-                            <DataGridTextColumn Header="匹配算法"
+              <DataGridTextColumn Header="匹配算法"
                                   Binding="{Binding 匹配算法}"
                                   Width="100" />
-                        </DataGrid.Columns>
-                        <DataGrid.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="📂 打开所在文件夹 (Ctrl+O)"
+            </DataGrid.Columns>
+            <DataGrid.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="📂 打开所在文件夹 (Ctrl+O)"
                           Command="{Binding OpenFolderCommand}" />
-                                <MenuItem Header="🗑️ 删除 (Delete)"
+                <MenuItem Header="🗑️ 删除 (Delete)"
                           Command="{Binding DeleteCommand}" />
-                                <MenuItem Header="♻️ 删除到回收站 (Shift+Delete)"
+                <MenuItem Header="♻️ 删除到回收站 (Shift+Delete)"
                           Command="{Binding DeleteToRecycleBinCommand}" />
-                            </ContextMenu>
-                        </DataGrid.ContextMenu>
-                    </DataGrid>
-
-                    <!-- Loading 覆盖层 -->
-                    <Border Grid.Row="1"
+              </ContextMenu>
+            </DataGrid.ContextMenu>
+          </DataGrid>
+          <!-- Loading 覆盖层 -->
+          <Border Grid.Row="1"
                   Background="#F0FFFFFF"
                   Visibility="{Binding SearchLoadingVisibility}">
-                        <StackPanel VerticalAlignment="Center"
+            <StackPanel VerticalAlignment="Center"
                         HorizontalAlignment="Center">
-                            <!-- 旋转动画圆圈 -->
-                            <Viewbox Width="60"
+              <!-- 旋转动画圆圈 -->
+              <Viewbox Width="60"
                        Height="60"
                        Margin="0,0,0,20">
-                                <Canvas Width="100"
+                <Canvas Width="100"
                         Height="100">
-                                    <Ellipse Width="100"
+                  <Ellipse Width="100"
                            Height="100"
                            Stroke="#007ACC"
                            StrokeThickness="8"
                            StrokeDashArray="70 30"
                            StrokeDashCap="Round">
-                                        <Ellipse.RenderTransform>
-                                            <RotateTransform CenterX="50"
+                    <Ellipse.RenderTransform>
+                      <RotateTransform CenterX="50"
                                        CenterY="50" />
-                                        </Ellipse.RenderTransform>
-                                        <Ellipse.Triggers>
-                                            <EventTrigger RoutedEvent="Loaded">
-                                                <BeginStoryboard>
-                                                    <Storyboard RepeatBehavior="Forever">
-                                                        <DoubleAnimation Storyboard.TargetProperty="(Ellipse.RenderTransform).(RotateTransform.Angle)"
+                    </Ellipse.RenderTransform>
+                    <Ellipse.Triggers>
+                      <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard>
+                          <Storyboard RepeatBehavior="Forever">
+                            <DoubleAnimation Storyboard.TargetProperty="(Ellipse.RenderTransform).(RotateTransform.Angle)"
                                              From="0"
                                              To="360"
                                              Duration="0:0:1.2" />
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </EventTrigger>
-                                        </Ellipse.Triggers>
-                                    </Ellipse>
-                                </Canvas>
-                            </Viewbox>
-
-                            <!-- 状态文字 -->
-                            <TextBlock Text="{Binding SearchStatusText}"
+                          </Storyboard>
+                        </BeginStoryboard>
+                      </EventTrigger>
+                    </Ellipse.Triggers>
+                  </Ellipse>
+                </Canvas>
+              </Viewbox>
+              <!-- 状态文字 -->
+              <TextBlock Text="{Binding SearchStatusText}"
                          FontSize="15"
                          FontWeight="SemiBold"
                          Foreground="#007ACC"
                          HorizontalAlignment="Center"
                          TextAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </Border>
-
-            <GridSplitter Grid.Column="1"
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+      <GridSplitter Grid.Column="1"
                     Width="5"
                     HorizontalAlignment="Stretch"
                     Background="Transparent"
                     ShowsPreview="True" />
-
-            <!-- 图片预览区 -->
-            <Border Grid.Column="2"
+      <!-- 图片预览区 -->
+      <Border Grid.Column="2"
               Style="{StaticResource CardStyle}"
               Padding="0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="5" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <!-- 标题 -->
-                    <Border Grid.Row="0"
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="5" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <!-- 标题 -->
+          <Border Grid.Row="0"
                   Background="#F8F9FA"
                   BorderBrush="#E0E0E0"
                   BorderThickness="0,0,0,1"
                   Padding="12,10">
-                        <TextBlock Text="🖼️ 图片预览"
+            <TextBlock Text="🖼️ 图片预览"
                        Style="{StaticResource SectionHeaderStyle}"
                        Margin="0" />
-                    </Border>
-
-                    <!-- 源图片预览 -->
-                    <Border Grid.Row="1"
+          </Border>
+          <!-- 源图片预览 -->
+          <Border Grid.Row="1"
                   BorderBrush="#E0E0E0"
                   BorderThickness="0,0,0,1"
                   Background="White"
                   Margin="5,5,5,0">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0"
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <TextBlock Grid.Row="0"
                          Text="📷 源图片"
                          FontSize="13"
                          FontWeight="SemiBold"
                          Foreground="#555555"
                          Margin="0" />
-
-                            <Border Grid.Row="1"
+              <Border Grid.Row="1"
                       BorderBrush="#DDDDDD"
                       BorderThickness="1"
                       Background="#FAFAFA"
                       CornerRadius="4">
-                                <Image Source="{Binding SourceImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
+                <Image Source="{Binding SourceImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
                        Stretch="Uniform"
                        Cursor="Hand"
                        MouseLeftButtonDown="SourceImage_Click"
                        Margin="5" />
-                            </Border>
-
-                            <TextBlock Grid.Row="2"
+              </Border>
+              <TextBlock Grid.Row="2"
                          Text="{Binding SourceImageInfo}"
                          FontSize="12"
                          Foreground="#999999"
                          TextWrapping="Wrap"
                          Margin="0,5,0,0" />
-                        </Grid>
-                    </Border>
-
-                    <GridSplitter Grid.Row="2"
+            </Grid>
+          </Border>
+          <GridSplitter Grid.Row="2"
                         Height="5"
                         HorizontalAlignment="Stretch"
                         Background="Transparent"
                         ShowsPreview="True"
                         Margin="15,0" />
-
-                    <!-- 结果图片预览 -->
-                    <Border Grid.Row="3"
+          <!-- 结果图片预览 -->
+          <Border Grid.Row="3"
                   Background="White"
                   Margin="5,0,5,5">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0"
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <TextBlock Grid.Row="0"
                          Text="🎯 匹配图片"
                          FontSize="13"
                          FontWeight="SemiBold"
                          Foreground="#555555"
                          Margin="0" />
-
-                            <Border Grid.Row="1"
+              <Border Grid.Row="1"
                       BorderBrush="#DDDDDD"
                       BorderThickness="1"
                       Background="#FAFAFA"
                       CornerRadius="4">
-                                <Image Source="{Binding DestImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
+                <Image Source="{Binding DestImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
                        Stretch="Uniform"
                        Cursor="Hand"
                        MouseLeftButtonDown="DestImage_Click"
                        Margin="5" />
-                            </Border>
-
-                            <TextBlock Grid.Row="2"
+              </Border>
+              <TextBlock Grid.Row="2"
                          Text="{Binding DestImageInfo}"
                          FontSize="12"
                          Foreground="#999999"
                          TextWrapping="Wrap"
                          Margin="0,5,0,0" />
-                        </Grid>
-                    </Border>
-                </Grid>
-            </Border>
+            </Grid>
+          </Border>
         </Grid>
-
-        <!-- 底部信息栏 -->
-        <Border Grid.Row="5"
+      </Border>
+    </Grid>
+    <!-- 底部信息栏 -->
+    <Border Grid.Row="5"
             Background="#F8F9FA"
             BorderBrush="#E0E0E0"
             BorderThickness="0,1,0,0"
             Padding="15,12"
             Margin="-15,15,-15,-15">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="237*" />
-                    <ColumnDefinition Width="50*"/>
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <!-- 左侧提示信息 -->
-                <StackPanel Grid.Column="0"
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="237*" />
+          <ColumnDefinition Width="50*"/>
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <!-- 左侧提示信息 -->
+        <StackPanel Grid.Column="0"
                     Orientation="Horizontal" Grid.ColumnSpan="2">
-                    <TextBlock Text="💡 提示："
+          <TextBlock Text="💡 提示："
                        FontSize="12"
                        FontWeight="SemiBold"
                        Foreground="#555555"
                        VerticalAlignment="Center"
                        Margin="0,0,6,0" />
-                    <TextBlock Text="可直接拖放图片到窗口进行搜索 | "
+          <TextBlock Text="可直接拖放图片到窗口进行搜索 | "
                        FontSize="12"
                        Foreground="#888888"
                        VerticalAlignment="Center" />
-                    <TextBlock Text="项目地址："
+          <TextBlock Text="项目地址："
                        FontSize="12"
                        FontWeight="SemiBold"
                        Foreground="#555555"
                        VerticalAlignment="Center"
                        Margin="8,0,6,0" />
-                    <TextBlock VerticalAlignment="Center">
-              <Hyperlink NavigateUri="https://github.com/ldqk/ImageSearch"
+          <TextBlock VerticalAlignment="Center">
+            <Hyperlink NavigateUri="https://github.com/ldqk/ImageSearch"
                          RequestNavigate="Hyperlink_RequestNavigate"
                          Foreground="#007ACC"
                          TextDecorations="None">
-                <Run Text="github.com/ldqk/ImageSearch"
+              <Run Text="github.com/ldqk/ImageSearch"
                      FontSize="12" />
-              </Hyperlink>
-                    </TextBlock>
-                    <StackPanel Orientation="Horizontal"
+            </Hyperlink>
+          </TextBlock>
+          <StackPanel Orientation="Horizontal"
          VerticalAlignment="Center"
          Margin="15,0,15,0">
-
-                        <!-- WebAPI 服务器运行状态指示器 -->
-                        <Ellipse Width="16"
+            <!-- WebAPI 服务器运行状态指示器 -->
+            <Ellipse Width="16"
              Height="16"
              VerticalAlignment="Center"
              Fill="{Binding WebApiServerRunning,
                 Converter={StaticResource BoolToColorConverter}}" />
-                        <TextBlock Text="WebAPI："
+            <TextBlock Text="WebAPI："
          FontSize="12"
          FontWeight="SemiBold"
          Foreground="#555555"
          VerticalAlignment="Center"
          Margin="2,0,0,0" />
-                        <TextBlock VerticalAlignment="Center"
+            <TextBlock VerticalAlignment="Center"
              Margin="0,0,8,0">
-<Hyperlink NavigateUri="{Binding WebApiServer}"
+              <Hyperlink NavigateUri="{Binding WebApiServer}"
            RequestNavigate="Hyperlink_RequestNavigate"
            Foreground="#007ACC"
            TextDecorations="None">
-  <Run Text="{Binding WebApiServer}"
+                <Run Text="{Binding WebApiServer}"
        FontSize="12" />
-</Hyperlink>
-                        </TextBlock>
-                    </StackPanel>
-                </StackPanel>
-
-                <!-- 右侧 CPU 和内存信息 -->
-                <StackPanel Grid.Column="2"
+              </Hyperlink>
+            </TextBlock>
+          </StackPanel>
+        </StackPanel>
+        <!-- 右侧 CPU 和内存信息 -->
+        <StackPanel Grid.Column="2"
                     Orientation="Horizontal"
                     VerticalAlignment="Center"
                     Margin="20,0,0,0">
-                    <StackPanel Orientation="Horizontal"
+          <StackPanel Orientation="Horizontal"
                         Margin="0,0,15,0">
-                        <TextBlock Text="💻 CPU: "
+            <TextBlock Text="💻 CPU: "
                            FontSize="12"
                            Foreground="#555555"
                            VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding CpuUsage, StringFormat={}{0:F1}%}"
+            <TextBlock Text="{Binding CpuUsage, StringFormat={}{0:F1}%}"
                            FontSize="12"
                            FontWeight="SemiBold"
                            Foreground="#FF6B6B"
                            VerticalAlignment="Center" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🧠 内存: "
+          </StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="🧠 内存: "
                            FontSize="12"
                            Foreground="#555555"
                            VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding MemoryUsage, StringFormat={}{0:F1}MB}"
+            <TextBlock Text="{Binding MemoryUsage, StringFormat={}{0:F1}MB}"
                            FontSize="12"
                            FontWeight="SemiBold"
                            Foreground="#28A745"
                            VerticalAlignment="Center" />
-                    </StackPanel>
-                </StackPanel>
-            </Grid>
-        </Border>
-    </Grid>
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
 </Window>

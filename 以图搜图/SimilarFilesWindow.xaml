@@ -1,0 +1,791 @@
+﻿<Window x:Class="以图搜图.SimilarFilesWindow"
+
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+        xmlns:converters="clr-namespace:以图搜图.Converters"
+        Title="相似文件查找"
+        Width="1280"
+        Height="820"
+        MinWidth="900"
+        MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F5F5">
+    <Window.Resources>
+        <converters:ImagePathToBitmapConverter x:Key="ImageConverter" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#007ACC" />
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#005A9E" />
+        <SolidColorBrush x:Key="ControlBorderBrush" Color="#CCD7E2" />
+        <SolidColorBrush x:Key="ControlHoverBrush" Color="#EAF4FC" />
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#637282" />
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#263746" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush"
+                                        Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="ButtonSurface" Property="Background"
+                                        Value="{StaticResource ControlHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Background" Value="#D8EAF8" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Background" Value="#F1F3F5" />
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#E0E5EA" />
+                                <Setter Property="Foreground" Value="#9AA6B2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PrimaryWindowButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#007ACC" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#007ACC" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005A9E" />
+                    <Setter Property="BorderBrush" Value="#005A9E" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#004B87" />
+                    <Setter Property="BorderBrush" Value="#004B87" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="DangerWindowButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#D64545" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#D64545" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Background" Value="#B83232" />
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#B83232" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Background" Value="#922B2B" />
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#922B2B" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Background" Value="#F1F3F5" />
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#E0E5EA" />
+                                <Setter Property="Foreground" Value="#9AA6B2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="9,5" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#263746" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="TextBoxSurface" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="TextBoxSurface" Property="BorderBrush"
+                                        Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="TextBoxSurface" Property="Background" Value="#F1F3F5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#263746" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="Foreground" Value="#263746" />
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#DDEFFC" />
+                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#34495A" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid MinHeight="24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="CheckBoxSurface" Width="16" Height="16" CornerRadius="4"
+                                    Background="White" BorderBrush="{StaticResource ControlBorderBrush}"
+                                    BorderThickness="1.5"
+                                    VerticalAlignment="Center">
+                                <Path x:Name="CheckMark" Data="M 3 8 L 6.5 11.5 L 13 4.5" Stroke="White"
+                                      StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Visibility="Collapsed" />
+                            </Border>
+                            <ContentPresenter Grid.Column="1" ContentSource="Content" Margin="8,0,0,0"
+                                              VerticalAlignment="Center" RecognizesAccessKey="True" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckBoxSurface" Property="Background"
+                                        Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="CheckBoxSurface" Property="BorderBrush"
+                                        Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckBoxSurface" Property="BorderBrush"
+                                        Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="CheckBoxSurface" Property="Background" Value="#EEF1F4" />
+                                <Setter TargetName="CheckBoxSurface" Property="BorderBrush" Value="#DDE3E9" />
+                                <Setter Property="Foreground" Value="#9AA6B2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#34495A" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid MinHeight="24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="RadioSurface" Width="16" Height="16" CornerRadius="8"
+                                    Background="White" BorderBrush="{StaticResource ControlBorderBrush}"
+                                    BorderThickness="1.5"
+                                    VerticalAlignment="Center">
+                                <Ellipse x:Name="RadioDot" Width="8" Height="8" Fill="White" Visibility="Collapsed" />
+                            </Border>
+                            <ContentPresenter Grid.Column="1" ContentSource="Content" Margin="8,0,0,0"
+                                              VerticalAlignment="Center" RecognizesAccessKey="True" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="RadioSurface" Property="Background"
+                                        Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="RadioSurface" Property="BorderBrush"
+                                        Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="RadioDot" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="RadioSurface" Property="BorderBrush"
+                                        Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="RadioSurface" Property="Background" Value="#EEF1F4" />
+                                <Setter TargetName="RadioSurface" Property="BorderBrush" Value="#DDE3E9" />
+                                <Setter Property="Foreground" Value="#9AA6B2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="#34495A" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style TargetType="Slider">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="IsMoveToPointEnabled" Value="True" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+        </Style>
+        <Style x:Key="ModernSliderStyle" TargetType="Slider">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="#E0E0E0" />
+            <Setter Property="Foreground" Value="#007ACC" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid VerticalAlignment="Center">
+                            <Border Height="6" Background="#E0E0E0" CornerRadius="3" />
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge">
+                                        <RepeatButton.Style>
+                                            <Style TargetType="RepeatButton">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="RepeatButton">
+                                                            <Border Height="6" Background="#007ACC"
+                                                                    CornerRadius="3,0,0,3" />
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </RepeatButton.Style>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge">
+                                        <RepeatButton.Style>
+                                            <Style TargetType="RepeatButton">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="RepeatButton">
+                                                            <Border Height="6" Background="Transparent" />
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </RepeatButton.Style>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="20" Height="20">
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Thumb">
+                                                            <Border Background="#007ACC" BorderBrush="White"
+                                                                    BorderThickness="2"
+                                                                    CornerRadius="10" Cursor="Hand">
+                                                                <Border.Effect>
+                                                                    <DropShadowEffect Color="#000000" Opacity="0.2"
+                                                                            BlurRadius="6" ShadowDepth="1" />
+                                                                </Border.Effect>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Thumb.Style>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Padding" Value="16,9" />
+            <Setter Property="Margin" Value="0,0,3,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="Background" Value="#EEF2F6" />
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="White" />
+                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+            <Setter Property="Foreground" Value="#34495A" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style x:Key="GroupListStyle" TargetType="DataGrid">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="RowBackground" Value="White" />
+            <Setter Property="AlternatingRowBackground" Value="#F7F9FB" />
+            <Setter Property="GridLinesVisibility" Value="Horizontal" />
+            <Setter Property="HorizontalGridLinesBrush" Value="#E8EDF2" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="RowHeaderWidth" Value="0" />
+            <Setter Property="CanUserResizeRows" Value="False" />
+            <Setter Property="MinRowHeight" Value="38" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+                <DataTrigger
+                    Binding="{Binding IsThumbnailMode, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                    Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ResultColumnHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F1F5F8" />
+            <Setter Property="Foreground" Value="#45596B" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="BorderBrush" Value="#E0E7ED" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+        </Style>
+        <Style x:Key="ResultRowStyle" TargetType="DataGridRow">
+            <Setter Property="Foreground" Value="#34495A" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#EEF6FC" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#DCEFFC" />
+                    <Setter Property="Foreground" Value="#1F4E70" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="GroupThumbnailStyle" TargetType="ItemsControl">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger
+                    Binding="{Binding IsThumbnailMode, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                    Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="175" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="10"
+                Margin="0,0,0,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="扫描位置" FontWeight="SemiBold" Margin="0,0,10,0" />
+                    <TextBox x:Name="DirectoryPathBox" Grid.Column="1" Height="34" Padding="7,4"
+                             VerticalContentAlignment="Center" KeyDown="DirectoryPathBox_KeyDown" />
+                    <Button Grid.Column="2" Content="浏览…" Click="AddDirectory_Click" Margin="8,0,0,0" />
+                    <Button Grid.Column="3" Content="添加路径" Click="AddPath_Click" Margin="8,0,0,0" />
+                    <Button Grid.Column="4" Content="清空位置" Click="ClearDirectories_Click" Margin="8,0,0,0" />
+                </Grid>
+                <ListBox x:Name="DirectoryList" Grid.Row="1" BorderBrush="#E4E8EC" ItemsSource="{Binding Directories}"
+                         AllowDrop="True" Drop="DirectoryList_Drop">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel Margin="4,2">
+                                <Button Content="移除" Tag="{Binding}" Click="RemoveDirectory_Click"
+                                        DockPanel.Dock="Right" Padding="7,2" MinHeight="24" />
+                                <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip="{Binding}" />
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+        <Border Grid.Row="1" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="12"
+                Margin="0,0,0,10">
+            <WrapPanel VerticalAlignment="Center">
+                <TextBlock Text="相似度" Margin="0,0,8,0" />
+                <Slider x:Name="SimilaritySlider" Width="170" Minimum="70" Maximum="100" Value="93" TickFrequency="1"
+                        IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}"
+                        VerticalAlignment="Center" />
+                <TextBlock x:Name="SimilarityLabel" Text="93%" Width="48" Margin="8,0,18,0" />
+                <TextBlock Text="匹配算法" Margin="0,0,8,0" />
+                <ComboBox x:Name="AlgorithmCombo" Width="155" SelectedIndex="0" Margin="0,0,18,0"
+                          VerticalAlignment="Center">
+                    <ComboBoxItem Content="全部算法" />
+                    <ComboBoxItem Content="Difference Hash" />
+                    <ComboBoxItem Content="DCT Hash 32" />
+                    <ComboBoxItem Content="DCT Hash 64" />
+                </ComboBox>
+                <CheckBox x:Name="IncludeSubfoldersCheckBox" Content="包括子文件夹" IsChecked="True"
+                          VerticalAlignment="Center" Margin="0,0,14,0" />
+                <CheckBox x:Name="IgnoreSameFolderCheckBox" Content="忽略同一文件夹内的重复" VerticalAlignment="Center"
+                          Margin="0,0,14,0" />
+                <Button x:Name="ScanButton" Content="🔍 开始扫描" Click="Scan_Click"
+                        Style="{StaticResource PrimaryWindowButtonStyle}" />
+                <Button x:Name="StopScanButton" Content="⏸️ 停止扫描" Click="StopScan_Click"
+                        IsEnabled="False" Visibility="Collapsed" />
+            </WrapPanel>
+        </Border>
+        <Grid Grid.Row="2" Margin="0,0,0,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <WrapPanel Grid.Row="0">
+                <TextBlock Text="每组保留" Margin="0,0,8,0" />
+                <ComboBox x:Name="KeepRuleCombo" Width="90" SelectedIndex="0" Margin="0,0,12,0"
+                          VerticalAlignment="Center">
+                    <ComboBoxItem Content="最大文件" />
+                    <ComboBoxItem Content="最小文件" />
+                    <ComboBoxItem Content="最新修改" />
+                    <ComboBoxItem Content="最早修改" />
+                    <ComboBoxItem Content="文件名最短" />
+                    <ComboBoxItem Content="文件名最长" />
+                </ComboBox>
+                <Button Content="按规则标记每组" Click="MarkByRule_Click" />
+                <Button Content="取消所有标记" Click="ClearAllMarks_Click" />
+                <Button Content="反选所有标记" Click="InvertAllMarks_Click" />
+                <Button x:Name="DeleteMarkedButton" Content="删除已标记" Click="DeleteMarked_Click"
+                        Style="{StaticResource DangerWindowButtonStyle}" />
+                <RadioButton x:Name="ListViewOption" Content="列表" IsChecked="True" GroupName="ResultView"
+                             Checked="ResultView_Checked" VerticalAlignment="Center" Margin="8,0" />
+                <RadioButton Content="缩略图" GroupName="ResultView" Checked="ResultView_Checked"
+                             VerticalAlignment="Center" Margin="8,0" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,4,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsThumbnailMode}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="缩略图大小" Margin="0,0,8,0" />
+                    <Slider x:Name="ThumbnailSizeSlider" Width="130" Minimum="120" Maximum="360"
+                            TickFrequency="20" IsSnapToTickEnabled="False" VerticalAlignment="Center"
+                            Value="{Binding ThumbnailSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="{Binding ThumbnailSize, StringFormat={}{0:F0}px}" Width="55" Margin="8,0,0,0" />
+                </StackPanel>
+                <TextBlock Text="筛选" Margin="10,0,6,0" />
+                <ComboBox x:Name="FilterCombo" Width="120" SelectedIndex="0"
+                          SelectionChanged="FilterCombo_SelectionChanged" VerticalAlignment="Center">
+                    <ComboBoxItem Content="全部文件" />
+                    <ComboBoxItem Content="仅已标记文件" />
+                    <ComboBoxItem Content="仅未标记文件" />
+                    <ComboBoxItem Content="含已标记文件的组" />
+                    <ComboBoxItem Content="没有标记文件的组" />
+                    <ComboBoxItem Content="组内全部已标记" />
+                </ComboBox>
+            </WrapPanel>
+            <TextBlock x:Name="StatusText" Grid.Row="1" Text="添加一个或多个扫描位置。" Foreground="#59636E"
+                       VerticalAlignment="Center" Margin="2,5,0,0" />
+        </Grid>
+        <Border Grid.Row="3" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="8">
+            <TabControl x:Name="ResultsTabControl">
+                <TabItem Header="重复文件">
+                    <ListBox x:Name="ResultsList" ItemsSource="{Binding VisibleGroups}" BorderThickness="0"
+                             Background="Transparent"
+                             ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             PreviewMouseWheel="ResultsList_PreviewMouseWheel">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#C9D3DC" BorderThickness="1" Margin="0,0,0,10" Padding="8">
+                                    <StackPanel>
+                                        <DockPanel Margin="0,0,0,6">
+                                            <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="#007ACC"
+                                                       DockPanel.Dock="Left" />
+                                            <TextBlock Text="{Binding Summary}" Foreground="#66717C"
+                                                       HorizontalAlignment="Right" />
+                                        </DockPanel>
+                                        <DataGrid ItemsSource="{Binding VisibleFiles}"
+                                                  Style="{StaticResource GroupListStyle}"
+                                                  ColumnHeaderStyle="{StaticResource ResultColumnHeaderStyle}"
+                                                  AutoGenerateColumns="False" IsReadOnly="False" CanUserAddRows="False"
+                                                  HeadersVisibility="Column" RowHeight="34" MinHeight="40"
+                                                  MaxHeight="300"
+                                                  MouseDoubleClick="FileList_MouseDoubleClick">
+                                            <DataGrid.RowStyle>
+                                                <Style TargetType="DataGridRow"
+                                                       BasedOn="{StaticResource ResultRowStyle}">
+                                                    <EventSetter Event="PreviewMouseRightButtonDown"
+                                                                 Handler="FileRow_RightButtonDown" />
+                                                </Style>
+                                            </DataGrid.RowStyle>
+                                            <DataGrid.ContextMenu>
+                                                <ContextMenu Opened="FileContextMenu_Opened">
+                                                    <MenuItem Header="打开图片" Click="OpenFile_Click" />
+                                                    <MenuItem Header="打开所在文件夹" Click="OpenFolder_Click" />
+                                                    <Separator />
+                                                    <MenuItem Header="从列表忽略该文件目录" Click="IgnoreDirectory_Click" />
+                                                    <Separator />
+                                                    <MenuItem Header="标记为待删除" Click="MarkFile_Click" />
+                                                    <MenuItem Header="取消标记" Click="UnmarkFile_Click" />
+                                                    <MenuItem Header="标记组内其他文件" Click="MarkOtherFiles_Click" />
+                                                    <MenuItem Header="标记此目录中找到的所有文件" Click="MarkDirectoryFiles_Click" />
+                                                    <MenuItem Header="标记此目录树中找到的所有文件"
+                                                              Click="MarkDirectoryTreeFiles_Click" />
+                                                    <MenuItem Header="标记此磁盘中找到的所有文件" Click="MarkDriveFiles_Click" />
+                                                    <MenuItem Header="取消组内所有标记" Click="UnmarkGroup_Click" />
+                                                    <MenuItem Header="反选组内标记" Click="InvertGroup_Click" />
+                                                </ContextMenu>
+                                            </DataGrid.ContextMenu>
+                                            <DataGrid.Columns>
+                                                <DataGridTemplateColumn Header="标记清理" Width="75">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <CheckBox
+                                                                IsChecked="{Binding IsMarked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                Focusable="False" />
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTemplateColumn Header="预览" Width="60">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <Image
+                                                                Source="{Binding FilePath, Converter={StaticResource ImageConverter}, ConverterParameter=48}"
+                                                                Width="44" Height="28" Stretch="Uniform" />
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTextColumn Header="文件名" Binding="{Binding Name}" Width="150"
+                                                                    IsReadOnly="True" />
+                                                <DataGridTemplateColumn Header="路径"
+                                                                        MinWidth="360">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding FilePath}"
+                                                                       TextWrapping="Wrap"
+                                                                       Padding="8,5"
+                                                                       VerticalAlignment="Center" />
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTextColumn Header="大小" Binding="{Binding SizeText}" Width="90"
+                                                                    IsReadOnly="True" />
+                                                <DataGridTextColumn Header="修改时间" Binding="{Binding ModifiedText}"
+                                                                    Width="145"
+                                                                    IsReadOnly="True" />
+                                                <DataGridTextColumn Header="相似度" Binding="{Binding SimilarityText}"
+                                                                    Width="75"
+                                                                    IsReadOnly="True" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        <ListBox ItemsSource="{Binding VisibleFiles}"
+                                                 Style="{StaticResource GroupThumbnailStyle}" BorderThickness="0"
+                                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                 ScrollViewer.CanContentScroll="True"
+                                                 VirtualizingPanel.IsVirtualizing="True"
+                                                 VirtualizingPanel.VirtualizationMode="Recycling">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="Margin" Value="0" />
+                                                    <Setter Property="BorderThickness" Value="0" />
+                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border
+                                                        Width="{Binding DataContext.ThumbnailSize, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                        Margin="4" BorderBrush="#D8DEE5" BorderThickness="1"
+                                                        Padding="6"
+                                                        MouseLeftButtonDown="Thumbnail_MouseLeftButtonDown">
+                                                        <Border.ContextMenu>
+                                                            <ContextMenu
+                                                                DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                                <MenuItem Header="打开图片" Click="OpenFile_Click" />
+                                                                <MenuItem Header="打开所在文件夹" Click="OpenFolder_Click" />
+                                                                <Separator />
+                                                                <MenuItem Header="从列表忽略该文件目录"
+                                                                          Click="IgnoreDirectory_Click" />
+                                                                <Separator />
+                                                                <MenuItem Header="标记为待删除" Click="MarkFile_Click" />
+                                                                <MenuItem Header="取消标记" Click="UnmarkFile_Click" />
+                                                                <MenuItem Header="标记组内其他文件"
+                                                                          Click="MarkOtherFiles_Click" />
+                                                                <MenuItem Header="标记此目录中找到的所有文件"
+                                                                          Click="MarkDirectoryFiles_Click" />
+                                                                <MenuItem Header="标记此目录树中找到的所有文件"
+                                                                          Click="MarkDirectoryTreeFiles_Click" />
+                                                                <MenuItem Header="标记此磁盘中找到的所有文件"
+                                                                          Click="MarkDriveFiles_Click" />
+                                                                <MenuItem Header="取消组内所有标记" Click="UnmarkGroup_Click" />
+                                                                <MenuItem Header="反选组内标记" Click="InvertGroup_Click" />
+                                                            </ContextMenu>
+                                                        </Border.ContextMenu>
+                                                        <StackPanel>
+                                                            <Image
+                                                                Source="{Binding FilePath, Converter={StaticResource ImageConverter}, ConverterParameter=360}"
+                                                                Height="{Binding DataContext.ThumbnailSize, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                                Stretch="Uniform" />
+                                                            <CheckBox Content="标记清理"
+                                                                      IsChecked="{Binding IsMarked, Mode=TwoWay}"
+                                                                      Margin="0,6,0,3" />
+                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="{Binding FilePath}" />
+                                                            <TextBlock Text="{Binding FilePath}" Foreground="#66717C"
+                                                                       TextWrapping="Wrap" ToolTip="{Binding FilePath}" />
+                                                            <TextBlock Text="{Binding SizeText}" Foreground="#66717C" />
+                                                            <TextBlock Text="{Binding ModifiedText}"
+                                                                       Foreground="#66717C" />
+                                                            <TextBlock Text="{Binding SimilarityText}"
+                                                                       Foreground="#66717C" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </TabItem>
+                <TabItem x:Name="DuplicateDirectoryTab" Header="重复目录">
+                    <TabItem.Style>
+                        <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasDuplicateDirectories}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TabItem.Style>
+                    <ListBox ItemsSource="{Binding DuplicateDirectoryGroups}" BorderThickness="0"
+                             ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#C9D3DC" BorderThickness="1" Margin="0,0,0,10" Padding="10">
+                                    <StackPanel>
+                                        <DockPanel Margin="0,0,0,6">
+                                            <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="#007ACC" />
+                                            <TextBlock Text="{Binding Summary}" Foreground="#66717C"
+                                                       HorizontalAlignment="Right" />
+                                        </DockPanel>
+                                        <ItemsControl ItemsSource="{Binding Directories}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderBrush="#E4E8EC" BorderThickness="0,1,0,0"
+                                                            Padding="6,8">
+                                                        <DockPanel>
+                                                            <TextBlock Text="{Binding Summary}" Foreground="#66717C"
+                                                                       DockPanel.Dock="Right" Margin="12,0,0,0" />
+                                                            <CheckBox
+                                                                IsChecked="{Binding IsMarked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                Click="DuplicateDirectoryMark_Click"
+                                                                VerticalAlignment="Center" />
+                                                            <TextBlock Text="{Binding DirectoryPath}" Margin="8,0,0,0"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="{Binding DirectoryPath}" />
+                                                        </DockPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </TabItem>
+            </TabControl>
+        </Border>
+    </Grid>
+</Window>
