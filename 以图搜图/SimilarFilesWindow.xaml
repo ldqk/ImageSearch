@@ -5,6 +5,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 
         xmlns:controls="clr-namespace:以图搜图.Controls"
+        xmlns:converters="clr-namespace:以图搜图.Converters"
         Title="相似文件查找"
         Width="1280"
         Height="820"
@@ -13,6 +14,7 @@
         WindowStartupLocation="CenterOwner"
         Background="#F5F5F5">
     <Window.Resources>
+        <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
         <SolidColorBrush x:Key="AccentBrush" Color="#007ACC" />
         <SolidColorBrush x:Key="AccentHoverBrush" Color="#005A9E" />
         <SolidColorBrush x:Key="ControlBorderBrush" Color="#CCD7E2" />
@@ -530,12 +532,16 @@
                                         Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" />
                                 <TextBlock x:Name="SimilarityLabel" Text="93%" Width="48" Margin="8,0,18,0" />
                                 <TextBlock Text="匹配算法" Margin="0,0,8,0" />
-                                <ComboBox x:Name="AlgorithmCombo" Width="155" SelectedIndex="0" Margin="0,0,18,0"
+                                <ComboBox x:Name="AlgorithmCombo" Width="155"
+                                          ItemsSource="{Binding MatchAlgorithms}"
+                                          SelectedItem="{Binding SelectedAlgorithm}"
+                                          Margin="0,0,18,0"
                                           VerticalAlignment="Center">
-                                    <ComboBoxItem Content="全部算法" />
-                                    <ComboBoxItem Content="Difference Hash" />
-                                    <ComboBoxItem Content="DCT Hash 32" />
-                                    <ComboBoxItem Content="DCT Hash 64" />
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
                                 </ComboBox>
                                 <CheckBox x:Name="IncludeSubfoldersCheckBox" Content="包括子文件夹" IsChecked="True"
                                           VerticalAlignment="Center" Margin="0,0,14,0" />

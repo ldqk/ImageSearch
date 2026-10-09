@@ -19,16 +19,6 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 {
     private static SimilarFilesWindow? _instance;
 
-    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".gif",
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".bmp",
-        ".webp"
-    };
-
     private readonly ImageIndexService _indexService = ImageIndexService.Instance;
     private readonly ImageSearchService _searchService = new();
     private CancellationTokenSource? _scanCancellationTokenSource;
@@ -43,6 +33,31 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     public BulkObservableCollection<SimilarFileGroup> Groups { get; } = [];
     public BulkObservableCollection<SimilarFileGroup> VisibleGroups { get; } = [];
     public BulkObservableCollection<SimilarDirectoryGroup> DuplicateDirectoryGroups { get; } = [];
+    public IReadOnlyList<MatchAlgorithm> MatchAlgorithms { get; } =
+    [
+        MatchAlgorithm.All,
+        MatchAlgorithm.DifferenceHash,
+        MatchAlgorithm.DctHash32,
+        MatchAlgorithm.DctHash64
+    ];
+
+    private MatchAlgorithm _selectedAlgorithm = MatchAlgorithm.All;
+
+    public MatchAlgorithm SelectedAlgorithm
+    {
+        get => _selectedAlgorithm;
+        set
+        {
+            if (_selectedAlgorithm == value)
+            {
+                return;
+            }
+
+            _selectedAlgorithm = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedAlgorithm)));
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public int DuplicateGroupCount => Groups.Count;
@@ -557,7 +572,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                 return;
             }
 
-            var algorithm = GetSelectedAlgorithm();
+            var algorithm = SelectedAlgorithm;
             var threshold = (float) (SimilaritySlider.Value / 100d);
             SetStatus($"正在准备并比较 {indexedPaths.Length:N0} 张图片…");
             var progress = new Progress<int>(completed =>
@@ -626,17 +641,6 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                 return [];
             }
         }).ToArray();
-    }
-
-    private MatchAlgorithm GetSelectedAlgorithm()
-    {
-        return (AlgorithmCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() switch
-        {
-            "Difference Hash" => MatchAlgorithm.DifferenceHash,
-            "DCT Hash 32" => MatchAlgorithm.DctHash32,
-            "DCT Hash 64" => MatchAlgorithm.DctHash64,
-            _ => MatchAlgorithm.All
-        };
     }
 
     private List<SimilarFileGroup> BuildGroups(string[] paths, List<SimilarImagePair> matches, CancellationToken cancellationToken)
