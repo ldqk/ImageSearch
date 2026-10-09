@@ -434,6 +434,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Border Grid.Row="0" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="10"
                             Margin="0,0,0,10">
@@ -472,14 +473,58 @@
                             </ListBox>
                         </Grid>
                     </Border>
-                    <Border Grid.Row="1" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="12">
+                    <Border x:Name="ScanProgressPanel" Grid.Row="1" Visibility="Collapsed" Background="White"
+                            BorderBrush="#D8DEE5" BorderThickness="1" Padding="12" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <TextBlock x:Name="ScanPhaseText" Text="准备中…" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ScanPercentText" Text="0.0%" FontWeight="SemiBold"
+                                           Foreground="#007ACC" HorizontalAlignment="Right" />
+                            </Grid>
+                            <ProgressBar x:Name="ScanProgressBar" Grid.Row="1" Height="8" Minimum="0" Maximum="100"
+                                         Margin="0,0,0,8" />
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Background="#F5F5F5" BorderBrush="#D0D0D0" BorderThickness="1"
+                                        CornerRadius="4" ClipToBounds="True" Height="80">
+                                    <Grid>
+                                        <Canvas IsHitTestVisible="False">
+                                            <Line X1="0" Y1="20" X2="2000" Y2="20" Stroke="#E8E8E8"
+                                                  StrokeThickness="1" StrokeDashArray="2,2" />
+                                            <Line X1="0" Y1="40" X2="2000" Y2="40" Stroke="#E8E8E8"
+                                                  StrokeThickness="1" StrokeDashArray="2,2" />
+                                            <Line X1="0" Y1="60" X2="2000" Y2="60" Stroke="#E8E8E8"
+                                                  StrokeThickness="1" StrokeDashArray="2,2" />
+                                        </Canvas>
+                                        <Canvas x:Name="ScanSpeedCanvas" ClipToBounds="True" IsHitTestVisible="False" />
+                                    </Grid>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" MinWidth="150">
+                                    <TextBlock x:Name="ScanSpeedText" Text="速度: -" Foreground="#28A745"
+                                               FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBlock x:Name="ScanCountText" Text="已处理: -" Foreground="#666666"
+                                               Margin="0,0,0,4" />
+                                    <TextBlock x:Name="ScanElapsedText" Text="用时: 00:00" Foreground="#666666" />
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Row="2" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="12">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <WrapPanel VerticalAlignment="Center">
-                                <TextBlock Text="相似度" Margin="0,0,8,0" />
+                                <TextBlock Text="相似度"  Margin="0,0,8,0" />
                                 <Slider x:Name="SimilaritySlider" Width="170" Minimum="70" Maximum="100" Value="93"
                                         TickFrequency="1" IsSnapToTickEnabled="True"
                                         Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" />

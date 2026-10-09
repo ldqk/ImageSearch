@@ -103,6 +103,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         InitializeComponent();
         DataContext = this;
         SimilaritySlider.ValueChanged += (_, _) => SimilarityLabel.Text = $"{SimilaritySlider.Value:F0}%";
+        InitializeProgressChart();
     }
 
     private void ResultsList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -336,6 +337,156 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
     }
 
+    private const int SpeedHistoryLimit = 60;
+    private readonly List<double> _speedHistory = [];
+    private readonly DispatcherTimer _progressTimer = new(DispatcherPriority.Background) {Interval = TimeSpan.FromMilliseconds(500)};
+    private System.Windows.Shapes.Polygon? _speedPolygon;
+    private readonly Stopwatch _scanStopwatch = new();
+    private string _scanPhase = "准备中…";
+    private long _progressDone;
+    private long _progressTotal;
+    private long _lastSampleDone;
+    private long _lastSampleTicks;
+    private double _lastSpeed;
+
+    private void InitializeProgressChart()
+    {
+        _speedPolygon = new System.Windows.Shapes.Polygon
+        {
+            Stroke = CreateFrozenBrush(Color.FromRgb(0x00, 0x7A, 0xCC)),
+            StrokeThickness = 2,
+            Fill = CreateFrozenBrush(Color.FromArgb(0x40, 0x00, 0x7A, 0xCC))
+        };
+        ScanSpeedCanvas.Children.Add(_speedPolygon);
+        _progressTimer.Tick += (_, _) => SampleProgress();
+        ScanSpeedCanvas.SizeChanged += (_, _) => RenderSpeedChart();
+    }
+
+    private static SolidColorBrush CreateFrozenBrush(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    private void StartProgressTracking()
+    {
+        _speedHistory.Clear();
+        if (_speedPolygon != null)
+        {
+            _speedPolygon.Points = [];
+        }
+
+        Volatile.Write(ref _progressDone, 0);
+        Volatile.Write(ref _progressTotal, 0);
+        _lastSampleDone = 0;
+        _lastSpeed = 0;
+        _scanPhase = "正在检查扫描位置和索引…";
+        _scanStopwatch.Restart();
+        _lastSampleTicks = _scanStopwatch.ElapsedTicks;
+        ScanProgressBar.IsIndeterminate = true;
+        ScanPercentText.Text = "";
+        ScanSpeedText.Text = "速度: -";
+        ScanCountText.Text = "已处理: -";
+        ScanElapsedText.Text = "用时: 00:00";
+        ScanPhaseText.Text = _scanPhase;
+        ScanProgressPanel.Visibility = Visibility.Visible;
+        _progressTimer.Start();
+    }
+
+    private void StopProgressTracking()
+    {
+        _progressTimer.Stop();
+        _scanStopwatch.Stop();
+        ScanProgressPanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void SetProgressPhase(string phase, long total)
+    {
+        _scanPhase = phase;
+        Volatile.Write(ref _progressDone, 0);
+        Volatile.Write(ref _progressTotal, total);
+        _lastSampleDone = 0;
+    }
+
+    private void ReportProgress(long done, long total)
+    {
+        Volatile.Write(ref _progressDone, done);
+        Volatile.Write(ref _progressTotal, total);
+    }
+
+    private void SampleProgress()
+    {
+        var done = Volatile.Read(ref _progressDone);
+        var total = Volatile.Read(ref _progressTotal);
+        var ticks = _scanStopwatch.ElapsedTicks;
+        var seconds = (ticks - _lastSampleTicks) / (double) Stopwatch.Frequency;
+        if (seconds > 0)
+        {
+            _lastSpeed = Math.Max(0, (done - _lastSampleDone) / seconds);
+        }
+
+        _lastSampleDone = done;
+        _lastSampleTicks = ticks;
+        _speedHistory.Add(_lastSpeed);
+        if (_speedHistory.Count > SpeedHistoryLimit)
+        {
+            _speedHistory.RemoveAt(0);
+        }
+
+        var elapsed = _scanStopwatch.Elapsed;
+        ScanPhaseText.Text = _scanPhase;
+        ScanElapsedText.Text = $"用时: {(int) elapsed.TotalMinutes:00}:{elapsed.Seconds:00}";
+        if (total > 0)
+        {
+            var percent = Math.Min(100d, done * 100d / total);
+            ScanProgressBar.IsIndeterminate = false;
+            ScanProgressBar.Value = percent;
+            ScanPercentText.Text = $"{percent:F1}%";
+            ScanCountText.Text = $"已处理: {done:N0}/{total:N0}";
+            ScanSpeedText.Text = $"速度: {_lastSpeed:N0} 项/秒";
+        }
+        else
+        {
+            ScanProgressBar.IsIndeterminate = true;
+            ScanPercentText.Text = "";
+        }
+
+        RenderSpeedChart();
+    }
+
+    private void RenderSpeedChart()
+    {
+        if (_speedPolygon == null || _speedHistory.Count == 0)
+        {
+            return;
+        }
+
+        var width = ScanSpeedCanvas.ActualWidth;
+        var height = ScanSpeedCanvas.ActualHeight;
+        if (width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        var max = Math.Max(_speedHistory.Max(), 1d);
+        var step = _speedHistory.Count > 1 ? width / (_speedHistory.Count - 1) : 0;
+        var points = new PointCollection(_speedHistory.Count + 2) {new Point(0, height)};
+        for (var i = 0; i < _speedHistory.Count; i++)
+        {
+            points.Add(new Point(i * step, height - _speedHistory[i] / max * height * 0.9));
+        }
+
+        points.Add(new Point((_speedHistory.Count - 1) * step, height));
+        points.Freeze();
+        _speedPolygon.Points = points;
+    }
+
+    private void IndexService_ProgressChanged(object? sender, IndexProgressEventArgs e)
+    {
+        ReportProgress(e.ProcessedFiles, e.TotalFiles);
+    }
+
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingMarks || _isDeleting)
@@ -371,6 +522,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         ScannedImageCount = 0;
         NotifyResultSummary();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDuplicateDirectories)));
+        StartProgressTracking();
         try
         {
             SetStatus("正在检查扫描位置和索引…");
@@ -381,7 +533,17 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             if (missing.Length > 0)
             {
                 SetStatus($"发现 {missing.Length:N0} 个图片尚未建立索引，正在建立索引…");
-                await Task.Run(() => _indexService.UpdateIndexAsync(scanDirectories, false), cancellationToken);
+                SetProgressPhase("正在建立索引…", missing.Length);
+                _indexService.ProgressChanged += IndexService_ProgressChanged;
+                try
+                {
+                    await Task.Run(() => _indexService.UpdateIndexAsync(scanDirectories, false), cancellationToken);
+                }
+                finally
+                {
+                    _indexService.ProgressChanged -= IndexService_ProgressChanged;
+                }
+
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
@@ -398,7 +560,12 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             var algorithm = GetSelectedAlgorithm();
             var threshold = (float) (SimilaritySlider.Value / 100d);
             SetStatus($"正在准备并比较 {indexedPaths.Length:N0} 张图片…");
-            var progress = new Progress<int>(completed => SetStatus($"正在比较图片：{completed:N0}/{indexedPaths.Length:N0}，请稍候…"));
+            var progress = new Progress<int>(completed =>
+            {
+                ReportProgress(completed, indexedPaths.Length);
+                SetStatus($"正在比较图片：{completed:N0}/{indexedPaths.Length:N0}，请稍候…");
+            });
+            SetProgressPhase("正在比较图片…", indexedPaths.Length);
             var pairs = await _searchService.FindSimilarPairsAsync(indexedPaths, _indexService.Index, _indexService.FrameIndex, algorithm, threshold, IgnoreSameFolderCheckBox.IsChecked == true, progress, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -430,6 +597,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             }
 
             cancellationSource.Dispose();
+            StopProgressTracking();
             ScanButton.IsEnabled = true;
             StopScanButton.IsEnabled = false;
             StopScanButton.Visibility = Visibility.Collapsed;
