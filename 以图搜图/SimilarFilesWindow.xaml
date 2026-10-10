@@ -5,9 +5,9 @@
   xmlns:converters="clr-namespace:以图搜图.Converters"
         Title="相似文件查找"
         Width="1280"
-        Height="820"
-        MinWidth="900"
-        MinHeight="620"
+        Height="900"
+        MinWidth="1080"
+        MinHeight="720"
         WindowStartupLocation="CenterOwner"
         Background="#F5F5F5">
   <Window.Resources>

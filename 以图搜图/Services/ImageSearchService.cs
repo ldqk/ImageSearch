@@ -10,12 +10,6 @@ namespace 以图搜图.Services;
 
 public class ImageSearchService
 {
-    private readonly Lock _candidateIndexLock = new();
-    private HashCandidateIndex? _candidateIndex;
-    private List<IndexItem>? _candidateIndexSource;
-    private int _candidateIndexSourceCount;
-    private MatchAlgorithm _candidateIndexAlgorithm;
-
     /// <summary>
     /// 查找并生成相似文件组
     /// </summary>
@@ -35,7 +29,7 @@ public class ImageSearchService
             var useDctHash32 = algorithm.HasFlag(MatchAlgorithm.DctHash32);
             var useDctHash64 = algorithm.HasFlag(MatchAlgorithm.DctHash64);
             var canUseCandidateIndex = (!useDifferenceHash || HashCandidateIndex.MinimumSharedBuckets(256, 32, similarity) > 0) && (!(useDctHash32 || useDctHash64) || HashCandidateIndex.MinimumSharedBuckets(64, 8, similarity) > 0);
-            var candidateIndex = canUseCandidateIndex ? GetCandidateIndex(entries, algorithm, cancellationToken) : null;
+            var candidateIndex = canUseCandidateIndex ? HashCandidateIndex.Build(entries, algorithm, cancellationToken) : null;
             var folderIds = ignoreSameFolder ? BuildFolderIds(entries, cancellationToken) : null;
             var parallelOptions = new ParallelOptions
             {
@@ -418,26 +412,6 @@ public class ImageSearchService
 
             return list;
         });
-    }
-
-    private HashCandidateIndex GetCandidateIndex(List<IndexItem> index, MatchAlgorithm algorithm, CancellationToken cancellationToken)
-    {
-        lock (_candidateIndexLock)
-        {
-            if (_candidateIndex != null
-                && ReferenceEquals(_candidateIndexSource, index)
-                && _candidateIndexSourceCount == index.Count
-                && _candidateIndexAlgorithm == algorithm)
-            {
-                return _candidateIndex;
-            }
-
-            _candidateIndex = HashCandidateIndex.Build(index, algorithm, cancellationToken);
-            _candidateIndexSource = index;
-            _candidateIndexSourceCount = index.Count;
-            _candidateIndexAlgorithm = algorithm;
-            return _candidateIndex;
-        }
     }
 
     private static float MaxCompare(IEnumerable<ulong> values, IEnumerable<ulong> queryHashes)
