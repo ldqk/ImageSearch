@@ -16,7 +16,6 @@ namespace 以图搜图.Services;
 public sealed class ImageIndexService : Disposable
 {
     private readonly ConcurrentHashQueue<int> _writeQueue = new();
-    private readonly FileStream? _frameIndexStream;
     private readonly FileStream? _indexStream;
     private readonly CancellationTokenSource? _cancellationTokenSource;
     private readonly Task? _writeTask;
@@ -36,7 +35,6 @@ public sealed class ImageIndexService : Disposable
     private ImageIndexService()
     {
         _indexStream = File.Open("index.json", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
-        _frameIndexStream = File.Open("frame_index.json", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
         _cancellationTokenSource = new CancellationTokenSource();
         _writeTask = StartWriteTaskAsync(_cancellationTokenSource.Token);
     }
@@ -64,7 +62,6 @@ public sealed class ImageIndexService : Disposable
     }
 
     public ConcurrentDictionary<string, IndexItem> Index { get; private set; } = new();
-    public ConcurrentDictionary<string, FrameIndexItem> FrameIndex { get; private set; } = new();
 
     public bool IsIndexing { get; private set; }
     public bool IsWriting { get; private set; }
@@ -88,16 +85,6 @@ public sealed class ImageIndexService : Disposable
                     Index = set.ToConcurrentDictionary(x => x.FilePath);
                 }
             }
-
-            if (_frameIndexStream!.Length > 0)
-            {
-                _frameIndexStream.Seek(0, SeekOrigin.Begin);
-                var set = await JsonSerializer.DeserializeAsync<HashSet<FrameIndexItem>>(_frameIndexStream);
-                if (set != null)
-                {
-                    FrameIndex = set.ToConcurrentDictionary(x => x.FilePath);
-                }
-            }
         }
         catch (Exception ex)
         {
@@ -112,7 +99,7 @@ public sealed class ImageIndexService : Disposable
 
     public async Task UpdateIndexAsync(string[] directories, bool removeInvalid)
     {
-        var files = GetFiles(directories);
+        var files = EverythingHelper.GetFiles(directories);
         _totalCount = 0;
         _totalSize = 0;
         IsIndexing = true;
@@ -127,7 +114,7 @@ public sealed class ImageIndexService : Disposable
             });
         }
 
-        var filesToIndex = files.Except(Index.Keys).Except(FrameIndex.Keys).Where(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase)).Order().ToArray();
+        var filesToIndex = files.Except(Index.Keys).Where(s => Regex.IsMatch(s, "(gif|jpg|jpeg|png|bmp|webp)$", RegexOptions.IgnoreCase)).Order().ToArray();
         if (filesToIndex.Length == 0)
         {
             IsIndexing = false;
@@ -174,7 +161,7 @@ public sealed class ImageIndexService : Disposable
                 {
                     if (file.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        var indexItem = new FrameIndexItem(file);
+                        var indexItem = new IndexItem(file);
                         using var frames = new DisposeCollection<SKBitmap>(SkiaImageHelper.DecodeGrayFrames(file, 160));
                         frames.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount).ForAll(frame =>
                         {
@@ -182,16 +169,16 @@ public sealed class ImageIndexService : Disposable
                             indexItem.DctHash.Add(frame.DctHash());
                             indexItem.DctHash64.Add(frame.DctHash64());
                         });
-                        FrameIndex[file] = indexItem;
+                        Index[file] = indexItem;
                     }
                     else
                     {
                         using var image = SkiaImageHelper.DecodeGrayThumb(file, 160);
                         var indexItem = new IndexItem(file)
                         {
-                            DctHash = image.DctHash(),
-                            DifferenceHash = image.DifferenceHash256(),
-                            DctHash64 = image.DctHash64()
+                            DctHash = [image.DctHash()],
+                            DifferenceHash = [image.DifferenceHash256()],
+                            DctHash64 = [image.DctHash64()]
                         };
                         Index[file] = indexItem;
                     }
@@ -299,7 +286,7 @@ public sealed class ImageIndexService : Disposable
                 {
                     if (item.Path.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        var indexItem = new FrameIndexItem(item.Path);
+                        var indexItem = new IndexItem(item.Path);
                         using var frames = new DisposeCollection<SKBitmap>(SkiaImageHelper.DecodeGrayFrames(item.Path, 160));
                         frames.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount).ForAll(frame =>
                         {
@@ -308,16 +295,16 @@ public sealed class ImageIndexService : Disposable
                             indexItem.DctHash64.Add(frame.DctHash64());
                         });
 
-                        FrameIndex[item.Path] = indexItem;
+                        Index[item.Path] = indexItem;
                     }
                     else
                     {
                         using var image = SkiaImageHelper.DecodeGrayThumb(item.Stream, 160);
                         var indexItem = new IndexItem(item.Path)
                         {
-                            DctHash = image.DctHash(),
-                            DifferenceHash = image.DifferenceHash256(),
-                            DctHash64 = image.DctHash64()
+                            DctHash = [image.DctHash()],
+                            DifferenceHash = [image.DifferenceHash256()],
+                            DctHash64 = [image.DctHash64()]
                         };
                         Index[item.Path] = indexItem;
                     }
@@ -356,37 +343,7 @@ public sealed class ImageIndexService : Disposable
     public void RemoveFromIndex(string path)
     {
         Index.TryRemove(path, out _);
-        FrameIndex.TryRemove(path, out _);
         _writeQueue.Enqueue(1);
-    }
-
-    public IEnumerable<string> GetIndexedPaths()
-    {
-        return Index.Keys.Union(FrameIndex.Keys);
-    }
-
-    private static string[] GetFiles(string[] directories)
-    {
-        if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
-        {
-            return directories.SelectMany(s =>
-            {
-                var array = EverythingHelper.EnumerateFiles(s).ToArray();
-                return array.Length == 0 ? Directory.GetFiles(s, "*", SearchOption.AllDirectories) : array;
-            }).ToArray();
-        }
-
-        return directories.SelectMany(static s =>
-        {
-            try
-            {
-                return Directory.GetFiles(s, "*", SearchOption.AllDirectories);
-            }
-            catch
-            {
-                return [];
-            }
-        }).ToArray();
     }
 
     private void RemoveInvalidIndexes(string[] newDirs, string[] allFiles)
@@ -395,8 +352,8 @@ public sealed class ImageIndexService : Disposable
 
         if (newDirs.Length > 0)
         {
-            var allDirs = PathPrefixFinder.FindLongestCommonPathPrefixes(Index.Keys.Union(FrameIndex.Keys), 3).Where(Directory.Exists);
-            var combinedFiles = GetFiles(allDirs.Union(newDirs).ToArray());
+            var allDirs = PathPrefixFinder.FindLongestCommonPathPrefixes(Index.Keys, 3).Where(Directory.Exists);
+            var combinedFiles = EverythingHelper.GetFiles(allDirs.Union(newDirs).ToArray());
             allPaths = combinedFiles;
         }
 
@@ -405,13 +362,6 @@ public sealed class ImageIndexService : Disposable
         foreach (var key in removes)
         {
             Index.TryRemove(key, out _);
-            removed = true;
-        }
-
-        removes = FrameIndex.Keys.Except(allPaths).ToList();
-        foreach (var key in removes)
-        {
-            FrameIndex.TryRemove(key, out _);
             removed = true;
         }
 
@@ -427,16 +377,9 @@ public sealed class ImageIndexService : Disposable
         try
         {
             _indexStream!.Seek(0, SeekOrigin.Begin);
-            _frameIndexStream!.Seek(0, SeekOrigin.Begin);
-
             await JsonSerializer.SerializeAsync(_indexStream, Index.Values);
-            await JsonSerializer.SerializeAsync(_frameIndexStream, FrameIndex.Values);
-
             _indexStream.SetLength(_indexStream.Position);
-            _frameIndexStream.SetLength(_frameIndexStream.Position);
-
             await _indexStream.FlushAsync();
-            await _frameIndexStream.FlushAsync();
         }
         catch (Exception ex)
         {
@@ -524,12 +467,10 @@ public sealed class ImageIndexService : Disposable
         IndexUpdated = null;
 
         // 清理数据
-        FrameIndex?.Clear();
         Index?.Clear();
 
         // 关闭文件流
         _indexStream?.Dispose();
-        _frameIndexStream?.Dispose();
 
         // 清理令牌源
         _cancellationTokenSource?.Dispose();
@@ -538,14 +479,8 @@ public sealed class ImageIndexService : Disposable
 
 public record IndexItem(string FilePath)
 {
-    public ulong[] DifferenceHash { get; set; }
-    public ulong DctHash { get; set; }
-    public ulong DctHash64 { get; set; }
-}
-
-public sealed record FrameIndexItem(string FilePath)
-{
-    public List<ulong[]> DifferenceHash { get; set; } = new List<ulong[]>();
-    public List<ulong> DctHash { get; set; } = new List<ulong>();
-    public List<ulong> DctHash64 { get; set; } = new List<ulong>();
+    public List<ulong[]> DifferenceHash { get; set; } = [];
+    public List<ulong> DctHash { get; set; } = [];
+    public List<ulong> DctHash64 { get; set; } = [];
+    public bool IsAnimated => DifferenceHash.Count > 1;
 }

@@ -19,6 +19,8 @@ public sealed class AsyncImage : Image
 
     public static readonly DependencyProperty DecodePixelSizeProperty = DependencyProperty.Register(nameof(DecodePixelSize), typeof(int), typeof(AsyncImage), new PropertyMetadata(360, OnImagePathChanged));
 
+    public static readonly DependencyProperty CacheVersionProperty = DependencyProperty.Register(nameof(CacheVersion), typeof(int), typeof(AsyncImage), new PropertyMetadata(0, OnImagePathChanged));
+
     public string? ImagePath
     {
         get => (string?) GetValue(ImagePathProperty);
@@ -29,6 +31,12 @@ public sealed class AsyncImage : Image
     {
         get => (int) GetValue(DecodePixelSizeProperty);
         set => SetValue(DecodePixelSizeProperty, value);
+    }
+
+    public int CacheVersion
+    {
+        get => (int) GetValue(CacheVersionProperty);
+        set => SetValue(CacheVersionProperty, value);
     }
 
     private static void OnImagePathChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
@@ -42,7 +50,7 @@ public sealed class AsyncImage : Image
             return;
         }
 
-        var key = new ImageKey(path, image.DecodePixelSize);
+        var key = new ImageKey(path, image.DecodePixelSize, image.CacheVersion);
         var cached = GetCachedImage(key);
         if (cached != null)
         {
@@ -166,7 +174,7 @@ public sealed class AsyncImage : Image
         }
     }
 
-    private readonly record struct ImageKey(string Path, int DecodePixelSize);
+    private readonly record struct ImageKey(string Path, int DecodePixelSize, int CacheVersion);
 
     private sealed record CacheEntry(ImageKey Key, BitmapSource Bitmap, long SizeInBytes);
 
@@ -174,8 +182,8 @@ public sealed class AsyncImage : Image
     {
         public static readonly ImageKeyComparer Instance = new();
 
-        public bool Equals(ImageKey x, ImageKey y) => x.DecodePixelSize == y.DecodePixelSize && StringComparer.OrdinalIgnoreCase.Equals(x.Path, y.Path);
+        public bool Equals(ImageKey x, ImageKey y) => x.DecodePixelSize == y.DecodePixelSize && x.CacheVersion == y.CacheVersion && StringComparer.OrdinalIgnoreCase.Equals(x.Path, y.Path);
 
-        public int GetHashCode(ImageKey key) => HashCode.Combine(StringComparer.OrdinalIgnoreCase.GetHashCode(key.Path), key.DecodePixelSize);
+        public int GetHashCode(ImageKey key) => HashCode.Combine(StringComparer.OrdinalIgnoreCase.GetHashCode(key.Path), key.DecodePixelSize, key.CacheVersion);
     }
 }

@@ -1087,7 +1087,7 @@
                       Background="#FAFAFA"
                       CornerRadius="4">
                 <controls:AsyncImage ImagePath="{Binding SourceImagePath}"
-                                     DecodePixelSize="800"
+                                     DecodePixelSize="600"
                                      Stretch="Uniform"
                                      Cursor="Hand"
                                      MouseLeftButtonDown="SourceImage_Click"
@@ -1129,7 +1129,7 @@
                       Background="#FAFAFA"
                       CornerRadius="4">
                 <controls:AsyncImage ImagePath="{Binding DestImagePath}"
-                                     DecodePixelSize="800"
+                                     DecodePixelSize="600"
                                      Stretch="Uniform"
                                      Cursor="Hand"
                                      MouseLeftButtonDown="DestImage_Click"

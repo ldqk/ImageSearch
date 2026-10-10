@@ -25,50 +25,35 @@ public partial class MainViewModel : ObservableObject
     private readonly ImageIndexService _indexService;
     private readonly ImageSearchService _searchService;
 
-    [ObservableProperty]
-    private string destImageInfo = string.Empty;
+    [ObservableProperty]private string destImageInfo = string.Empty;
 
-    [ObservableProperty]
-    private string destImagePath = string.Empty;
+    [ObservableProperty]private string destImagePath = string.Empty;
 
-    [ObservableProperty]
-    private string directoryPath = string.Empty;
+    [ObservableProperty]private string directoryPath = string.Empty;
 
-    [ObservableProperty]
-    private string elapsedTime = string.Empty;
+    [ObservableProperty]private string elapsedTime = string.Empty;
 
-    [ObservableProperty]
-    private bool findFlipped;
+    [ObservableProperty]private bool findFlipped;
 
-    [ObservableProperty]
-    private bool findRotated = true;
+    [ObservableProperty]private bool findRotated = true;
 
-    [ObservableProperty]
-    private string imagePath = string.Empty;
+    [ObservableProperty]private string imagePath = string.Empty;
 
-    [ObservableProperty]
-    private string indexCount = "正在加载索引...";
+    [ObservableProperty]private string indexCount = "正在加载索引...";
 
-    [ObservableProperty]
-    private string indexSpeed = string.Empty;
+    [ObservableProperty]private string indexSpeed = string.Empty;
 
-    [ObservableProperty]
-    private string processStatus = string.Empty;
+    [ObservableProperty]private string processStatus = string.Empty;
 
-    [ObservableProperty]
-    private bool removeInvalidIndex;
+    [ObservableProperty]private bool removeInvalidIndex;
 
-    [ObservableProperty]
-    private ObservableCollection<SearchResult> searchResults = new();
+    [ObservableProperty]private ObservableCollection<SearchResult> searchResults = new();
 
-    [ObservableProperty]
-    private SearchResult? selectedResult;
+    [ObservableProperty]private SearchResult? selectedResult;
 
-    [ObservableProperty]
-    private Visibility showRemoveInvalidIndex = Visibility.Collapsed;
+    [ObservableProperty]private Visibility showRemoveInvalidIndex = Visibility.Collapsed;
 
-    [ObservableProperty]
-    private int similarity = 80;
+    [ObservableProperty]private int similarity = 85;
 
     public ModelsMatchAlgorithm MatchAlgorithm
     {
@@ -102,62 +87,43 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string sourceImagePath = string.Empty;
 
-    [ObservableProperty]
-    private string updateIndexButtonText = "🔄 更新索引";
+    [ObservableProperty]private string updateIndexButtonText = "🔄 更新索引";
 
-    [ObservableProperty]
-    private bool updateIndexButtonEnabled = true;
+    [ObservableProperty]private bool updateIndexButtonEnabled = true;
 
-    [ObservableProperty]
-    private bool isSearching;
+    [ObservableProperty]private bool isSearching;
 
-    [ObservableProperty]
-    private string searchStatusText = string.Empty;
+    [ObservableProperty]private string searchStatusText = string.Empty;
 
-    [ObservableProperty]
-    private Visibility searchLoadingVisibility = Visibility.Collapsed;
+    [ObservableProperty]private Visibility searchLoadingVisibility = Visibility.Collapsed;
 
-    [ObservableProperty]
-    private double indexProgress;
+    [ObservableProperty]private double indexProgress;
 
-    [ObservableProperty]
-    private string indexProgressText = string.Empty;
+    [ObservableProperty]private string indexProgressText = string.Empty;
 
-    [ObservableProperty]
-    private Visibility indexProgressVisibility = Visibility.Collapsed;
+    [ObservableProperty]private Visibility indexProgressVisibility = Visibility.Collapsed;
 
-    [ObservableProperty]
-    private string indexSpeedText = string.Empty;
+    [ObservableProperty]private string indexSpeedText = string.Empty;
 
-    [ObservableProperty]
-    private string indexThroughputText = string.Empty;
+    [ObservableProperty]private string indexThroughputText = string.Empty;
 
-    [ObservableProperty]
-    private string maxThroughputText = string.Empty;
+    [ObservableProperty]private string maxThroughputText = string.Empty;
 
-    [ObservableProperty]
-    private string estimatedRemainingTimeText = string.Empty;
+    [ObservableProperty]private string estimatedRemainingTimeText = string.Empty;
 
-    [ObservableProperty]
-    private string processingFilename = string.Empty;
+    [ObservableProperty]private string processingFilename = string.Empty;
 
-    [ObservableProperty]
-    private ObservableCollection<double> speedHistory = new();
+    [ObservableProperty]private ObservableCollection<double> speedHistory = new();
 
-    [ObservableProperty]
-    private bool isSearchEnabled;
+    [ObservableProperty]private bool isSearchEnabled;
 
-    [ObservableProperty]
-    private double cpuUsage;
+    [ObservableProperty]private double cpuUsage;
 
-    [ObservableProperty]
-    private double memoryUsage;
+    [ObservableProperty]private double memoryUsage;
 
-    [ObservableProperty]
-    private string webApiServer;
+    [ObservableProperty]private string webApiServer;
 
-    [ObservableProperty]
-    private bool webApiServerRunning;
+    [ObservableProperty]private bool webApiServerRunning;
 
     private Process? _currentProcess;
     private PerformanceCounter? _cpuCounter;
@@ -281,7 +247,7 @@ public partial class MainViewModel : ObservableObject
         {
             try
             {
-                var paths = _indexService.GetIndexedPaths().ToList();
+                var paths = _indexService.Index.Keys;
                 if (string.IsNullOrWhiteSpace(DirectoryPath) && paths.Count == 0)
                 {
                     Application.Current.Dispatcher.Invoke(() =>
@@ -302,6 +268,7 @@ public partial class MainViewModel : ObservableObject
                     {
                         MessageBox.Show(t.Exception.Message);
                     }
+
                     OnIndexCompleted(this, new IndexCompletedEventArgs());
                 }));
             }
@@ -477,6 +444,7 @@ public partial class MainViewModel : ObservableObject
 
                 File.Delete(SelectedResult.路径);
             }
+
             _indexService.RemoveFromIndex(SelectedResult.路径);
             SearchResults.Remove(SelectedResult);
             UpdateIndexCount();
@@ -512,7 +480,7 @@ public partial class MainViewModel : ObservableObject
             // 1. 检查文件拖放
             if (dataObject.GetDataPresent(DataFormats.FileDrop))
             {
-                var files = (string[])dataObject.GetData(DataFormats.FileDrop)!;
+                var files = (string[]) dataObject.GetData(DataFormats.FileDrop)!;
                 if (files.Length > 0)
                 {
                     ImagePath = files[0];
@@ -526,7 +494,7 @@ public partial class MainViewModel : ObservableObject
             {
                 try
                 {
-                    var image = (System.Windows.Media.Imaging.BitmapSource)dataObject.GetData(DataFormats.Bitmap)!;
+                    var image = (System.Windows.Media.Imaging.BitmapSource) dataObject.GetData(DataFormats.Bitmap)!;
                     // 立即冻结图片对象，使其可以跨线程访问
                     image.Freeze();
 
@@ -575,7 +543,7 @@ public partial class MainViewModel : ObservableObject
             {
                 try
                 {
-                    var image = (System.Windows.Media.Imaging.BitmapSource)dataObject.GetData(DataFormats.Dib)!;
+                    var image = (System.Windows.Media.Imaging.BitmapSource) dataObject.GetData(DataFormats.Dib)!;
                     // 立即冻结图片对象，使其可以跨线程访问
                     image.Freeze();
 
@@ -684,6 +652,7 @@ public partial class MainViewModel : ObservableObject
                                 {
                                     filename += ".jpg";
                                 }
+
                                 await File.WriteAllBytesAsync(filename, bytes);
 
                                 Application.Current.Dispatcher.Invoke(() =>
@@ -808,7 +777,7 @@ public partial class MainViewModel : ObservableObject
 
     public bool CanClose()
     {
-        return _indexService is { IsIndexing: false, IsWriting: false };
+        return _indexService is {IsIndexing: false, IsWriting: false};
     }
 
     private async Task SearchCore(string filename)
@@ -826,14 +795,7 @@ public partial class MainViewModel : ObservableObject
                 var sw = Stopwatch.StartNew();
                 var sim = Similarity / 100f;
 
-                var resultList = await _searchService.SearchAsync(
-                    filename,
-                    _indexService.Index,
-                    _indexService.FrameIndex,
-                    MatchAlgorithm,
-                    sim,
-                    FindRotated,
-                    FindFlipped);
+                var resultList = await _searchService.SearchAsync(filename, _indexService.Index, MatchAlgorithm, sim, FindRotated, FindFlipped);
 
                 sw.Stop();
                 return (resultList, sw.ElapsedMilliseconds);
@@ -932,11 +894,11 @@ public partial class MainViewModel : ObservableObject
     {
         if (timespan.TotalHours >= 1)
         {
-            return $"{(int)timespan.TotalHours}h {timespan.Minutes}m {timespan.Seconds}s";
+            return $"{(int) timespan.TotalHours}h {timespan.Minutes}m {timespan.Seconds}s";
         }
         else if (timespan.TotalMinutes >= 1)
         {
-            return $"{(int)timespan.TotalMinutes}m {timespan.Seconds}s";
+            return $"{(int) timespan.TotalMinutes}m {timespan.Seconds}s";
         }
         else
         {
@@ -959,6 +921,7 @@ public partial class MainViewModel : ObservableObject
             {
                 MessageBox.Show(Application.Current.MainWindow!, $"索引创建完成，耗时：{e.ElapsedSeconds:F2}s", "消息", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+
             IndexProgressVisibility = Visibility.Collapsed;
             IndexProgress = 0;
             IndexProgressText = string.Empty;
@@ -976,7 +939,7 @@ public partial class MainViewModel : ObservableObject
 
     private void UpdateIndexCount()
     {
-        var count = _indexService.Index.Count + _indexService.FrameIndex.Count;
+        var count = _indexService.Index.Count;
         IndexCount = count > 0 ? $"{count}文件" : "请先创建索引";
 
         // 根据索引总数决定是否显示移除无效索引选项

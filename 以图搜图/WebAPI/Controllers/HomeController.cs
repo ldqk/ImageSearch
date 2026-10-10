@@ -47,6 +47,6 @@ public class HomeController : Controller
     {
         var filename = Path.Combine(Path.GetTempPath(), SnowFlake.NewId + ".jpg");
         await file.OpenReadStream().SaveFileAsync(filename);
-        return Ok(await _searchService.SearchAsync(filename, _indexService.Index, _indexService.FrameIndex, algorithm, similar / 100, checkRotated, checkFlip));
+        return Ok(await _searchService.SearchAsync(filename, _indexService.Index, algorithm, similar / 100, checkRotated, checkFlip));
     }
 }
