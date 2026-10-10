@@ -693,6 +693,7 @@
                                                                 <MenuItem Header="从列表忽略该文件目录" Click="IgnoreDirectory_Click" />
                                                                 <Separator />
                                                                 <MenuItem Header="标记为待删除" Click="MarkFile_Click" />
+                                                                <MenuItem Header="删除文件…" Click="DeleteFile_Click" />
                                                                 <MenuItem Header="取消标记" Click="UnmarkFile_Click" />
                                                                 <MenuItem Header="标记组内其他文件" Click="MarkOtherFiles_Click" />
                                                                 <Separator />
@@ -796,6 +797,7 @@
                                                                           Click="IgnoreDirectory_Click" />
                                                                             <Separator />
                                                                             <MenuItem Header="标记为待删除" Click="MarkFile_Click" />
+                                                                            <MenuItem Header="删除文件…" Click="DeleteFile_Click" />
                                                                             <MenuItem Header="取消标记" Click="UnmarkFile_Click" />
                                                                             <MenuItem Header="标记组内其他文件"
                                                                           Click="MarkOtherFiles_Click" />

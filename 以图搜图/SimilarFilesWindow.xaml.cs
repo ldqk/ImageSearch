@@ -1488,7 +1488,6 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                 {
                     try
                     {
-                        //SetStatus($"正在删除 {++count}/{markedFiles.Length:N0} 个文件…");
                         if (toRecycleBin)
                         {
                             RecycleBinHelper.Delete(file.FilePath);
@@ -1510,6 +1509,18 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                     if (count % 10 == 0 || count == markedFiles.Length)
                     {
                         progress.Report(count);
+                    }
+                }
+
+                foreach (var dir in completedFiles.Select(t => Path.GetDirectoryName(t.FilePath)).Distinct().Where(s => !Directory.EnumerateFiles(s,"*",SearchOption.AllDirectories).Any()))
+                {
+                    try
+                    {
+                        Directory.Delete(dir, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        failures.Add($"{dir}: {ex.Message}");
                     }
                 }
 
@@ -1552,6 +1563,90 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
         RefreshVisibleGroups();
         SetStatus(errors.Count == 0 ? $"已{(toRecycleBin ? "移入回收站" : "永久删除")} {deleted.Count} 个文件。" : $"已处理 {deleted.Count} 个文件，{errors.Count} 个失败：{errors[0]}", errors.Count > 0);
+    }
+
+    private async void DeleteFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingMarks || _isDeleting || !ScanButton.IsEnabled || GetContextFile(sender) is not { } file)
+        {
+            return;
+        }
+
+        var mode = MessageBox.Show(this, $"删除“{file.Name}”？\n选择“是”移入回收站，选择“否”永久删除，选择“取消”返回。", "删除文件", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+        if (mode == MessageBoxResult.Cancel)
+        {
+            return;
+        }
+
+        var toRecycleBin = mode == MessageBoxResult.Yes;
+        if (!toRecycleBin && MessageBox.Show(this, $"永久删除“{file.Name}”后无法从回收站恢复。确定继续吗？", "确认永久删除", MessageBoxButton.YesNo, MessageBoxImage.Stop, MessageBoxResult.No) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        _isDeleting = true;
+        ScanButton.IsEnabled = false;
+        DeleteMarkedButton.IsEnabled = false;
+        SetStatus($"正在删除“{file.Name}”…");
+        try
+        {
+            try
+            {
+                await Task.Run(() =>
+                {
+                    if (toRecycleBin)
+                    {
+                        RecycleBinHelper.Delete(file.FilePath);
+                    }
+                    else
+                    {
+                        File.Delete(file.FilePath);
+                    }
+
+                    _indexService.RemoveFromIndex(file.FilePath);
+                    var dir = Path.GetDirectoryName(file.FilePath);
+                    if (!Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories).Any())
+                    {
+                        Directory.Delete(dir, true);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LogManager.Error(ex);
+                SetStatus($"删除“{file.Name}”失败：{ex.Message}", true);
+                return;
+            }
+
+            var group = file.Group;
+            group.Files.Remove(file);
+            group.VisibleFiles.Remove(file);
+            file.PropertyChanged -= FileItem_PropertyChanged;
+
+            if (group.Files.Count < 2)
+            {
+                Groups.Remove(group);
+                VisibleGroups.Remove(group);
+                foreach (var remainingFile in group.Files)
+                {
+                    remainingFile.PropertyChanged -= FileItem_PropertyChanged;
+                }
+            }
+            else
+            {
+                group.RefreshSummary();
+            }
+
+            await RefreshDuplicateDirectoryGroupsAsync([file.FilePath]);
+            RefreshVisibleGroups();
+            SetStatus($"已{(toRecycleBin ? "移入回收站" : "永久删除")}“{file.Name}”。");
+        }
+        finally
+        {
+            _isDeleting = false;
+            ScanButton.IsEnabled = true;
+            DeleteMarkedButton.IsEnabled = true;
+        }
     }
 
     private async void ReplaceGroupFiles_Click(object sender, RoutedEventArgs e)
