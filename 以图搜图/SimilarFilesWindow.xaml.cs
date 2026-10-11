@@ -1,18 +1,19 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using Masuit.Tools;
+using Masuit.Tools.Logging;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using Masuit.Tools;
-using Masuit.Tools.Logging;
 using 以图搜图.Models;
 using 以图搜图.Services;
 
@@ -38,6 +39,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     private bool SuppressConfirmations => SuppressConfirmationsCheckBox.IsChecked == true;
 
     public ObservableCollection<string> Directories { get; } = [];
+    public ObservableCollection<string> ExcludedDirectories { get; } = [];
     public BulkObservableCollection<SimilarFileGroup> Groups { get; } = [];
     public BulkObservableCollection<SimilarFileGroup> VisibleGroups { get; } = [];
     public BulkObservableCollection<SimilarDirectoryGroup> DuplicateDirectoryGroups { get; } = [];
@@ -395,6 +397,62 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         SetStatus("扫描位置已清空。");
     }
 
+    private void AddExcludedDirectory_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            CheckFileExists = false,
+            CheckPathExists = true,
+            FileName = "选择要排除的文件夹",
+            ValidateNames = false
+        };
+
+        if (dialog.ShowDialog(this) == true && Path.GetDirectoryName(dialog.FileName) is { } path)
+        {
+            AddExcludedDirectories([path]);
+        }
+    }
+
+    private void AddExcludedPath_Click(object sender, RoutedEventArgs e) => AddExcludedPathsFromTextBox();
+
+    private void ExcludedDirectoryPathBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            AddExcludedPathsFromTextBox();
+            e.Handled = true;
+        }
+    }
+
+    private void AddExcludedPathsFromTextBox()
+    {
+        var paths = ExcludedDirectoryPathBox.Text
+            .Split(['\r', '\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(path => path.Trim('"'));
+        AddExcludedDirectories(paths);
+        ExcludedDirectoryPathBox.Clear();
+    }
+
+    private void AddExcludedDirectories(IEnumerable<string> paths)
+    {
+        var added = 0;
+        foreach (var path in paths.Where(path => Directory.Exists(path) && !ExcludedDirectories.Contains(path, StringComparer.OrdinalIgnoreCase)))
+        {
+            ExcludedDirectories.Add(path);
+            added++;
+        }
+
+        SetStatus(added > 0 ? $"已添加 {added} 个排除文件夹。" : "未添加排除文件夹，请输入有效的文件夹路径。", added == 0);
+    }
+
+    private void RemoveExcludedDirectory_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button {Tag: string path})
+        {
+            ExcludedDirectories.Remove(path);
+        }
+    }
+
     private void DirectoryList_Drop(object sender, DragEventArgs e)
     {
         if (!e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -714,11 +772,12 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            ScannedImageCount = files.Length;
+            var index = _indexService.Index.Values.Where(x => x.FilePath.StartsWith(scanDirectories)).ToList();
+            index.RemoveAll(t => t.FilePath.StartsWith(ExcludedDirectories));
+            ScannedImageCount = index.Count;
             if (ScannedImageCount < 2)
             {
                 SetStatus("扫描位置至少需要两张图片。", true);
-                MainTabControl.SelectedIndex = 1;
                 return;
             }
 
@@ -726,7 +785,6 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             var threshold = (float) (SimilaritySlider.Value / 100d);
             SetStatus($"正在准备并比较 {ScannedImageCount:N0} 张图片…");
             StartProgressTracking();
-            var index = _indexService.Index.Values.Where(x => x.FilePath.StartsWith(scanDirectories)).ToList();
             var progress = new Progress<int>(completed =>
             {
                 ReportProgress(completed, ScannedImageCount);
@@ -747,7 +805,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDuplicateDirectories)));
             SetStatus($"扫描完成：检查 {ScannedImageCount:N0} 张图片，找到 {Groups.Count:N0} 组相似文件、{Groups.Sum(group => group.Files.Count):N0} 个文件。");
             RefreshVisibleGroups();
-            MainTabControl.SelectedIndex = 1;
+            MainTabControl.SelectedIndex = Groups.Count > 0 ? 1 : 0;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
