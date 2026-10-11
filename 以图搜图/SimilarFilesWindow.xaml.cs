@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -28,9 +28,14 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     private bool _isUpdatingMarks;
     private bool _isDeleting;
     private bool _filterRefreshPending;
+    private readonly DispatcherTimer _pathSearchDebounceTimer = new(DispatcherPriority.Background)
+    {
+        Interval = TimeSpan.FromMilliseconds(300)
+    };
     private readonly HashSet<SimilarFileGroup> _pendingFilterGroups = [];
     private string[] _scannedImagePaths = [];
     private List<SimilarImagePair> _similarImagePairs = [];
+    private bool SuppressConfirmations => SuppressConfirmationsCheckBox.IsChecked == true;
 
     public ObservableCollection<string> Directories { get; } = [];
     public BulkObservableCollection<SimilarFileGroup> Groups { get; } = [];
@@ -64,6 +69,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public int DuplicateGroupCount => Groups.Count;
+    public int VisibleGroupCount => VisibleGroups.Count;
     public int DuplicateFileCount => Groups.Sum(group => group.Files.Count);
     public int MarkedFileCount => Groups.Sum(group => group.Files.Count(file => file.IsMarked));
 
@@ -121,6 +127,12 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         InitializeComponent();
         DataContext = this;
         SimilaritySlider.ValueChanged += (_, _) => SimilarityLabel.Text = $"{SimilaritySlider.Value:F0}%";
+        _pathSearchDebounceTimer.Tick += (_, _) =>
+        {
+            _pathSearchDebounceTimer.Stop();
+            RefreshVisibleGroups();
+        };
+        Closed += (_, _) => _pathSearchDebounceTimer.Stop();
         InitializeProgressChart();
     }
 
@@ -210,6 +222,99 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             }
         };
         window.Show();
+    }
+
+    private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.N && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            var window = new SimilarFilesWindow
+            {
+                WindowStartupLocation = WindowStartupLocation.CenterScreen
+            };
+            window.Show();
+            e.Handled = true;
+            return;
+        }
+
+        if (MainTabControl.SelectedIndex != 1)
+        {
+            return;
+        }
+
+        if (e.Key == Key.F5)
+        {
+            e.Handled = true;
+            RefreshResults_Click(this, new RoutedEventArgs());
+            return;
+        }
+
+        if (e.Key == Key.I && Keyboard.Modifiers == ModifierKeys.Control &&
+            ResultsTabControl.SelectedIndex == 0)
+        {
+            e.Handled = true;
+            await UpdateVisibleMarksAsync(isMarked => !isMarked, "反选当前列表中的标记");
+            return;
+        }
+
+        var toRecycleBin = e.Key == Key.Delete && Keyboard.Modifiers == ModifierKeys.None;
+        var permanentlyDelete = e.Key == Key.Delete && Keyboard.Modifiers == ModifierKeys.Shift;
+        if (!toRecycleBin && !permanentlyDelete)
+        {
+            return;
+        }
+
+        if (GetFocusedResultFile() is not { } file)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (!SuppressConfirmations)
+        {
+            var prompt = toRecycleBin
+                ? $"确定将“{file.Name}”移入回收站吗？"
+                : $"永久删除“{file.Name}”后无法从回收站恢复。确定继续吗？";
+            var title = toRecycleBin ? "删除文件" : "确认永久删除";
+            if (MessageBox.Show(this, prompt, title, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+        }
+
+        await DeleteFileAsync(file, toRecycleBin);
+    }
+
+    private SimilarFileItem? GetFocusedResultFile()
+    {
+        DependencyObject? current = Keyboard.FocusedElement as DependencyObject;
+        while (current != null)
+        {
+            if (current is FrameworkElement { DataContext: SimilarFileItem file })
+            {
+                return file;
+            }
+
+            if (current is DataGrid { SelectedItem: SimilarFileItem selectedFile })
+            {
+                return selectedFile;
+            }
+
+            if (current is ListBox { SelectedItem: SimilarFileItem selectedListFile })
+            {
+                return selectedListFile;
+            }
+
+            current = current switch
+            {
+                Visual => VisualTreeHelper.GetParent(current),
+                ContentElement contentElement => ContentOperations.GetParent(contentElement) ??
+                                                 (contentElement as FrameworkContentElement)?.Parent,
+                _ => LogicalTreeHelper.GetParent(current)
+            };
+        }
+
+        return null;
     }
 
     private void AddDirectory_Click(object sender, RoutedEventArgs e)
@@ -665,6 +770,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             ScanButton.IsEnabled = true;
             StopScanButton.IsEnabled = false;
             StopScanButton.Visibility = Visibility.Collapsed;
+            FilterSimilaritySlider.Value = SimilaritySlider.Value;
         }
     }
 
@@ -877,6 +983,65 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
     private void FilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => RefreshVisibleGroups();
 
+    private void FilterPathSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _pathSearchDebounceTimer.Stop();
+        _pathSearchDebounceTimer.Start();
+    }
+
+    private void FilterSimilarityCheck_Changed(object sender, RoutedEventArgs e) => RefreshVisibleGroups();
+
+    private void FilterSimilaritySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (FilterSimilarityCheck?.IsChecked == true)
+        {
+            RefreshVisibleGroups();
+        }
+    }
+
+    private string GetAlgorithmFilter()
+    {
+        var index = FilterAlgorithmCombo?.SelectedIndex ?? 0;
+        return index > 0 ? ((ComboBoxItem) FilterAlgorithmCombo!.SelectedItem).Content.ToString()! : string.Empty;
+    }
+
+    private bool IsFileLevelFilterActive(string filter) => filter is "仅已标记文件" or "仅未标记文件" || GetAlgorithmFilter().Length > 0 || FilterSimilarityCheck?.IsChecked == true;
+
+    private bool IsAnyFilterActive() =>
+        GetCurrentFilter() != "全部文件" ||
+        IsFileLevelFilterActive(string.Empty) ||
+        !string.IsNullOrWhiteSpace(FilterPathSearchBox?.Text);
+
+    private bool MatchesPathSearch(SimilarFileGroup group)
+    {
+        var searchTerm = FilterPathSearchBox?.Text;
+        return string.IsNullOrWhiteSpace(searchTerm) ||
+               group.Files.Any(file => file.FilePath.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private IEnumerable<SimilarFileItem> GetFilteredFiles(SimilarFileGroup group, string filter)
+    {
+        IEnumerable<SimilarFileItem> files = filter switch
+        {
+            "仅已标记文件" => group.Files.Where(file => file.IsMarked),
+            "仅未标记文件" => group.Files.Where(file => !file.IsMarked),
+            _ => group.Files
+        };
+        var algorithm = GetAlgorithmFilter();
+        if (algorithm.Length > 0)
+        {
+            files = files.Where(file => file.MatchAlgorithmText.Split(", ").Contains(algorithm));
+        }
+
+        if (FilterSimilarityCheck.IsChecked == true)
+        {
+            var threshold = Math.Round(FilterSimilaritySlider.Value);
+            files = files.Where(file => Math.Round(file.Similarity * 100) >= threshold);
+        }
+
+        return files;
+    }
+
     private async void DuplicateDirectoryMark_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingMarks || _isDeleting || !ScanButton.IsEnabled || sender is not CheckBox {DataContext: SimilarDirectoryItem directory} checkBox)
@@ -913,7 +1078,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
 
         NotifyResultSummary();
-        if (GetCurrentFilter() != "全部文件")
+        if (IsAnyFilterActive())
         {
             RefreshVisibleGroups();
         }
@@ -956,7 +1121,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         if (!_isUpdatingMarks && e.PropertyName == nameof(SimilarFileItem.IsMarked) && sender is SimilarFileItem file)
         {
             NotifyResultSummary();
-            if (GetCurrentFilter() != "全部文件")
+            if (IsAnyFilterActive())
             {
                 ScheduleFilterRefresh(file.Group);
             }
@@ -992,20 +1157,18 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
 
         var filter = GetCurrentFilter();
-        if (filter is "仅已标记文件" or "仅未标记文件")
+        if (IsFileLevelFilterActive(filter))
         {
-            group.VisibleFiles.ReplaceAll(filter == "仅已标记文件" ? group.Files.Where(file => file.IsMarked) : group.Files.Where(file => !file.IsMarked));
+            group.VisibleFiles.Synchronize(GetFilteredFiles(group, filter));
         }
         else if (group.VisibleFiles.Count != group.Files.Count)
         {
-            group.VisibleFiles.ReplaceAll(group.Files);
+            group.VisibleFiles.Synchronize(group.Files);
         }
 
         var markedCount = group.Files.Count(file => file.IsMarked);
-        var shouldShow = filter switch
+        var passesGroupFilter = filter switch
         {
-            "仅已标记文件" => group.VisibleFiles.Count > 0,
-            "仅未标记文件" => group.VisibleFiles.Count > 0,
             "含已标记文件的组" => markedCount > 0,
             "没有标记文件的组" => markedCount == 0,
             "组内全部已标记" => markedCount == group.Files.Count,
@@ -1013,6 +1176,9 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             "不同文件夹" => GetParentDirectoryCount(group) > 1,
             _ => true
         };
+        var shouldShow = MatchesPathSearch(group) &&
+                         passesGroupFilter &&
+                         (!IsFileLevelFilterActive(filter) || group.VisibleFiles.Count > 1);
         var isVisible = VisibleGroups.Contains(group);
         if (shouldShow && !isVisible)
         {
@@ -1033,33 +1199,33 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             return;
         }
 
-        NotifyResultSummary();
         var filter = GetCurrentFilter();
-        if (filter == "全部文件")
+        if (!IsAnyFilterActive())
         {
             foreach (var group in Groups.Where(group => group.VisibleFiles.Count != group.Files.Count))
             {
-                group.VisibleFiles.ReplaceAll(group.Files);
+                group.VisibleFiles.Synchronize(group.Files);
             }
 
-            VisibleGroups.ReplaceAll(Groups.OrderBy(group => group.Files[0].FilePath, StringComparer.OrdinalIgnoreCase));
+            VisibleGroups.Synchronize(Groups.OrderBy(group => group.Files[0].FilePath, StringComparer.OrdinalIgnoreCase));
+            NotifyResultSummary();
             return;
         }
 
         var visibleGroups = new List<SimilarFileGroup>();
         foreach (var group in Groups)
         {
-            if (filter is "仅已标记文件" or "仅未标记文件")
+            if (IsFileLevelFilterActive(filter))
             {
-                group.VisibleFiles.ReplaceAll(filter == "仅已标记文件" ? group.Files.Where(file => file.IsMarked) : group.Files.Where(file => !file.IsMarked));
+                group.VisibleFiles.Synchronize(GetFilteredFiles(group, filter));
             }
             else if (group.VisibleFiles.Count != group.Files.Count)
             {
-                group.VisibleFiles.ReplaceAll(group.Files);
+                group.VisibleFiles.Synchronize(group.Files);
             }
 
             var markedCount = group.Files.Count(file => file.IsMarked);
-            var showGroup = filter switch
+            var passesGroupFilter = filter switch
             {
                 "含已标记文件的组" => markedCount > 0,
                 "没有标记文件的组" => markedCount == 0,
@@ -1068,13 +1234,15 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                 "不同文件夹" => GetParentDirectoryCount(group) > 1,
                 _ => true
             };
+            var showGroup = MatchesPathSearch(group) && passesGroupFilter && (!IsFileLevelFilterActive(filter) || group.VisibleFiles.Count > 1);
             if (showGroup)
             {
                 visibleGroups.Add(group);
             }
         }
 
-        VisibleGroups.ReplaceAll(visibleGroups.OrderBy(group => group.Files[0].FilePath, StringComparer.OrdinalIgnoreCase));
+        VisibleGroups.Synchronize(visibleGroups.OrderBy(group => group.Files[0].FilePath, StringComparer.OrdinalIgnoreCase));
+        NotifyResultSummary();
     }
 
     private static int GetParentDirectoryCount(SimilarFileGroup group) =>
@@ -1307,7 +1475,10 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             return;
         }
 
-        var matchingFiles = Groups.SelectMany(group => group.Files).Where(file => inScope(root, file)).ToArray();
+        var matchingFiles = VisibleGroups
+            .SelectMany(group => group.VisibleFiles)
+            .Where(file => inScope(root, file))
+            .ToArray();
         if (matchingFiles.Length == 0)
         {
             SetStatus("当前目录范围内没有找到相似文件。", true);
@@ -1347,7 +1518,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
 
         NotifyResultSummary();
-        if (GetCurrentFilter() != "全部文件")
+        if (IsAnyFilterActive())
         {
             RefreshVisibleGroups();
         }
@@ -1418,7 +1589,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             }
 
             NotifyResultSummary();
-            if (GetCurrentFilter() != "全部文件")
+            if (IsAnyFilterActive())
             {
                 RefreshVisibleGroups();
             }
@@ -1441,21 +1612,25 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
         var markedFileSet = markedFiles.ToHashSet();
         var fullyMarkedGroups = Groups.Count(group => group.Files.Count > 0 && group.Files.All(markedFileSet.Contains));
-        if (fullyMarkedGroups > 0 && MessageBox.Show(this, $"警告：有 {fullyMarkedGroups} 组中的所有文件都已标记，删除后这些组将没有保留文件。\n仍要继续吗？", "全部重复文件已标记", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+        if (!SuppressConfirmations && fullyMarkedGroups > 0 && MessageBox.Show(this, $"警告：有 {fullyMarkedGroups} 组中的所有文件都已标记，删除后这些组将没有保留文件。\n仍要继续吗？", "全部重复文件已标记", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
         {
             return;
         }
 
-        var mode = MessageBox.Show(this, $"准备删除 {markedFiles.Length} 个文件。\n选择“是”移入回收站，选择“否”永久删除，选择“取消”返回。", "选择删除方式", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
-        if (mode == MessageBoxResult.Cancel)
+        var toRecycleBin = SuppressConfirmations;
+        if (!SuppressConfirmations)
         {
-            return;
-        }
+            var mode = MessageBox.Show(this, $"准备删除 {markedFiles.Length} 个文件。\n选择“是”移入回收站，选择“否”永久删除，选择“取消”返回。", "选择删除方式", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+            if (mode == MessageBoxResult.Cancel)
+            {
+                return;
+            }
 
-        var toRecycleBin = mode == MessageBoxResult.Yes;
-        if (!toRecycleBin && MessageBox.Show(this, "永久删除的文件无法从回收站恢复。确定继续吗？", "确认永久删除", MessageBoxButton.YesNo, MessageBoxImage.Stop, MessageBoxResult.No) != MessageBoxResult.Yes)
-        {
-            return;
+            toRecycleBin = mode == MessageBoxResult.Yes;
+            if (!toRecycleBin && MessageBox.Show(this, "永久删除的文件无法从回收站恢复。确定继续吗？", "确认永久删除", MessageBoxButton.YesNo, MessageBoxImage.Stop, MessageBoxResult.No) != MessageBoxResult.Yes)
+            {
+                return;
+            }
         }
 
         DeleteProgressBar.Value = 0;
@@ -1505,11 +1680,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                         failures.Add($"{file.Name}: {ex.Message}");
                     }
 
-                    count++;
-                    if (count % 10 == 0 || count == markedFiles.Length)
-                    {
-                        progress.Report(count);
-                    }
+                    progress.Report(++count);
                 }
 
                 foreach (var dir in completedFiles.Select(t => Path.GetDirectoryName(t.FilePath)).Distinct().Where(s => !Directory.EnumerateFiles(s,"*",SearchOption.AllDirectories).Any()))
@@ -1541,12 +1712,12 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             foreach (var file in group.Files.Where(deleted.Contains).ToArray())
             {
                 group.Files.Remove(file);
+                group.VisibleFiles.Remove(file);
                 file.PropertyChanged -= FileItem_PropertyChanged;
             }
 
             if (group.Files.Count >= 2)
             {
-                group.VisibleFiles.ReplaceAll(group.Files);
                 remainingGroups.Add(group);
             }
             else
@@ -1572,14 +1743,28 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             return;
         }
 
-        var mode = MessageBox.Show(this, $"删除“{file.Name}”？\n选择“是”移入回收站，选择“否”永久删除，选择“取消”返回。", "删除文件", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
-        if (mode == MessageBoxResult.Cancel)
+        var toRecycleBin = SuppressConfirmations;
+        if (!SuppressConfirmations)
         {
-            return;
+            var mode = MessageBox.Show(this, $"删除“{file.Name}”？\n选择“是”移入回收站，选择“否”永久删除，选择“取消”返回。", "删除文件", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+            if (mode == MessageBoxResult.Cancel)
+            {
+                return;
+            }
+
+            toRecycleBin = mode == MessageBoxResult.Yes;
+            if (!toRecycleBin && MessageBox.Show(this, $"永久删除“{file.Name}”后无法从回收站恢复。确定继续吗？", "确认永久删除", MessageBoxButton.YesNo, MessageBoxImage.Stop, MessageBoxResult.No) != MessageBoxResult.Yes)
+            {
+                return;
+            }
         }
 
-        var toRecycleBin = mode == MessageBoxResult.Yes;
-        if (!toRecycleBin && MessageBox.Show(this, $"永久删除“{file.Name}”后无法从回收站恢复。确定继续吗？", "确认永久删除", MessageBoxButton.YesNo, MessageBoxImage.Stop, MessageBoxResult.No) != MessageBoxResult.Yes)
+        await DeleteFileAsync(file, toRecycleBin);
+    }
+
+    private async Task DeleteFileAsync(SimilarFileItem file, bool toRecycleBin)
+    {
+        if (_isUpdatingMarks || _isDeleting || !ScanButton.IsEnabled)
         {
             return;
         }
@@ -1663,7 +1848,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             return;
         }
 
-        if (MessageBox.Show(this, $"将使用“{source.Name}”覆盖组内其他 {otherFiles.Length:N0} 个文件，保留其他文件名，并删除“{source.Name}”。此操作无法撤销，是否继续？", "确认替换组内文件", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+        if (!SuppressConfirmations && MessageBox.Show(this, $"将使用“{source.Name}”覆盖组内其他 {otherFiles.Length:N0} 个文件，保留其他文件名，并删除“{source.Name}”。此操作无法撤销，是否继续？", "确认替换组内文件", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
         {
             return;
         }
@@ -1829,7 +2014,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
         NotifyResultSummary();
         SetStatus($"已按“{rule}”标记当前列表中的 {visibleFiles.Count(file => file.IsMarked):N0} 个待清理文件；文件尚未删除。");
-        if (GetCurrentFilter() != "全部文件")
+        if (IsAnyFilterActive())
         {
             RefreshVisibleGroups();
         }
@@ -1877,7 +2062,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
 
         NotifyResultSummary();
-        if (GetCurrentFilter() != "全部文件")
+        if (IsAnyFilterActive())
         {
             RefreshVisibleGroups();
         }
@@ -1903,6 +2088,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     private void NotifyResultSummary()
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DuplicateGroupCount)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibleGroupCount)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DuplicateFileCount)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MarkedFileCount)));
     }
@@ -1991,6 +2177,44 @@ public sealed class BulkObservableCollection<T> : ObservableCollection<T>
         OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
         OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
     }
+
+    public void Synchronize(IEnumerable<T> items)
+    {
+        var targetItems = items.ToArray();
+        var comparer = EqualityComparer<T>.Default;
+        for (var targetIndex = 0; targetIndex < targetItems.Length; targetIndex++)
+        {
+            var targetItem = targetItems[targetIndex];
+            if (targetIndex < Count && comparer.Equals(this[targetIndex], targetItem))
+            {
+                continue;
+            }
+
+            var existingIndex = -1;
+            for (var index = targetIndex + 1; index < Count; index++)
+            {
+                if (comparer.Equals(this[index], targetItem))
+                {
+                    existingIndex = index;
+                    break;
+                }
+            }
+
+            if (existingIndex >= 0)
+            {
+                Move(existingIndex, targetIndex);
+            }
+            else
+            {
+                Insert(targetIndex, targetItem);
+            }
+        }
+
+        while (Count > targetItems.Length)
+        {
+            RemoveAt(Count - 1);
+        }
+    }
 }
 
 public partial class SimilarFileItem : ObservableObject
@@ -2008,6 +2232,7 @@ public partial class SimilarFileItem : ObservableObject
     public string SizeText => $"{Length / 1048576d:F2} MB";
     public string ModifiedText => Modified.ToString("yyyy-MM-dd HH:mm");
     public string SimilarityText { get; private set; }
+    public float Similarity { get; }
     public string MatchAlgorithmText { get; }
     public string ResolutionText
     {
@@ -2031,6 +2256,7 @@ public partial class SimilarFileItem : ObservableObject
         Name = Path.GetFileName(filePath);
         Length = length;
         Modified = modified;
+        Similarity = similarity;
         SimilarityText = $"{similarity * 100:F0}%";
         MatchAlgorithmText = matchAlgorithmText;
     }
