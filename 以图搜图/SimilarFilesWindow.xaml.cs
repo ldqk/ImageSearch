@@ -855,12 +855,18 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     private List<SimilarFileGroup> BuildGroups(string[] paths, List<SimilarImagePair> matches, CancellationToken cancellationToken)
     {
         var groups = new List<SimilarFileGroup>();
+        var pathSet = paths.ToHashSet(StringComparer.Ordinal);
         var neighbors = paths.ToDictionary(path => path, _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
         var scores = new Dictionary<(string First, string Second), float>();
         var algorithms = new Dictionary<(string First, string Second), MatchAlgorithm>();
-        foreach (var match in matches.Where(p => paths.Contains(p.FirstPath)&& paths.Contains(p.SecondPath)))
+        foreach (var match in matches)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!pathSet.Contains(match.FirstPath) || !pathSet.Contains(match.SecondPath))
+            {
+                continue;
+            }
+
             neighbors[match.FirstPath].Add(match.SecondPath);
             neighbors[match.SecondPath].Add(match.FirstPath);
             var pair = string.Compare(match.FirstPath, match.SecondPath, StringComparison.OrdinalIgnoreCase) < 0 ? (match.FirstPath, match.SecondPath) : (match.SecondPath, match.FirstPath);
@@ -899,7 +905,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                 continue;
             }
 
-            var fileItems = component.Select(path => CreateFileItem(path, component, scores, algorithms)).OrderBy(item => item.FilePath, StringComparer.OrdinalIgnoreCase).ToList();
+            var fileItems = component.Select(path => CreateFileItem(path, neighbors[path], component.Count, scores, algorithms)).OrderBy(item => item.FilePath, StringComparer.OrdinalIgnoreCase).ToList();
             var group = new SimilarFileGroup(groupNumber++, fileItems);
             foreach (var file in fileItems)
             {
@@ -914,14 +920,28 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
     private static List<SimilarDirectoryGroup> BuildDuplicateDirectoryGroups(string[] paths, List<SimilarImagePair> matches, CancellationToken cancellationToken)
     {
-        var filesByDirectory = paths.GroupBy(path => Path.GetDirectoryName(path)!, StringComparer.OrdinalIgnoreCase).ToDictionary(group => group.Key, group => group.ToHashSet(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+        var filesByDirectory = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var directoryByPath = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var path in paths)
+        {
+            var directory = Path.GetDirectoryName(path)!;
+            directoryByPath.Add(path, directory);
+            if (!filesByDirectory.TryGetValue(directory, out var files))
+            {
+                files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                filesByDirectory.Add(directory, files);
+            }
+
+            files.Add(path);
+        }
+
         var pairCoverage = new Dictionary<(string FirstDirectory, string SecondDirectory), (HashSet<string> FirstFiles, HashSet<string> SecondFiles)>();
 
         foreach (var match in matches)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var firstDirectory = Path.GetDirectoryName(match.FirstPath);
-            var secondDirectory = Path.GetDirectoryName(match.SecondPath);
+            var firstDirectory = directoryByPath.TryGetValue(match.FirstPath, out var firstMatchedDirectory) ? firstMatchedDirectory : Path.GetDirectoryName(match.FirstPath);
+            var secondDirectory = directoryByPath.TryGetValue(match.SecondPath, out var secondMatchedDirectory) ? secondMatchedDirectory : Path.GetDirectoryName(match.SecondPath);
             if (string.IsNullOrWhiteSpace(firstDirectory) || string.IsNullOrWhiteSpace(secondDirectory) || string.Equals(firstDirectory, secondDirectory, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
@@ -1006,17 +1026,18 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             var items = directories.Order(StringComparer.OrdinalIgnoreCase).Select(directory =>
             {
                 var filePaths = filesByDirectory[directory];
-                var totalSize = filePaths.Sum(path =>
+                long totalSize = 0;
+                foreach (var path in filePaths)
                 {
                     try
                     {
-                        return File.Exists(path) ? new FileInfo(path).Length : 0;
+                        totalSize += new FileInfo(path).Length;
                     }
                     catch
                     {
-                        return 0;
                     }
-                });
+                }
+
                 return new SimilarDirectoryItem(directory, filePaths.Count, totalSize);
             }).ToList();
             groups.Add(new SimilarDirectoryGroup(groupNumber++, items));
@@ -1025,16 +1046,26 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         return groups;
     }
 
-    private static SimilarFileItem CreateFileItem(string path, List<string> group, Dictionary<(string First, string Second), float> matches, Dictionary<(string First, string Second), MatchAlgorithm> algorithms)
+    private static SimilarFileItem CreateFileItem(string path, HashSet<string> neighbors, int groupSize, Dictionary<(string First, string Second), float> matches, Dictionary<(string First, string Second), MatchAlgorithm> algorithms)
     {
         var file = new FileInfo(path);
-        var matchingPairs = group.Where(other => !other.Equals(path, StringComparison.OrdinalIgnoreCase)).Select(other =>
+        var similarity = neighbors.Count < groupSize - 1 ? 0 : float.NegativeInfinity;
+        var matchedAlgorithms = (MatchAlgorithm) 0;
+        foreach (var other in neighbors)
         {
             var pair = string.Compare(path, other, StringComparison.OrdinalIgnoreCase) < 0 ? (path, other) : (other, path);
-            return (Similarity: matches.GetValueOrDefault(pair, 0), Algorithm: algorithms.GetValueOrDefault(pair));
-        }).ToArray();
-        var similarity = matchingPairs.Select(pair => pair.Similarity).DefaultIfEmpty(0).Max();
-        var matchedAlgorithms = matchingPairs.Where(pair => pair.Similarity == similarity).Aggregate((MatchAlgorithm) 0, (combined, pair) => combined | pair.Algorithm);
+            var pairSimilarity = matches.GetValueOrDefault(pair, 0);
+            if (pairSimilarity > similarity)
+            {
+                similarity = pairSimilarity;
+                matchedAlgorithms = algorithms.GetValueOrDefault(pair);
+            }
+            else if (Math.Abs(pairSimilarity - similarity) < 1e-4)
+            {
+                matchedAlgorithms |= algorithms.GetValueOrDefault(pair);
+            }
+        }
+
         return new SimilarFileItem(path, file.Length, file.LastWriteTime, similarity, FormatMatchAlgorithms(matchedAlgorithms));
     }
 
