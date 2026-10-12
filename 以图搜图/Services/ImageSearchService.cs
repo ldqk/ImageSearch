@@ -71,8 +71,14 @@ public class ImageSearchService
                                 return;
                             }
 
+
                             var bestMatch = 0f;
-                            var bestAlgorithms = (MatchAlgorithm) 0;
+                            var bestAlgorithms = (MatchAlgorithm)0;
+                            if (useDctHash64)
+                            {
+                                UpdateBestMatch(MaxCompare(source.DctHash64, candidate.DctHash64), MatchAlgorithm.DctHash64);
+                            }
+
                             if (useDifferenceHash)
                             {
                                 UpdateBestMatch(MaxCompare(source.DifferenceHash, candidate.DifferenceHash), MatchAlgorithm.DifferenceHash);
@@ -81,11 +87,6 @@ public class ImageSearchService
                             if (useDctHash32)
                             {
                                 UpdateBestMatch(MaxCompare(source.DctHash, candidate.DctHash), MatchAlgorithm.DctHash32);
-                            }
-
-                            if (useDctHash64)
-                            {
-                                UpdateBestMatch(MaxCompare(source.DctHash64, candidate.DctHash64), MatchAlgorithm.DctHash64);
                             }
 
                             if (bestMatch >= similarity)
@@ -99,10 +100,6 @@ public class ImageSearchService
                                 {
                                     bestMatch = match;
                                     bestAlgorithms = matchAlgorithm;
-                                }
-                                else if (Math.Abs(match - bestMatch) < 1e-2 && match > 0)
-                                {
-                                    bestAlgorithms |= matchAlgorithm;
                                 }
                             }
                         }

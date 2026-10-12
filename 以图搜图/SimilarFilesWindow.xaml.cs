@@ -453,6 +453,26 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
     }
 
+    private void PasteExcludedDirectories_Click(object sender, RoutedEventArgs e)
+    {
+        if (!Clipboard.ContainsText())
+        {
+            SetStatus("剪贴板中没有文本路径。", true);
+            return;
+        }
+
+        var paths = Clipboard.GetText()
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(path => path.Trim('"'));
+        AddExcludedDirectories(paths);
+    }
+
+    private void ClearExcludedDirectories_Click(object sender, RoutedEventArgs e)
+    {
+        ExcludedDirectories.Clear();
+        SetStatus("排除文件夹已清空。");
+    }
+
     private void DirectoryList_Drop(object sender, DragEventArgs e)
     {
         if (!e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -792,7 +812,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             });
             SetProgressPhase("正在比较图片…", ScannedImageCount);
             var pairs = await _searchService.FindSimilarPairsAsync(index, algorithm, threshold, IgnoreSameFolderCheckBox.IsChecked == true, progress, cancellationToken);
-
+            
             cancellationToken.ThrowIfCancellationRequested();
             var groups = await Task.Run(() => BuildGroups(files, pairs, cancellationToken), cancellationToken);
             _progressTimer.Stop();

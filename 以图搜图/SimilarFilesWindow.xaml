@@ -480,40 +480,48 @@
               </ListBox>
             </Grid>
           </Border>
-            <Border Grid.Row="1" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="10"
-                    Margin="0,0,0,10">
-                <Grid Grid.Row="0" Grid.RowSpan="2" Margin="8,0,0,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="排除文件夹" FontWeight="SemiBold" Margin="0,0,0,8" />
-                    <Grid Grid.Row="1" Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="ExcludedDirectoryPathBox" Height="34" Padding="7,4"
-                   VerticalContentAlignment="Center" KeyDown="ExcludedDirectoryPathBox_KeyDown" />
-                        <Button Grid.Column="1" Content="浏览…" Click="AddExcludedDirectory_Click" Margin="8,0,0,0" />
-                        <Button Grid.Column="2" Content="添加" Click="AddExcludedPath_Click" Margin="8,0,0,0" />
-                    </Grid>
-                    <ListBox x:Name="ExcludedDirectoryList" Grid.Row="2" BorderBrush="#E4E8EC"
-                 ItemsSource="{Binding ExcludedDirectories}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <DockPanel Margin="4,2">
-                                    <Button Content="移除" Tag="{Binding}" Click="RemoveExcludedDirectory_Click"
-                        DockPanel.Dock="Right" Padding="7,2" MinHeight="24" />
-                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip="{Binding}" />
-                                </DockPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
+          <Border Grid.Row="1" Background="White" BorderBrush="#D8DEE5" BorderThickness="1" Padding="10"
+                            Margin="0,0,0,10">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+              </Grid.RowDefinitions>
+              <Grid Grid.Row="0" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="排除文件夹" FontWeight="SemiBold" Margin="0,0,10,0" />
+                <TextBox x:Name="ExcludedDirectoryPathBox" Grid.Column="1" Height="34" Padding="7,4"
+                         VerticalContentAlignment="Center" KeyDown="ExcludedDirectoryPathBox_KeyDown" />
+                <Button Grid.Column="2" Content="浏览…" Click="AddExcludedDirectory_Click" Margin="8,0,0,0" />
+                <Button Grid.Column="3" Content="添加路径" Click="AddExcludedPath_Click" Margin="8,0,0,0" />
+                <Button Grid.Column="4" Content="清空位置" Click="ClearExcludedDirectories_Click" Margin="8,0,0,0" />
+              </Grid>
+              <ListBox x:Name="ExcludedDirectoryList" Grid.Row="1" BorderBrush="#E4E8EC"
+                       ItemsSource="{Binding ExcludedDirectories}">
+                <ListBox.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="粘贴" Click="PasteExcludedDirectories_Click" />
+                    <MenuItem Header="清空列表" Click="ClearExcludedDirectories_Click" />
+                  </ContextMenu>
+                </ListBox.ContextMenu>
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel Margin="4,2">
+                      <Button Content="移除" Tag="{Binding}" Click="RemoveExcludedDirectory_Click"
+                              DockPanel.Dock="Right" Padding="7,2" MinHeight="24" />
+                      <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip="{Binding}" />
+                    </DockPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+          </Border>
           <Border x:Name="ScanProgressPanel" Grid.Row="2" Visibility="Collapsed" Background="White"
                             BorderBrush="#D8DEE5" BorderThickness="1" Padding="12" Margin="0,0,0,10">
             <Grid>
