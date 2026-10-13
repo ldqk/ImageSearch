@@ -276,6 +276,7 @@
       <Setter Property="Height" Value="36" />
       <Setter Property="Background" Value="#E0E0E0" />
       <Setter Property="Foreground" Value="#007ACC" />
+      <Setter Property="IsMoveToPointEnabled" Value="True" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Slider">
@@ -337,6 +338,11 @@
                 </Track.Thumb>
               </Track>
             </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45" />
+              </Trigger>
+            </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
@@ -644,6 +650,7 @@
                         Checked="FilterSimilarityCheck_Changed" Unchecked="FilterSimilarityCheck_Changed" />
               <Slider x:Name="FilterSimilaritySlider" Width="120" Minimum="85" Maximum="100" Value="93"
                       TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                      Style="{StaticResource ModernSliderStyle}"
                       IsEnabled="{Binding IsChecked, ElementName=FilterSimilarityCheck}"
                       ValueChanged="FilterSimilaritySlider_ValueChanged" />
               <TextBlock Text="{Binding Value, ElementName=FilterSimilaritySlider, StringFormat={}{0:F0}%}"
@@ -669,7 +676,7 @@
                                         </Style.Triggers>
                                     </Style>
                                 </StackPanel.Style>
-                                <Slider x:Name="ThumbnailSizeSlider" Width="120" Minimum="120" Maximum="640" TickFrequency="20" IsSnapToTickEnabled="False" VerticalAlignment="Center" Value="{Binding ThumbnailSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Slider x:Name="ThumbnailSizeSlider" Width="120" Minimum="120" Maximum="640" TickFrequency="20" IsSnapToTickEnabled="False" VerticalAlignment="Center" Style="{StaticResource ModernSliderStyle}" Value="{Binding ThumbnailSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Text="{Binding ThumbnailSize, StringFormat={}{0:F0}px}" Margin="8,0,0,0" />
                             </StackPanel>
                             <TextBlock Text="每组保留" Margin="0,0,8,0" />
