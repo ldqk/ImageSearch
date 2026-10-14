@@ -1,37 +1,76 @@
 # ImageSearch
+
 <a href="https://gitee.com/masuit/ImageSearch"><img src="https://gitee.com/static/images/logo-black.svg" height="24"></a>
 <a href="https://github.com/ldqk/ImageSearch"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Font_Awesome_5_brands_github.svg/54px-Font_Awesome_5_brands_github.svg.png" height="24"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/GitHub_logo_2013.svg/128px-GitHub_logo_2013.svg.png" height="24"></a>
 
-图片exif信息移除小工具和本地硬盘以图搜图案例Demo分享，灵感来源于[DuplicateCleaner](https://masuit.org/1776)，**千万级图片秒级检索**：   
-<img width="1165" height="840" alt="image" src="https://github.com/user-attachments/assets/9f295f3b-3edf-4227-bbd8-a4b386b59251" />
-<img width="1307" height="1040" alt="image" src="https://github.com/user-attachments/assets/68aefef0-b143-4385-a7f9-fb9dbcaf073d" />
-<img width="1377" height="911" alt="image" src="https://github.com/user-attachments/assets/34a37f96-a665-43ef-a4c9-c4f3a63c8b0e" />
-<img width="1266" height="813" alt="image" src="https://github.com/user-attachments/assets/f3cdbc54-89c4-4492-8f4c-eabb82e4b197" />
+这是一个 Windows 本地图片工具，主要用来按图找相似图片、整理重复文件。项目最初受 [DuplicateCleaner](https://masuit.org/1776) 启发，也包含图片 EXIF 信息移除工具的定位。
 
+## 能做什么
+
+### 按图片搜索
+
+先在主窗口选一个图片文件夹并更新索引，再选一张图片开始搜索。索引建好后，就可以用它在本地图片中查找相似图。
+
+图片路径可以手动选择，也可以直接把图片拖进窗口；如果图片已经在剪贴板里，也能直接用剪贴板搜索。搜索时可以调相似度、选择匹配算法，还能决定是否把旋转或翻转过的图片也算作匹配。
+
+搜索结果会列出图片路径、匹配度、文件大小、所在文件夹的文件数量和大小，以及使用的算法。点选结果就能在旁边预览原图和匹配图；双击结果可打开文件。右键菜单还可以打开文件夹、直接删除图片或把它移到回收站，也支持一次选中多项。
+
+更新索引时，窗口会显示正在处理的文件、进度、速度、吞吐量和预计剩余时间，也会记录速度变化。需要时可以停止更新；勾选“移除无效索引”则会在更新时清理已经失效的记录。
+
+### 扫描相似文件、整理重复项
+
+在主窗口点“相似文件查找”，可以一次扫描多个目录。扫描位置既可以浏览选择，也可以输入、粘贴或拖放目录；不想纳入扫描的目录可以放进排除列表。还可以选择是否扫描子文件夹，以及是否忽略同一文件夹里的重复项。整体功能对标 DuplicateCleaner，并且比DuplicateCleaner快很多。
+
+扫描时可以调整相似度，并选择 Difference Hash、DCT Hash 32、DCT Hash 64 或全部算法。界面会显示扫描进度、当前速度、处理数量和耗时，扫描也可以随时停止。
+
+结果按组显示，分为重复文件和重复目录（找到重复目录时才会出现这一项）。可以切换列表或缩略图视图、调整缩略图大小，再按文件所在文件夹、标记状态、路径、算法和最低相似度筛选。文件如果已经在资源管理器中删掉了，点“刷新结果”可以清理旧记录并更新分组。
+
+整理时，可以手动标记要清理的文件，也可以按规则给每组挑选保留项：保留最大或最小的文件、最新或最早修改的文件，或文件名最短、最长的文件。除了批量取消或反选标记，还能一次标记组内其他文件，或标记某个目录、目录树、磁盘中找到的文件。
+
+右键文件还可以打开所在文件夹、复制路径、忽略该文件所在目录、删除文件，或用选中的文件替换组内其他文件。删除过程会显示进度。“抑制所有确认提示”会跳过删除、覆盖等操作的确认步骤，批量处理时请特别留意。
+
+## 使用前留意
+
+- 按图搜索需要先建立索引。第一次使用，或图片目录有变化时，先更新索引再搜索。
+- 如果电脑上运行着 Everything，且程序目录中有 `Everything64.dll`，软件会调用 Everything 帮忙查找文件。请确认要扫描的目录已经加入 Everything 索引。不想使用这项集成的话，移除程序目录中的 `Everything64.dll` 即可，程序仍可自行扫描目录。
+- 目前不支持只搜索图片中的某个局部区域，只能比较整张图片。
+- 相似度可以在界面中调整。Difference Hash 最低为 70，其他算法最低为 85；阈值越高，筛选越严格。具体匹配效果还和图片内容有关。
+- 删除、移入回收站或替换文件前，建议先核对路径和标记，避免误操作。
 
 ## 环境要求
-开发环境：Visual Studio 2026  
-运行时：.net10 desktop  
 
-## 硬件要求
-处理器：4核或更多  
-内存：8GB或更多
+- 开发环境：Visual Studio 2026
+- 运行时：.NET 10 Desktop
+- 平台：Windows x64
 
-## 特别说明
-1. 如果电脑中安装有everything，软件会自动调取everything进行目录扫描，请确保要扫描的目录已经被everything索引，如果你想让软件不自动调取everything，把目录下的everything64.dll文件删掉即可
-2. 软件不支持部分区域的图片检索，只能做相似检索
-3. 相似度限定70是因为低于70的相似度肉眼看上去已经是完全不一样的图了
-## Star趋势
+## 硬件建议
+
+- 处理器：4 核或更多
+- 内存：8 GB 或更多
+
+## 截图
+
+<img width="1165" height="840" alt="ImageSearch 主界面" src="https://github.com/user-attachments/assets/9f295f3b-3edf-4227-bbd8-a4b386b59251" />
+<img width="1307" height="1040" alt="图片检索示例" src="https://github.com/user-attachments/assets/68aefef0-b143-4385-a7f9-fb9dbcaf073d" />
+<img width="1377" height="911" alt="相似文件整理示例" src="https://github.com/user-attachments/assets/34a37f96-a665-43ef-a4c9-c4f3a63c8b0e" />
+<img width="1266" height="813" alt="扫描结果示例" src="https://github.com/user-attachments/assets/f3cdbc54-89c4-4492-8f4c-eabb82e4b197" />
+
+## Star 趋势
 
 <img src="https://starchart.cc/ldqk/ImageSearch.svg">
 
-## 理论篇
+## 相关理论
+
 https://segmentfault.com/a/1190000038308093
 
 ## 特别鸣谢
+
 [Masuit.Tools](https://github.com/ldqk/Masuit.Tools)
 
-## 本项目完全开源，以下链接的为盗版，若您在以下链接以及相关链接有任何的付费行为，请申请退款或向相关平台方投诉
+## 关于盗版版本
+
+本项目完全开源。以下链接及其相关链接提供的为盗版版本；如您曾为此付费，请申请退款或向相关平台投诉：
+
 https://www.chinapyg.com/forum.php?mod=viewthread&tid=162510  
 https://download.csdn.net/download/china365love/92183755  
 https://blog.csdn.net/china365love/article/details/153752532  
