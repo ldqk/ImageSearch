@@ -3,7 +3,7 @@
 <a href="https://gitee.com/masuit/ImageSearch"><img src="https://gitee.com/static/images/logo-black.svg" height="24"></a>
 <a href="https://github.com/ldqk/ImageSearch"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Font_Awesome_5_brands_github.svg/54px-Font_Awesome_5_brands_github.svg.png" height="24"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/GitHub_logo_2013.svg/128px-GitHub_logo_2013.svg.png" height="24"></a>
 
-基于本地硬盘的以图搜图和整理重复图片小程序，百万图片毫秒级检索，支持jpg、png、bmp、gif相互检索，并且支持海量图片快速查找重复相似图，设计灵感来源于[DuplicateCleaner](https://masuit.org/1776)，并且比[DuplicateCleaner](https://masuit.org/1776)快。目前全网很难找到一个本地版的以图搜图和图片查重工具，所以就自己动手搓一个吧。也包含图片 EXIF 信息移除工具的定位。
+基于本地硬盘的以图搜图和整理重复图片小程序，百万图片毫秒级检索，分钟级查重比对，支持jpg、png、bmp、gif相互检索，并且支持海量图片快速查找重复相似图，设计灵感来源于[DuplicateCleaner](https://masuit.org/1776)，并且比[DuplicateCleaner](https://masuit.org/1776)快。目前全网很难找到一个本地版的以图搜图和图片查重工具，所以就自己动手搓一个吧。也包含图片 EXIF 信息移除工具的定位。
 ## 能做什么
 
 ### 按图片搜索
