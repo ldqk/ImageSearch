@@ -11,6 +11,7 @@ using System.IO;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Input;
+using 以图搜图.Helpers;
 using 以图搜图.Models;
 using 以图搜图.Services;
 using 以图搜图.WebAPI;

@@ -14,6 +14,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using 以图搜图.Helpers;
 using 以图搜图.Models;
 using 以图搜图.Services;
 

@@ -5,6 +5,7 @@ using SkiaSharp;
 using System.Collections.Concurrent;
 using System.IO;
 using 以图搜图.Models;
+using 以图搜图.Helpers;
 
 namespace 以图搜图.Services;
 

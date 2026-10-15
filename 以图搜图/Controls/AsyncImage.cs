@@ -2,7 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
-using 以图搜图.Services;
+using 以图搜图.Helpers;
 
 namespace 以图搜图.Controls;
 

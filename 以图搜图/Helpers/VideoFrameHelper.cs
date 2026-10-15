@@ -3,7 +3,7 @@ using Masuit.Tools.Media;
 using SkiaSharp;
 using System.IO;
 
-namespace 以图搜图.Services;
+namespace 以图搜图.Helpers;
 
 internal static class VideoFrameHelper
 {
