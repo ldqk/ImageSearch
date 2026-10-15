@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using Masuit.Tools;
 using Masuit.Tools.Media;
 using SkiaSharp;
@@ -19,8 +19,9 @@ public class ImageSearchService
     /// <param name="ignoreSameFolder">忽略同一文件夹下的相似</param>
     /// <param name="progress">进度报告</param>
     /// <param name="cancellationToken"></param>
+    /// <param name="videoMode">视频模式</param>
     /// <returns></returns>
-    public Task<List<SimilarImagePair>> FindSimilarPairsAsync(List<IndexItem> entries, MatchAlgorithm algorithm, float similarity, bool ignoreSameFolder, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    public Task<List<SimilarImagePair>> FindSimilarPairsAsync(List<IndexItem> entries, MatchAlgorithm algorithm, float similarity, bool ignoreSameFolder, IProgress<int>? progress = null, CancellationToken cancellationToken = default, bool videoMode = false)
     {
         return Task.Run(() =>
         {
@@ -40,94 +41,95 @@ public class ImageSearchService
             var resultBatches = new ConcurrentBag<List<SimilarImagePair>>();
             var completed = 0;
             Parallel.ForEach(Partitioner.Create(0, entries.Count), parallelOptions, () => new PairSearchWorker(entries.Count, canUseCandidateIndex), (range, _, worker) =>
+            {
+                for (var position = range.Item1; position < range.Item2; position++)
                 {
-                    for (var position = range.Item1; position < range.Item2; position++)
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var source = entries[position];
+                    var candidates = worker.CandidateCollector;
+                    if (candidates != null)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        var source = entries[position];
-                        var candidates = worker.CandidateCollector;
-                        if (candidates != null)
+                        candidates.BeginSource();
+                        candidateIndex!.AddCandidates(source, similarity, candidates, cancellationToken);
+                    }
+
+                    var candidatesExamined = 0;
+
+                    void CompareCandidate(int candidatePosition)
+                    {
+                        if ((candidatesExamined++ & 0xFFF) == 0)
                         {
-                            candidates.BeginSource();
-                            candidateIndex!.AddCandidates(source, similarity, candidates, cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
                         }
 
-                        var candidatesExamined = 0;
-                        void CompareCandidate(int candidatePosition)
+                        if (candidatePosition <= position)
                         {
-                            if ((candidatesExamined++ & 0xFFF) == 0)
-                            {
-                                cancellationToken.ThrowIfCancellationRequested();
-                            }
-
-                            if (candidatePosition <= position)
-                            {
-                                return;
-                            }
-
-                            var candidate = entries[candidatePosition];
-                            if (folderIds != null && folderIds[position] == folderIds[candidatePosition])
-                            {
-                                return;
-                            }
-
-
-                            var bestMatch = 0f;
-                            var bestAlgorithms = (MatchAlgorithm)0;
-                            if (useDctHash64)
-                            {
-                                UpdateBestMatch(MaxCompare(source.DctHash64, candidate.DctHash64), MatchAlgorithm.DctHash64);
-                            }
-
-                            if (useDifferenceHash)
-                            {
-                                UpdateBestMatch(MaxCompare(source.DifferenceHash, candidate.DifferenceHash), MatchAlgorithm.DifferenceHash);
-                            }
-
-                            if (useDctHash32)
-                            {
-                                UpdateBestMatch(MaxCompare(source.DctHash, candidate.DctHash), MatchAlgorithm.DctHash32);
-                            }
-
-                            if (bestMatch >= similarity)
-                            {
-                                worker.Pairs.Add(new SimilarImagePair(source.FilePath, candidate.FilePath, bestMatch, bestAlgorithms));
-                            }
-
-                            void UpdateBestMatch(float match, MatchAlgorithm matchAlgorithm)
-                            {
-                                if (match > bestMatch)
-                                {
-                                    bestMatch = match;
-                                    bestAlgorithms = matchAlgorithm;
-                                }
-                            }
+                            return;
                         }
 
-                        if (candidates != null)
+                        var candidate = entries[candidatePosition];
+                        if (folderIds != null && folderIds[position] == folderIds[candidatePosition])
                         {
-                            foreach (var candidatePosition in candidates.Candidates)
-                            {
-                                CompareCandidate(candidatePosition);
-                            }
-                        }
-                        else
-                        {
-                            for (var candidatePosition = position + 1; candidatePosition < entries.Count; candidatePosition++)
-                            {
-                                CompareCandidate(candidatePosition);
-                            }
+                            return;
                         }
 
-                        var current = Interlocked.Increment(ref completed);
-                        if (current % 100 == 0 || current == entries.Count)
+
+                        var bestMatch = 0f;
+                        var bestAlgorithms = (MatchAlgorithm) 0;
+                        if (useDctHash64)
                         {
-                            progress?.Report(current);
+                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash64, candidate.DctHash64, 200, cancellationToken) : MaxCompare(source.DctHash64, candidate.DctHash64), MatchAlgorithm.DctHash64);
+                        }
+
+                        if (useDifferenceHash)
+                        {
+                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DifferenceHash, candidate.DifferenceHash, 200, cancellationToken) : MaxCompare(source.DifferenceHash, candidate.DifferenceHash), MatchAlgorithm.DifferenceHash);
+                        }
+
+                        if (useDctHash32)
+                        {
+                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash, candidate.DctHash, 200, cancellationToken) : MaxCompare(source.DctHash, candidate.DctHash), MatchAlgorithm.DctHash32);
+                        }
+
+                        if (bestMatch >= similarity)
+                        {
+                            worker.Pairs.Add(new SimilarImagePair(source.FilePath, candidate.FilePath, bestMatch, bestAlgorithms));
+                        }
+
+                        void UpdateBestMatch(float match, MatchAlgorithm matchAlgorithm)
+                        {
+                            if (match > bestMatch)
+                            {
+                                bestMatch = match;
+                                bestAlgorithms = matchAlgorithm;
+                            }
                         }
                     }
 
-                    return worker;
-                }, worker => resultBatches.Add(worker.Pairs));
+                    if (candidates != null)
+                    {
+                        foreach (var candidatePosition in candidates.Candidates)
+                        {
+                            CompareCandidate(candidatePosition);
+                        }
+                    }
+                    else
+                    {
+                        for (var candidatePosition = position + 1; candidatePosition < entries.Count; candidatePosition++)
+                        {
+                            CompareCandidate(candidatePosition);
+                        }
+                    }
+
+                    var current = Interlocked.Increment(ref completed);
+                    if (current % 100 == 0 || current == entries.Count)
+                    {
+                        progress?.Report(current);
+                    }
+                }
+
+                return worker;
+            }, worker => resultBatches.Add(worker.Pairs));
             return resultBatches.SelectMany(batch => batch).ToList();
         }, cancellationToken);
     }
@@ -158,16 +160,10 @@ public class ImageSearchService
         return folderIds;
     }
 
-    private sealed class PairSearchWorker(int entryCount, bool useCandidateIndex)
-    {
-        public HashCandidateIndex.CandidateCollector? CandidateCollector { get; } =
-            useCandidateIndex ? new HashCandidateIndex.CandidateCollector(entryCount) : null;
-
-        public List<SimilarImagePair> Pairs { get; } = [];
-    }
-
     public async Task<List<SearchResult>> SearchAsync(string filename, ConcurrentDictionary<string, IndexItem> index, MatchAlgorithm algorithm, float similarity, bool checkRotated, bool checkFlipped)
     {
+        const int requiredFrameMatches = 10;
+        var isAnimatedQuery = filename.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) || VideoFrameHelper.IsVideoFile(filename);
         var parallelism = Environment.ProcessorCount * 4;
         return await Task.Run(() =>
         {
@@ -176,7 +172,7 @@ public class ImageSearchService
             var pHashs = new ConcurrentBag<ulong>();
             var actions = new List<Action>();
 
-            if (filename.EndsWith("gif", StringComparison.OrdinalIgnoreCase))
+            if (filename.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
             {
                 using var frames = new DisposeCollection<SKBitmap>(SkiaImageHelper.DecodeGrayFrames(filename, 160));
                 foreach (var frame in frames.Items)
@@ -203,6 +199,26 @@ public class ImageSearchService
                 }
 
                 Parallel.Invoke(actions.ToArray());
+            }
+            else if (VideoFrameHelper.IsVideoFile(filename))
+            {
+                VideoFrameHelper.ForEachGrayFrame(filename, 160, frame =>
+                {
+                    if (algorithm.HasFlag(MatchAlgorithm.DifferenceHash))
+                    {
+                        defHashs.Add(frame.DifferenceHash256());
+                    }
+
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash32))
+                    {
+                        dctHashs.Add(frame.DctHash());
+                    }
+
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash64))
+                    {
+                        pHashs.Add(frame.DctHash64());
+                    }
+                });
             }
             else
             {
@@ -333,13 +349,14 @@ public class ImageSearchService
             var useDctHash32 = algorithm.HasFlag(MatchAlgorithm.DctHash32);
             var useDctHash64 = algorithm.HasFlag(MatchAlgorithm.DctHash64);
             var resultBatches = new ConcurrentBag<List<SearchResult>>();
-            Parallel.ForEach(index, new ParallelOptions { MaxDegreeOfParallelism = parallelism }, () => new List<SearchResult>(), (entry, _, items) =>
+            Parallel.ForEach(index, new ParallelOptions {MaxDegreeOfParallelism = parallelism}, () => new List<SearchResult>(), (entry, _, items) =>
             {
                 var key = entry.Key;
                 var value = entry.Value;
+                var useMaximumFrameScore = !isAnimatedQuery && VideoFrameHelper.IsVideoFile(key);
                 if (useDctHash64)
                 {
-                    var match = MaxCompare(value.DctHash64, queryDctHash64s);
+                    var match = useMaximumFrameScore ? MaxCompare(value.DctHash64, queryDctHash64s) : AverageTopFrameMatches(value.DctHash64, queryDctHash64s, requiredFrameMatches);
                     if (match >= similarity)
                     {
                         items.Add(new SearchResult
@@ -353,7 +370,7 @@ public class ImageSearchService
 
                 if (useDifferenceHash)
                 {
-                    var match = MaxCompare(value.DifferenceHash, queryDifferenceHashes);
+                    var match = useMaximumFrameScore ? MaxCompare(value.DifferenceHash, queryDifferenceHashes) : AverageTopFrameMatches(value.DifferenceHash, queryDifferenceHashes, requiredFrameMatches);
                     if (match >= similarity)
                     {
                         items.Add(new SearchResult
@@ -367,7 +384,7 @@ public class ImageSearchService
 
                 if (useDctHash32)
                 {
-                    var match = MaxCompare(value.DctHash, queryDctHashes);
+                    var match = useMaximumFrameScore ? MaxCompare(value.DctHash, queryDctHashes) : AverageTopFrameMatches(value.DctHash, queryDctHashes, requiredFrameMatches);
                     if (match >= similarity)
                     {
                         items.Add(new SearchResult
@@ -411,6 +428,64 @@ public class ImageSearchService
         });
     }
 
+    private static float AverageTopFrameMatches(IEnumerable<ulong> firstHashes, IEnumerable<ulong> secondHashes, int maximumMatches, CancellationToken cancellationToken=default)
+    {
+        var topMatches = new PriorityQueue<float, float>();
+        var comparisons = 0;
+        foreach (var firstHash in firstHashes)
+        {
+            foreach (var secondHash in secondHashes)
+            {
+                if ((comparisons++ & 0xFFF) == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+                var match = ImageHasher.Compare(firstHash, secondHash);
+                if (topMatches.Count < maximumMatches)
+                {
+                    topMatches.Enqueue(match, match);
+                }
+                else if (topMatches.TryPeek(out _, out var lowestMatch) && match > lowestMatch)
+                {
+                    topMatches.Dequeue();
+                    topMatches.Enqueue(match, match);
+                }
+            }
+        }
+
+        return topMatches.Count == 0 ? 0 : topMatches.UnorderedItems.Average(item => item.Element);
+    }
+
+    private static float AverageTopFrameMatches(IEnumerable<ulong[]> firstHashes, IEnumerable<ulong[]> secondHashes, int maximumMatches, CancellationToken cancellationToken=default)
+    {
+        var topMatches = new PriorityQueue<float, float>();
+        var comparisons = 0;
+        foreach (var firstHash in firstHashes)
+        {
+            foreach (var secondHash in secondHashes)
+            {
+                if ((comparisons++ & 0xFFF) == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+                var match = ImageHasher.Compare(firstHash, secondHash);
+                if (topMatches.Count < maximumMatches)
+                {
+                    topMatches.Enqueue(match, match);
+                }
+                else if (topMatches.TryPeek(out _, out var lowestMatch) && match > lowestMatch)
+                {
+                    topMatches.Dequeue();
+                    topMatches.Enqueue(match, match);
+                }
+            }
+        }
+
+        return topMatches.Count == 0 ? 0 : topMatches.UnorderedItems.Average(item => item.Element);
+    }
+
     private static float MaxCompare(IEnumerable<ulong> values, IEnumerable<ulong> queryHashes)
     {
         var maximum = 0f;
@@ -437,6 +512,13 @@ public class ImageSearchService
         }
 
         return maximum;
+    }
+
+    private sealed class PairSearchWorker(int entryCount, bool useCandidateIndex)
+    {
+        public HashCandidateIndex.CandidateCollector? CandidateCollector { get; } = useCandidateIndex ? new HashCandidateIndex.CandidateCollector(entryCount) : null;
+
+        public List<SimilarImagePair> Pairs { get; } = [];
     }
 }
 

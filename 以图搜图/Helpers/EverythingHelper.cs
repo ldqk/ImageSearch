@@ -124,13 +124,13 @@ public static class EverythingHelper
         return new FileInfo(filePath).Length;
     }
 
-    public static string[] GetFiles(string[] directories)
+    public static string[] GetFiles(string[] directories, string extFilter = "jpg;jpeg;bmp;png;gif;webp")
     {
         if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
         {
             return directories.SelectMany(s =>
             {
-                var array = EnumerateFiles(s);
+                var array = EnumerateFiles(s, extFilter);
                 return array.Length == 0 ? Directory.GetFiles(s, "*", SearchOption.AllDirectories) : array;
             }).ToArray();
         }

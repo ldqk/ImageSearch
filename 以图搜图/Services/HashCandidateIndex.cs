@@ -26,8 +26,8 @@ internal sealed class HashCandidateIndex
     public static HashCandidateIndex Build(IReadOnlyList<IndexItem> entries, MatchAlgorithm algorithm, CancellationToken cancellationToken)
     {
         var differenceHashBuckets = algorithm.HasFlag(MatchAlgorithm.DifferenceHash) ? BuildDifferenceHashBuckets(entries, cancellationToken) : null;
-        var dctHashBuckets = algorithm.HasFlag(MatchAlgorithm.DctHash32) ? BuildDctHashBuckets(entries, static item => item.DctHash, cancellationToken) : null;
-        var dctHash64Buckets = algorithm.HasFlag(MatchAlgorithm.DctHash64) ? BuildDctHashBuckets(entries, static item => item.DctHash64, cancellationToken) : null;
+        var dctHashBuckets = algorithm.HasFlag(MatchAlgorithm.DctHash32) ? BuildDctHashBuckets(entries, static item => item.DctHash.ToList(), cancellationToken) : null;
+        var dctHash64Buckets = algorithm.HasFlag(MatchAlgorithm.DctHash64) ? BuildDctHashBuckets(entries, static item => item.DctHash64.ToList(), cancellationToken) : null;
 
         return new HashCandidateIndex(differenceHashBuckets, dctHashBuckets, dctHash64Buckets);
     }

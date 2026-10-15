@@ -1,4 +1,4 @@
-﻿<Window x:Class="以图搜图.SimilarFilesWindow" 
+<Window x:Class="以图搜图.SimilarFilesWindow" 
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
   xmlns:controls="clr-namespace:以图搜图.Controls" 
@@ -579,13 +579,18 @@
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
               <WrapPanel VerticalAlignment="Center">
+                <TextBlock Text="查找模式" Margin="0,0,8,0" />
+                <RadioButton x:Name="ImageModeRadioButton" Content="图片模式" IsChecked="True"
+                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <RadioButton x:Name="VideoModeRadioButton" Content="视频模式"
+                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,18,0" />
                 <TextBlock Text="相似度"  Margin="0,0,8,0" />
-                <Slider x:Name="SimilaritySlider" Width="200" Minimum="85" Maximum="100" Value="93"
+                <Slider x:Name="SimilaritySlider" Width="100" Minimum="85" Maximum="100" Value="93"
                                         TickFrequency="1" IsSnapToTickEnabled="True"
                                         Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" />
-                <TextBlock x:Name="SimilarityLabel" Text="93%" Width="48" Margin="8,0,18,0" />
+                <TextBlock x:Name="SimilarityLabel" Text="93%" Width="40" Margin="5" />
                 <TextBlock Text="匹配算法" Margin="0,0,8,0" />
-                <ComboBox x:Name="AlgorithmCombo" Width="155"
+                <ComboBox x:Name="AlgorithmCombo" Width="125"
                                           ItemsSource="{Binding MatchAlgorithms}"
                                           SelectedItem="{Binding SelectedAlgorithm}"
                                           Margin="0,0,18,0"
@@ -808,7 +813,7 @@
                                                                     </DataTemplate>
                                                                 </DataGridTemplateColumn.CellTemplate>
                                                             </DataGridTemplateColumn>
-                                                            <DataGridTemplateColumn Header="图片分辨率" Width="120" IsReadOnly="True">
+                                                            <DataGridTemplateColumn Header="分辨率" Width="120" IsReadOnly="True">
                                                                 <DataGridTemplateColumn.CellTemplate>
                                                                     <DataTemplate>
                                                                         <TextBlock Text="{Binding ResolutionText}" VerticalAlignment="Center"
@@ -817,6 +822,7 @@
                                                                     </DataTemplate>
                                                                 </DataGridTemplateColumn.CellTemplate>
                                                             </DataGridTemplateColumn>
+                                                            <DataGridTextColumn Header="视频时长" Binding="{Binding DurationText}" Width="85" IsReadOnly="True" />
                                                             <DataGridTextColumn Header="大小" Binding="{Binding SizeText}" Width="75" IsReadOnly="True" />
                                                             <DataGridTextColumn Header="修改时间" Binding="{Binding ModifiedText}" Width="125" IsReadOnly="True" />
                                                             <DataGridTextColumn Header="相似度" Binding="{Binding SimilarityText}" Width="60" IsReadOnly="True" />
@@ -902,6 +908,11 @@
                                                                                        HorizontalAlignment="Right"
                                                                                        Loaded="ResolutionText_Loaded"
                                                                                        DataContextChanged="ResolutionText_DataContextChanged" />
+                                                                        </DockPanel>
+                                                                        <DockPanel Margin="0,2,0,0">
+                                                                            <TextBlock Text="时长" Foreground="#66717C" DockPanel.Dock="Left" />
+                                                                            <TextBlock Text="{Binding DurationText}" Foreground="#66717C"
+                                                                                       HorizontalAlignment="Right" />
                                                                         </DockPanel>
                                                                         <DockPanel Margin="0,2,0,0">
                                                                             <TextBlock Text="{Binding ModifiedText}" Foreground="#66717C"

@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Masuit.Tools;
 using Masuit.Tools.Logging;
 using Microsoft.Win32;
@@ -21,6 +21,8 @@ namespace 以图搜图;
 
 public partial class SimilarFilesWindow : INotifyPropertyChanged
 {
+    private const string ImageExtensions = "jpg;jpeg;bmp;png;gif;webp";
+    private const string VideoExtensions = "3gp;avi;flv;m2ts;m4v;mkv;mov;mp4;mpeg;mpg;mts;ts;webm;wmv";
     private static SimilarFilesWindow? _instance;
 
     private readonly ImageIndexService _indexService = ImageIndexService.Instance;
@@ -770,18 +772,23 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         try
         {
             SetStatus("正在检查扫描位置和索引…");
-            var files = EverythingHelper.GetFiles(scanDirectories);
+            var videoMode = VideoModeRadioButton.IsChecked == true;
+            var extensions = videoMode ? VideoExtensions : ImageExtensions;
+            var files = EverythingHelper.GetFiles(scanDirectories, extensions)
+                .Where(path => videoMode ? VideoFrameHelper.IsVideoFile(path) : IsImageFile(path))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
             cancellationToken.ThrowIfCancellationRequested();
             var missing = await Task.Run(() => files.Where(path => !_indexService.Index.ContainsKey(path)).ToArray(), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (missing.Length > 0)
             {
-                SetStatus($"发现 {missing.Length:N0} 个图片尚未建立索引，正在建立索引…");
+                SetStatus($"发现 {missing.Length:N0} 个{(videoMode ? "视频" : "图片")}尚未建立索引，正在建立索引…");
                 SetProgressPhase("正在建立索引…", missing.Length);
                 _indexService.ProgressChanged += IndexService_ProgressChanged;
                 try
                 {
-                    await Task.Run(() => _indexService.UpdateIndexAsync(scanDirectories, false), cancellationToken);
+                    await Task.Run(() => _indexService.UpdateIndexAsync(scanDirectories, false, extensions), cancellationToken);
                 }
                 finally
                 {
@@ -792,41 +799,46 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            var index = _indexService.Index.Values.Where(x => x.FilePath.StartsWith(scanDirectories)).ToList();
-            index.RemoveAll(t => t.FilePath.StartsWith(ExcludedDirectories));
+            var index = files
+                .Where(path => !ExcludedDirectories.Any(excluded => path.StartsWith(excluded, StringComparison.OrdinalIgnoreCase)))
+                .Select(path => _indexService.Index.GetValueOrDefault(path))
+                .Where(item => item != null)
+                .ToList();
+            var indexedPaths = index.Select(item => item.FilePath).ToArray();
             ScannedImageCount = index.Count;
             if (ScannedImageCount < 2)
             {
-                SetStatus("扫描位置至少需要两张图片。", true);
+                SetStatus($"扫描位置至少需要两个{(videoMode ? "视频" : "图片")}。", true);
                 return;
             }
 
             var algorithm = SelectedAlgorithm;
             var threshold = (float) (SimilaritySlider.Value / 100d);
-            SetStatus($"正在准备并比较 {ScannedImageCount:N0} 张图片…");
+            SetStatus($"正在准备并比较 {ScannedImageCount:N0} 个{(videoMode ? "视频" : "图片")}…");
             StartProgressTracking();
             var progress = new Progress<int>(completed =>
             {
                 ReportProgress(completed, ScannedImageCount);
-                SetStatus($"正在比较图片：{completed:N0}/{ScannedImageCount:N0}，请稍候…");
+                SetStatus($"正在比较{(videoMode ? "视频" : "图片")}：{completed:N0}/{ScannedImageCount:N0}，请稍候…");
             });
-            SetProgressPhase("正在比较图片…", ScannedImageCount);
-            var pairs = await _searchService.FindSimilarPairsAsync(index, algorithm, threshold, IgnoreSameFolderCheckBox.IsChecked == true, progress, cancellationToken);
+            SetProgressPhase($"正在比较{(videoMode ? "视频" : "图片")}…", ScannedImageCount);
+            var pairs = await _searchService.FindSimilarPairsAsync(index, algorithm, threshold, IgnoreSameFolderCheckBox.IsChecked == true, progress, cancellationToken, videoMode);
             
             cancellationToken.ThrowIfCancellationRequested();
-            var groups = await Task.Run(() => BuildGroups(files, pairs, cancellationToken), cancellationToken);
+            var groups = await Task.Run(() => BuildGroups(indexedPaths, pairs, cancellationToken), cancellationToken);
             _progressTimer.Stop();
-            var duplicateDirectoryGroups = await Task.Run(() => BuildDuplicateDirectoryGroups(files, pairs, cancellationToken), cancellationToken);
+            var duplicateDirectoryGroups = await Task.Run(() => BuildDuplicateDirectoryGroups(indexedPaths, pairs, cancellationToken), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             Groups.ReplaceAll(groups);
-            _scannedImagePaths = files;
+            _scannedImagePaths = indexedPaths;
             _similarImagePairs = pairs;
             DuplicateDirectoryGroups.ReplaceAll(duplicateDirectoryGroups);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDuplicateDirectories)));
-            SetStatus($"扫描完成：检查 {ScannedImageCount:N0} 张图片，找到 {Groups.Count:N0} 组相似文件、{Groups.Sum(group => group.Files.Count):N0} 个文件。");
+            SetStatus($"扫描完成：检查 {ScannedImageCount:N0} 个{(videoMode ? "视频" : "图片")}，找到 {Groups.Count:N0} 组相似文件、{Groups.Sum(group => group.Files.Count):N0} 个文件。");
             RefreshVisibleGroups();
             MainTabControl.SelectedIndex = Groups.Count > 0 ? 1 : 0;
         }
+
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             SetStatus("扫描已停止。");
@@ -851,6 +863,9 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             FilterSimilaritySlider.Value = SimilaritySlider.Value;
         }
     }
+
+    private static bool IsImageFile(string path) =>
+        ImageExtensions.Split(';').Any(extension => string.Equals(Path.GetExtension(path), $".{extension}", StringComparison.OrdinalIgnoreCase));
 
     private List<SimilarFileGroup> BuildGroups(string[] paths, List<SimilarImagePair> matches, CancellationToken cancellationToken)
     {
@@ -2332,6 +2347,7 @@ public partial class SimilarFileItem : ObservableObject
     private int _resolutionLoadState;
     private int _resolutionGeneration;
     private string _resolutionText = "等待显示";
+    private string _durationText = "—";
 
     public SimilarFileGroup Group { get; set; } = null!;
     public string FilePath { get; }
@@ -2351,6 +2367,18 @@ public partial class SimilarFileItem : ObservableObject
             if (_resolutionText != value)
             {
                 _resolutionText = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+    public string DurationText
+    {
+        get => _durationText;
+        private set
+        {
+            if (_durationText != value)
+            {
+                _durationText = value;
                 OnPropertyChanged();
             }
         }
@@ -2385,10 +2413,10 @@ public partial class SimilarFileItem : ObservableObject
     private async Task LoadResolutionAsync(int generation)
     {
         await ResolutionReadSlots.WaitAsync();
-        string resolution;
+        (string Resolution, string Duration) mediaInfo;
         try
         {
-            resolution = await Task.Run(() => GetResolutionText(FilePath));
+            mediaInfo = await Task.Run(() => GetMediaInfo(FilePath));
         }
         finally
         {
@@ -2397,45 +2425,66 @@ public partial class SimilarFileItem : ObservableObject
 
         if (generation == Volatile.Read(ref _resolutionGeneration))
         {
-            ResolutionText = resolution;
+            ResolutionText = mediaInfo.Resolution;
+            DurationText = mediaInfo.Duration;
         }
     }
 
-    private static string GetResolutionText(string filePath)
+    private static (string Resolution, string Duration) GetMediaInfo(string filePath)
     {
+        if (VideoFrameHelper.IsVideoFile(filePath))
+        {
+            try
+            {
+                var mediaInfo = VideoFrameHelper.Analyse(filePath);
+                var videoStream = mediaInfo.PrimaryVideoStream;
+                return videoStream == null
+                    ? ("不可用", "不可用")
+                    : ($"{videoStream.Width} × {videoStream.Height} px", FormatDuration(mediaInfo.Duration));
+            }
+            catch (Exception exception) when (exception is FFMpegCore.Exceptions.FFProbeException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+            {
+                Debug.WriteLine($"Unable to read video metadata for '{filePath}': {exception.Message}");
+                return ("不可用", "不可用");
+            }
+        }
+
         try
         {
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
             if (decoder.Frames.Count == 0)
             {
-                return "不可用";
+                return ("不可用", "—");
             }
 
             var frame = decoder.Frames[0];
-            return $"{frame.PixelWidth} × {frame.PixelHeight} px";
+            return ($"{frame.PixelWidth} × {frame.PixelHeight} px", "—");
         }
         catch (IOException)
         {
-            return "不可用";
+            return ("不可用", "—");
         }
         catch (UnauthorizedAccessException)
         {
-            return "不可用";
+            return ("不可用", "—");
         }
         catch (NotSupportedException)
         {
-            return "不可用";
+            return ("不可用", "—");
         }
         catch (ArgumentException)
         {
-            return "不可用";
+            return ("不可用", "—");
         }
         catch (System.IO.FileFormatException)
         {
-            return "不可用";
+            return ("不可用", "—");
         }
     }
+
+    private static string FormatDuration(TimeSpan duration) =>
+        $"{(int)duration.TotalHours:00}:{duration.Minutes:00}:{duration.Seconds:00}";
 
     public void RefreshAfterReplacement(float similarity)
     {
@@ -2446,6 +2495,7 @@ public partial class SimilarFileItem : ObservableObject
         Interlocked.Increment(ref _resolutionGeneration);
         Interlocked.Exchange(ref _resolutionLoadState, 0);
         ResolutionText = "等待显示";
+        DurationText = "—";
         ImageVersion++;
         OnPropertyChanged(nameof(Length));
         OnPropertyChanged(nameof(Modified));
@@ -2453,6 +2503,7 @@ public partial class SimilarFileItem : ObservableObject
         OnPropertyChanged(nameof(ModifiedText));
         OnPropertyChanged(nameof(SimilarityText));
         OnPropertyChanged(nameof(ResolutionText));
+        OnPropertyChanged(nameof(DurationText));
         OnPropertyChanged(nameof(ImageVersion));
         RequestResolutionLoad();
     }

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
+using 以图搜图.Services;
 
 namespace 以图搜图.Controls;
 
@@ -96,17 +97,40 @@ public sealed class AsyncImage : Image
 
     private static BitmapSource? DecodeImage(ImageKey key)
     {
+        if (VideoFrameHelper.IsVideoFile(key.Path))
+        {
+            var previewPath = Path.Combine(Path.GetTempPath(), $"imagesearch-preview-{Guid.NewGuid():N}.jpg");
+            try
+            {
+                if (!VideoFrameHelper.ExtractPreviewFrame(key.Path, previewPath, key.DecodePixelSize))
+                {
+                    return null;
+                }
+
+                return DecodeBitmap(previewPath, key.DecodePixelSize);
+            }
+            catch (FFMpegCore.Exceptions.FFMpegException exception)
+            {
+                System.Diagnostics.Debug.WriteLine($"Unable to extract video preview for '{key.Path}': {exception.Message}");
+                return null;
+            }
+            catch (System.ComponentModel.Win32Exception exception)
+            {
+                System.Diagnostics.Debug.WriteLine($"Unable to start FFmpeg for video preview '{key.Path}': {exception.Message}");
+                return null;
+            }
+            finally
+            {
+                if (File.Exists(previewPath))
+                {
+                    File.Delete(previewPath);
+                }
+            }
+        }
+
         try
         {
-            using var stream = new FileStream(key.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.DecodePixelWidth = key.DecodePixelSize;
-            bitmap.StreamSource = stream;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            return bitmap;
+            return DecodeBitmap(key.Path, key.DecodePixelSize);
         }
         catch (IOException)
         {
@@ -128,6 +152,19 @@ public sealed class AsyncImage : Image
         {
             return null;
         }
+    }
+
+    private static BitmapSource DecodeBitmap(string path, int decodePixelSize)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        var bitmap = new BitmapImage();
+        bitmap.BeginInit();
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.DecodePixelWidth = decodePixelSize;
+        bitmap.StreamSource = stream;
+        bitmap.EndInit();
+        bitmap.Freeze();
+        return bitmap;
     }
 
     private static BitmapSource? GetCachedImage(ImageKey key)

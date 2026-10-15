@@ -794,7 +794,7 @@
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <TextBlock Grid.Column="0"
-                     Text="图片路径"
+                     Text="媒体路径"
                      Style="{StaticResource LabelStyle}" />
           <TextBox Grid.Column="1"
                    Text="{Binding ImagePath, UpdateSourceTrigger=PropertyChanged}"
@@ -804,7 +804,7 @@
                    DragEnter="Txt_DragEnter"
                    Margin="0,0,10,0" />
           <Button Grid.Column="2"
-                  Content="🖼️ 选择图片"
+                  Content="🖼️ 选择文件"
                   Style="{StaticResource SecondaryButtonStyle}"
                   Command="{Binding SelectImageCommand}"
                   Width="125"
@@ -1042,7 +1042,7 @@
                     HorizontalAlignment="Stretch"
                     Background="Transparent"
                     ShowsPreview="True" />
-      <!-- 图片预览区 -->
+      <!-- 媒体预览区 -->
       <Border Grid.Column="2"
               Style="{StaticResource CardStyle}"
               Padding="0">
@@ -1059,11 +1059,11 @@
                   BorderBrush="#E0E0E0"
                   BorderThickness="0,0,0,1"
                   Padding="12,10">
-            <TextBlock Text="🖼️ 图片预览"
+            <TextBlock Text="🖼️ 媒体预览"
                        Style="{StaticResource SectionHeaderStyle}"
                        Margin="0" />
           </Border>
-          <!-- 源图片预览 -->
+          <!-- 源媒体预览 -->
           <Border Grid.Row="1"
                   BorderBrush="#E0E0E0"
                   BorderThickness="0,0,0,1"
@@ -1076,7 +1076,7 @@
                 <RowDefinition Height="Auto" />
               </Grid.RowDefinitions>
               <TextBlock Grid.Row="0"
-                         Text="📷 源图片"
+                         Text="📷 源媒体"
                          FontSize="13"
                          FontWeight="SemiBold"
                          Foreground="#555555"
@@ -1107,7 +1107,7 @@
                         Background="Transparent"
                         ShowsPreview="True"
                         Margin="15,0" />
-          <!-- 结果图片预览 -->
+          <!-- 结果媒体预览 -->
           <Border Grid.Row="3"
                   Background="White"
                   Margin="5,0,5,5">
@@ -1118,7 +1118,7 @@
                 <RowDefinition Height="Auto" />
               </Grid.RowDefinitions>
               <TextBlock Grid.Row="0"
-                         Text="🎯 匹配图片"
+                         Text="🎯 匹配媒体"
                          FontSize="13"
                          FontWeight="SemiBold"
                          Foreground="#555555"
@@ -1168,7 +1168,7 @@
                        Foreground="#555555"
                        VerticalAlignment="Center"
                        Margin="0,0,6,0" />
-          <TextBlock Text="可直接拖放图片到窗口进行搜索 | "
+          <TextBlock Text="可直接拖放文件到窗口进行搜索 | "
                        FontSize="12"
                        Foreground="#888888"
                        VerticalAlignment="Center" />

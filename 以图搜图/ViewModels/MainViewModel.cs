@@ -216,7 +216,7 @@ public partial class MainViewModel : ObservableObject
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Filter = "图片文件|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp|所有文件|*.*"
+            Filter = "图像和视频文件|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp;*.3gp;*.avi;*.flv;*.m2ts;*.m4v;*.mkv;*.mov;*.mp4;*.mpeg;*.mpg;*.mts;*.ts;*.webm;*.wmv|所有文件|*.*"
         };
 
         if (dialog.ShowDialog() == true)
@@ -288,7 +288,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (string.IsNullOrEmpty(ImagePath))
         {
-            MessageBox.Show(Application.Current.MainWindow!, "请先选择图片", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Application.Current.MainWindow!, "请先选择文件", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -298,9 +298,9 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        if (!new FileInfo(ImagePath).IsImage())
+        if (!new FileInfo(ImagePath).IsImage() && !VideoFrameHelper.IsVideoFile(ImagePath))
         {
-            MessageBox.Show(Application.Current.MainWindow!, "不是图像文件，无法检索", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Application.Current.MainWindow!, "不是支持的图像或视频文件，无法检索", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -786,7 +786,7 @@ public partial class MainViewModel : ObservableObject
         {
             IsSearching = true;
             SearchLoadingVisibility = Visibility.Visible;
-            SearchStatusText = "🔍 正在搜索相似图片...";
+            SearchStatusText = "🔍 正在搜索相似文件...";
             ElapsedTime = string.Empty;
 
             // 在后台线程执行搜索,避免 UI 线程阻塞
@@ -815,11 +815,11 @@ public partial class MainViewModel : ObservableObject
                 if (SearchResults.Count > 0)
                 {
                     SelectedResult = SearchResults[0];
-                    SearchStatusText = $"✅ 搜索完成，找到 {SearchResults.Count} 个相似图片";
+                    SearchStatusText = $"✅ 搜索完成，找到 {SearchResults.Count} 个相似媒体";
                 }
                 else
                 {
-                    SearchStatusText = "ℹ️ 未找到相似图片";
+                    SearchStatusText = "ℹ️ 未找到相似媒体";
                 }
             });
         }
@@ -977,12 +977,12 @@ public partial class MainViewModel : ObservableObject
                 }
                 else
                 {
-                    SourceImageInfo = "无法加载图片信息";
+                    SourceImageInfo = "无法加载媒体信息";
                 }
             }
             catch
             {
-                SourceImageInfo = "无法加载图片信息";
+                SourceImageInfo = "无法加载媒体信息";
             }
         }
     }
@@ -1000,12 +1000,12 @@ public partial class MainViewModel : ObservableObject
                 }
                 else
                 {
-                    DestImageInfo = "无法加载图片信息";
+                    DestImageInfo = "无法加载媒体信息";
                 }
             }
             catch
             {
-                DestImageInfo = "无法加载图片信息";
+                DestImageInfo = "无法加载媒体信息";
             }
         }
     }
