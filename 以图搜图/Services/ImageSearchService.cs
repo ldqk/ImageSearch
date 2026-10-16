@@ -354,10 +354,10 @@ public class ImageSearchService
             {
                 var key = entry.Key;
                 var value = entry.Value;
-                var useMaximumFrameScore = !isAnimatedQuery && VideoFrameHelper.IsVideoFile(key);
+                var useFrameScore = isAnimatedQuery || VideoFrameHelper.IsVideoFile(key);
                 if (useDctHash64)
                 {
-                    var match = useMaximumFrameScore ? MaxCompare(value.DctHash64, queryDctHash64s) : AverageTopFrameMatches(value.DctHash64, queryDctHash64s, requiredFrameMatches);
+                    var match = useFrameScore ? AverageTopFrameMatches(value.DctHash64, queryDctHash64s, requiredFrameMatches): MaxCompare(value.DctHash64, queryDctHash64s);
                     if (match >= similarity)
                     {
                         items.Add(new SearchResult
@@ -371,7 +371,7 @@ public class ImageSearchService
 
                 if (useDifferenceHash)
                 {
-                    var match = useMaximumFrameScore ? MaxCompare(value.DifferenceHash, queryDifferenceHashes) : AverageTopFrameMatches(value.DifferenceHash, queryDifferenceHashes, requiredFrameMatches);
+                    var match = useFrameScore ? AverageTopFrameMatches(value.DifferenceHash, queryDifferenceHashes, requiredFrameMatches) : MaxCompare(value.DifferenceHash, queryDifferenceHashes);
                     if (match >= similarity)
                     {
                         items.Add(new SearchResult
@@ -385,7 +385,7 @@ public class ImageSearchService
 
                 if (useDctHash32)
                 {
-                    var match = useMaximumFrameScore ? MaxCompare(value.DctHash, queryDctHashes) : AverageTopFrameMatches(value.DctHash, queryDctHashes, requiredFrameMatches);
+                    var match = useFrameScore ? AverageTopFrameMatches(value.DctHash, queryDctHashes, requiredFrameMatches) : MaxCompare(value.DctHash, queryDctHashes);
                     if (match >= similarity)
                     {
                         items.Add(new SearchResult

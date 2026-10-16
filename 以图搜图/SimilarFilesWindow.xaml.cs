@@ -7,7 +7,6 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -789,7 +788,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                 _indexService.ProgressChanged += IndexService_ProgressChanged;
                 try
                 {
-                    await Task.Run(() => _indexService.UpdateIndexAsync(scanDirectories, false, extensions), cancellationToken);
+                    await Task.Run(() => _indexService.UpdateIndexAsync(scanDirectories, false), cancellationToken);
                 }
                 finally
                 {
@@ -800,11 +799,9 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            var index = files
-                .Where(path => !ExcludedDirectories.Any(excluded => path.StartsWith(excluded, StringComparison.OrdinalIgnoreCase)))
-                .Select(path => _indexService.Index.GetValueOrDefault(path))
-                .Where(item => item != null)
-                .ToList();
+            var index = _indexService.Index.Values.Where(x => x.FilePath.StartsWith(scanDirectories)).ToList();
+            index.RemoveAll(t => t.FilePath.StartsWith(ExcludedDirectories));
+            index.RemoveAll(t => videoMode!=VideoFrameHelper.IsVideoFile(t.FilePath));
             var indexedPaths = index.Select(item => item.FilePath).ToArray();
             ScannedImageCount = index.Count;
             if (ScannedImageCount < 2)

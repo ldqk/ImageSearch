@@ -1,4 +1,4 @@
-﻿namespace 以图搜图.Services;
+namespace 以图搜图.Services;
 
 public class IndexProgressEventArgs : EventArgs
 {

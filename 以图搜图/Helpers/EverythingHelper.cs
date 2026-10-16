@@ -7,7 +7,7 @@ namespace 以图搜图;
 
 public static class EverythingHelper
 {
-    private static readonly object QueryLock = new();
+    private static readonly Lock QueryLock = new();
 
     // 导入Everything DLL的方法
     [DllImport("Everything64.dll", CharSet = CharSet.Unicode)]
@@ -79,7 +79,8 @@ public static class EverythingHelper
         return false;
     }
 
-    private static string[] EnumerateFiles(string directoryPath, string extFilter = "jpg;jpeg;bmp;png;gif;webp")
+    public const string Extensions = "jpg;jpeg;bmp;png;gif;webp;3gp;avi;flv;m2ts;m4v;mkv;mov;mp4;mpeg;mpg;mts;ts;webm;wmv";
+    private static string[] EnumerateFiles(string directoryPath, string extFilter = Extensions)
     {
         string search = $"file:\"{directoryPath}\" ext:{extFilter}"; // 仅文件，并限制路径
 
@@ -124,7 +125,7 @@ public static class EverythingHelper
         return new FileInfo(filePath).Length;
     }
 
-    public static string[] GetFiles(string[] directories, string extFilter = "jpg;jpeg;bmp;png;gif;webp")
+    public static string[] GetFiles(string[] directories, string extFilter = Extensions)
     {
         if (File.Exists("Everything64.dll") && Process.GetProcessesByName("Everything").Length > 0)
         {
