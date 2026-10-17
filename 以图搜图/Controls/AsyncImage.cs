@@ -99,7 +99,7 @@ public sealed class AsyncImage : Image
     {
         if (VideoFrameHelper.IsVideoFile(key.Path))
         {
-            var previewPath = Path.Combine(Path.GetTempPath(), $"imagesearch-preview-{Guid.NewGuid():N}.jpg");
+            var previewPath = Path.Combine(Path.GetTempPath(), "imagesearch", $"preview-{Guid.NewGuid():N}.jpg");
             try
             {
                 if (!VideoFrameHelper.ExtractPreviewFrame(key.Path, previewPath, key.DecodePixelSize))
