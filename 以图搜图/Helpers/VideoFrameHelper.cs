@@ -1,4 +1,4 @@
-using FFMpegCore;
+﻿using FFMpegCore;
 using Masuit.Tools.Media;
 using SkiaSharp;
 using System.IO;
@@ -8,8 +8,6 @@ namespace 以图搜图.Helpers;
 
 internal static class VideoFrameHelper
 {
-    private const int PreviewCandidateCount = 8;
-    private const double TargetPreviewLuminance = 127.5;
 
     private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -26,7 +24,7 @@ internal static class VideoFrameHelper
         Directory.CreateDirectory(directory);
         try
         {
-            for (int i = 60; i <= 110; i+=10)
+            for (int i = 50; i <= 110; i+=10)
             {
                 var succeeded = i>100?ExtractFrames(videoPath, size, directory):ExtractFrames(videoPath, size, directory, i);
                 var frames = Directory.GetFiles(directory, "frame-*.png");
@@ -68,61 +66,8 @@ internal static class VideoFrameHelper
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size);
 
-        var directory = Path.Combine(Path.GetTempPath(), $"imagesearch-preview-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(directory);
-        try
-        {
-            var candidatePattern = Path.Combine(directory, "candidate-%02d.jpg");
-            var filter = $"fps=1/2,scale={size}:{size}:force_original_aspect_ratio=decrease";
-            var succeeded = FFMpegArguments.FromFileInput(videoPath).OutputToFile(candidatePattern, true, options => options.WithCustomArgument($"-vf \"{filter}\" -frames:v {PreviewCandidateCount} -q:v 5")).ProcessSynchronously();
-
-            if (!succeeded)
-            {
-                return false;
-            }
-
-            var bestCandidate = Directory.GetFiles(directory, "candidate-*.jpg").Select(path => new
-            {
-                Path = path,
-                Brightness = GetAverageLuminance(path)
-            }).Where(candidate => candidate.Brightness >= 0).OrderBy(candidate => Math.Abs(candidate.Brightness - TargetPreviewLuminance)).FirstOrDefault();
-            if (bestCandidate == null)
-            {
-                return false;
-            }
-
-            File.Copy(bestCandidate.Path, outputPath, true);
-            return new FileInfo(outputPath).Length > 0;
-        }
-        finally
-        {
-            Directory.Delete(directory, true);
-        }
+        var succeeded = FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPath, true, options => options.WithCustomArgument($"-vf \"thumbnail=300,scale={size}:-2\" -frames:v 1 -q:v 2")).ProcessSynchronously();
+        return succeeded && File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
     }
-
-    private static double GetAverageLuminance(string imagePath)
-    {
-        using var bitmap = SKBitmap.Decode(imagePath);
-        if (bitmap == null || bitmap.Width == 0 || bitmap.Height == 0)
-        {
-            return -1;
-        }
-
-        var sampleStep = Math.Max(1, Math.Max(bitmap.Width, bitmap.Height) / 32);
-        double luminanceTotal = 0;
-        var sampleCount = 0;
-        for (var y = 0; y < bitmap.Height; y += sampleStep)
-        {
-            for (var x = 0; x < bitmap.Width; x += sampleStep)
-            {
-                var color = bitmap.GetPixel(x, y);
-                luminanceTotal += 0.2126 * color.Red + 0.7152 * color.Green + 0.0722 * color.Blue;
-                sampleCount++;
-            }
-        }
-
-        return sampleCount == 0 ? -1 : luminanceTotal / sampleCount;
-    }
-
     public static IMediaAnalysis Analyse(string videoPath) => FFProbe.Analyse(videoPath);
 }
