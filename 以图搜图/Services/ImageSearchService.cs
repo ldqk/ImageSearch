@@ -80,17 +80,17 @@ public class ImageSearchService
                         var bestAlgorithms = (MatchAlgorithm) 0;
                         if (useDctHash64)
                         {
-                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash64, candidate.DctHash64, 200, cancellationToken) : MaxCompare(source.DctHash64, candidate.DctHash64), MatchAlgorithm.DctHash64);
+                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash64, candidate.DctHash64, 200, similarity, cancellationToken) : MaxCompare(source.DctHash64, candidate.DctHash64), MatchAlgorithm.DctHash64);
                         }
 
                         if (useDifferenceHash)
                         {
-                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DifferenceHash, candidate.DifferenceHash, 200, cancellationToken) : MaxCompare(source.DifferenceHash, candidate.DifferenceHash), MatchAlgorithm.DifferenceHash);
+                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DifferenceHash, candidate.DifferenceHash, 200, similarity, cancellationToken) : MaxCompare(source.DifferenceHash, candidate.DifferenceHash), MatchAlgorithm.DifferenceHash);
                         }
 
                         if (useDctHash32)
                         {
-                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash, candidate.DctHash, 200, cancellationToken) : MaxCompare(source.DctHash, candidate.DctHash), MatchAlgorithm.DctHash32);
+                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash, candidate.DctHash, 200, similarity, cancellationToken) : MaxCompare(source.DctHash, candidate.DctHash), MatchAlgorithm.DctHash32);
                         }
 
                         if (bestMatch >= similarity)
@@ -372,7 +372,7 @@ public class ImageSearchService
                 var useFrameScore = isAnimatedQuery || VideoFrameHelper.IsVideoFile(key);
                 if (useDctHash64)
                 {
-                    var match = useFrameScore ? AverageTopFrameMatches(value.DctHash64, queryDctHash64s, requiredFrameMatches): MaxCompare(value.DctHash64, queryDctHash64s);
+                    var match = useFrameScore ? AverageTopFrameMatches(value.DctHash64, queryDctHash64s, requiredFrameMatches, similarity) : MaxCompare(value.DctHash64, queryDctHash64s);
                     if (match >= similarity)
                     {
                         items.Add(new SearchResult
@@ -386,7 +386,7 @@ public class ImageSearchService
 
                 if (useDifferenceHash)
                 {
-                    var match = useFrameScore ? AverageTopFrameMatches(value.DifferenceHash, queryDifferenceHashes, requiredFrameMatches) : MaxCompare(value.DifferenceHash, queryDifferenceHashes);
+                    var match = useFrameScore ? AverageTopFrameMatches(value.DifferenceHash, queryDifferenceHashes, requiredFrameMatches,similarity) : MaxCompare(value.DifferenceHash, queryDifferenceHashes);
                     if (match >= similarity)
                     {
                         items.Add(new SearchResult
@@ -400,7 +400,7 @@ public class ImageSearchService
 
                 if (useDctHash32)
                 {
-                    var match = useFrameScore ? AverageTopFrameMatches(value.DctHash, queryDctHashes, requiredFrameMatches) : MaxCompare(value.DctHash, queryDctHashes);
+                    var match = useFrameScore ? AverageTopFrameMatches(value.DctHash, queryDctHashes, requiredFrameMatches, similarity) : MaxCompare(value.DctHash, queryDctHashes);
                     if (match >= similarity)
                     {
                         items.Add(new SearchResult
@@ -444,11 +444,11 @@ public class ImageSearchService
         });
     }
 
-    private static float AverageTopFrameMatches(IEnumerable<ulong> firstHashes, IEnumerable<ulong> queryHashes, int maximumMatches, CancellationToken cancellationToken=default)
+    private static float AverageTopFrameMatches(IEnumerable<ulong> hashes, IEnumerable<ulong> queryHashes, int maximumMatches,float threshold, CancellationToken cancellationToken=default)
     {
         var topMatches = new PriorityQueue<float, float>();
         var comparisons = 0;
-        foreach (var firstHash in firstHashes)
+        foreach (var firstHash in hashes)
         {
             foreach (var queryHash in queryHashes)
             {
@@ -458,6 +458,11 @@ public class ImageSearchService
                 }
 
                 var match = ImageHasher.Compare(firstHash, queryHash);
+                if (match < threshold)
+                {
+                    continue;
+                }
+
                 if (topMatches.Count < maximumMatches)
                 {
                     topMatches.Enqueue(match, match);
@@ -473,11 +478,11 @@ public class ImageSearchService
         return topMatches.Count == 0 ? 0 : topMatches.UnorderedItems.Average(item => item.Element);
     }
 
-    private static float AverageTopFrameMatches(IEnumerable<ulong[]> firstHashes, IEnumerable<ulong[]> queryHashes, int maximumMatches, CancellationToken cancellationToken=default)
+    private static float AverageTopFrameMatches(IEnumerable<ulong[]> hashes, IEnumerable<ulong[]> queryHashes, int maximumMatches, float threshold, CancellationToken cancellationToken=default)
     {
         var topMatches = new PriorityQueue<float, float>();
         var comparisons = 0;
-        foreach (var firstHash in firstHashes)
+        foreach (var firstHash in hashes)
         {
             foreach (var queryHash in queryHashes)
             {
@@ -487,6 +492,11 @@ public class ImageSearchService
                 }
 
                 var match = ImageHasher.Compare(firstHash, queryHash);
+                if (match < threshold)
+                {
+                    continue;
+                }
+
                 if (topMatches.Count < maximumMatches)
                 {
                     topMatches.Enqueue(match, match);

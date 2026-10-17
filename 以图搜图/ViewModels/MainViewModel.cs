@@ -207,7 +207,7 @@ public partial class MainViewModel : ObservableObject
         // Workaround for folder selection
         if (dialog.ShowDialog() == true)
         {
-            DirectoryPath = Path.GetDirectoryName(dialog.FolderName) ?? string.Empty;
+            DirectoryPath = dialog.FolderName;
         }
     }
 
