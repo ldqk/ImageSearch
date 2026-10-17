@@ -11,6 +11,7 @@ using System.IO;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Win32;
 using 以图搜图.Helpers;
 using 以图搜图.Models;
 using 以图搜图.Services;
@@ -197,18 +198,16 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void SelectDirectory()
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
+        var dialog = new OpenFolderDialog()
         {
-            CheckFileExists = false,
-            CheckPathExists = true,
-            FileName = "选择文件夹",
-            ValidateNames = false
+            FolderName = "选择文件夹",
+            ValidateNames = false,Multiselect = false
         };
 
         // Workaround for folder selection
         if (dialog.ShowDialog() == true)
         {
-            DirectoryPath = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
+            DirectoryPath = Path.GetDirectoryName(dialog.FolderName) ?? string.Empty;
         }
     }
 

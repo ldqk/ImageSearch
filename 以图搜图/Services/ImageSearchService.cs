@@ -30,8 +30,9 @@ public class ImageSearchService
             var useDifferenceHash = algorithm.HasFlag(MatchAlgorithm.DifferenceHash);
             var useDctHash32 = algorithm.HasFlag(MatchAlgorithm.DctHash32);
             var useDctHash64 = algorithm.HasFlag(MatchAlgorithm.DctHash64);
+            var searchEntries = videoMode ? CreateVideoSearchEntries(entries, cancellationToken) : entries;
             var canUseCandidateIndex = (!useDifferenceHash || HashCandidateIndex.MinimumSharedBuckets(256, 32, similarity) > 0) && (!(useDctHash32 || useDctHash64) || HashCandidateIndex.MinimumSharedBuckets(64, 8, similarity) > 0);
-            var candidateIndex = canUseCandidateIndex ? HashCandidateIndex.Build(entries, algorithm, cancellationToken) : null;
+            var candidateIndex = canUseCandidateIndex ? HashCandidateIndex.Build(searchEntries, algorithm, cancellationToken) : null;
             var folderIds = ignoreSameFolder ? BuildFolderIds(entries, cancellationToken) : null;
             var parallelOptions = new ParallelOptions
             {
@@ -41,12 +42,12 @@ public class ImageSearchService
 
             var resultBatches = new ConcurrentBag<List<SimilarImagePair>>();
             var completed = 0;
-            Parallel.ForEach(Partitioner.Create(0, entries.Count), parallelOptions, () => new PairSearchWorker(entries.Count, canUseCandidateIndex), (range, _, worker) =>
+            Parallel.ForEach(Partitioner.Create(0, searchEntries.Count), parallelOptions, () => new PairSearchWorker(searchEntries.Count, canUseCandidateIndex), (range, _, worker) =>
             {
                 for (var position = range.Item1; position < range.Item2; position++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var source = entries[position];
+                    var source = searchEntries[position];
                     var candidates = worker.CandidateCollector;
                     if (candidates != null)
                     {
@@ -68,7 +69,7 @@ public class ImageSearchService
                             return;
                         }
 
-                        var candidate = entries[candidatePosition];
+                        var candidate = searchEntries[candidatePosition];
                         if (folderIds != null && folderIds[position] == folderIds[candidatePosition])
                         {
                             return;
@@ -116,14 +117,14 @@ public class ImageSearchService
                     }
                     else
                     {
-                        for (var candidatePosition = position + 1; candidatePosition < entries.Count; candidatePosition++)
+                        for (var candidatePosition = position + 1; candidatePosition < searchEntries.Count; candidatePosition++)
                         {
                             CompareCandidate(candidatePosition);
                         }
                     }
 
                     var current = Interlocked.Increment(ref completed);
-                    if (current % 100 == 0 || current == entries.Count)
+                    if (current % 100 == 0 || current == searchEntries.Count)
                     {
                         progress?.Report(current);
                     }
@@ -133,6 +134,20 @@ public class ImageSearchService
             }, worker => resultBatches.Add(worker.Pairs));
             return resultBatches.SelectMany(batch => batch).ToList();
         }, cancellationToken);
+    }
+
+    private static List<IndexItem> CreateVideoSearchEntries(List<IndexItem> entries, CancellationToken cancellationToken)
+    {
+        const int requiredFrameMatches = 100;
+        foreach (var entry in entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            entry.DctHash = entry.DctHash.Count>requiredFrameMatches?[.. entry.DctHash.OrderByRandom().Take(requiredFrameMatches)]: entry.DctHash;
+            entry.DctHash64 = entry.DctHash64.Count>requiredFrameMatches?[.. entry.DctHash64.OrderByRandom().Take(requiredFrameMatches)]: entry.DctHash64;
+            entry.DifferenceHash = entry.DifferenceHash.Count>requiredFrameMatches?[.. entry.DifferenceHash.OrderByRandom().Take(requiredFrameMatches)]: entry.DifferenceHash;
+        }
+
+        return entries;
     }
 
     private static int[] BuildFolderIds(List<IndexItem> entries, CancellationToken cancellationToken)
@@ -163,7 +178,7 @@ public class ImageSearchService
 
     public async Task<List<SearchResult>> SearchAsync(string filename, ConcurrentDictionary<string, IndexItem> index, MatchAlgorithm algorithm, float similarity, bool checkRotated, bool checkFlipped)
     {
-        const int requiredFrameMatches = 10;
+        const int requiredFrameMatches = 100;
         var isAnimatedQuery = filename.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) || VideoFrameHelper.IsVideoFile(filename);
         var parallelism = Environment.ProcessorCount * 4;
         return await Task.Run(() =>
@@ -429,20 +444,20 @@ public class ImageSearchService
         });
     }
 
-    private static float AverageTopFrameMatches(IEnumerable<ulong> firstHashes, IEnumerable<ulong> secondHashes, int maximumMatches, CancellationToken cancellationToken=default)
+    private static float AverageTopFrameMatches(IEnumerable<ulong> firstHashes, IEnumerable<ulong> queryHashes, int maximumMatches, CancellationToken cancellationToken=default)
     {
         var topMatches = new PriorityQueue<float, float>();
         var comparisons = 0;
         foreach (var firstHash in firstHashes)
         {
-            foreach (var secondHash in secondHashes)
+            foreach (var queryHash in queryHashes)
             {
                 if ((comparisons++ & 0xFFF) == 0)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                var match = ImageHasher.Compare(firstHash, secondHash);
+                var match = ImageHasher.Compare(firstHash, queryHash);
                 if (topMatches.Count < maximumMatches)
                 {
                     topMatches.Enqueue(match, match);
@@ -458,20 +473,20 @@ public class ImageSearchService
         return topMatches.Count == 0 ? 0 : topMatches.UnorderedItems.Average(item => item.Element);
     }
 
-    private static float AverageTopFrameMatches(IEnumerable<ulong[]> firstHashes, IEnumerable<ulong[]> secondHashes, int maximumMatches, CancellationToken cancellationToken=default)
+    private static float AverageTopFrameMatches(IEnumerable<ulong[]> firstHashes, IEnumerable<ulong[]> queryHashes, int maximumMatches, CancellationToken cancellationToken=default)
     {
         var topMatches = new PriorityQueue<float, float>();
         var comparisons = 0;
         foreach (var firstHash in firstHashes)
         {
-            foreach (var secondHash in secondHashes)
+            foreach (var queryHash in queryHashes)
             {
                 if ((comparisons++ & 0xFFF) == 0)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                var match = ImageHasher.Compare(firstHash, secondHash);
+                var match = ImageHasher.Compare(firstHash, queryHash);
                 if (topMatches.Count < maximumMatches)
                 {
                     topMatches.Enqueue(match, match);

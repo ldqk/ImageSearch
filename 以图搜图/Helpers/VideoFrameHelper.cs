@@ -2,6 +2,7 @@ using FFMpegCore;
 using Masuit.Tools.Media;
 using SkiaSharp;
 using System.IO;
+using Masuit.Tools.Systems;
 
 namespace 以图搜图.Helpers;
 
@@ -21,7 +22,7 @@ internal static class VideoFrameHelper
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size);
         ArgumentNullException.ThrowIfNull(processFrame);
-        var directory = Path.Combine(Path.GetTempPath(), $"imagesearch-video-{Guid.NewGuid():N}");
+        var directory = Path.Combine(Path.GetTempPath(), "imagesearch", $"video-{Path.GetFileNameWithoutExtension(videoPath)}-{SnowFlake.NewId}");
         Directory.CreateDirectory(directory);
         try
         {

@@ -581,9 +581,11 @@
               <WrapPanel VerticalAlignment="Center">
                 <TextBlock Text="查找模式" Margin="0,0,8,0" />
                 <RadioButton x:Name="ImageModeRadioButton" Content="图片模式" IsChecked="True"
-                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,10,0" />
+                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,10,0"
+                             Checked="ScanMode_Checked" />
                 <RadioButton x:Name="VideoModeRadioButton" Content="视频模式"
-                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,18,0" />
+                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,18,0"
+                             Checked="ScanMode_Checked" />
                 <TextBlock Text="相似度"  Margin="0,0,8,0" />
                 <Slider x:Name="SimilaritySlider" Width="100" Minimum="85" Maximum="100" Value="93"
                                         TickFrequency="1" IsSnapToTickEnabled="True"
@@ -744,6 +746,7 @@
                                                        HorizontalAlignment="Right" />
                                                     </DockPanel>
                                                     <DataGrid ItemsSource="{Binding VisibleFiles}"
+                                                  Loaded="ResultDataGrid_Loaded"
                                                   Style="{StaticResource GroupListStyle}"
                                                   ColumnHeaderStyle="{StaticResource ResultColumnHeaderStyle}"
                                                   AutoGenerateColumns="False" IsReadOnly="False" CanUserAddRows="False"
@@ -822,7 +825,8 @@
                                                                     </DataTemplate>
                                                                 </DataGridTemplateColumn.CellTemplate>
                                                             </DataGridTemplateColumn>
-                                                            <DataGridTextColumn Header="视频时长" Binding="{Binding DurationText}" Width="85" IsReadOnly="True" />
+                                                            <DataGridTextColumn Header="视频时长" Binding="{Binding DurationText}" Width="85"
+                                                                                IsReadOnly="True" Visibility="Collapsed" />
                                                             <DataGridTextColumn Header="大小" Binding="{Binding SizeText}" Width="75" IsReadOnly="True" />
                                                             <DataGridTextColumn Header="修改时间" Binding="{Binding ModifiedText}" Width="125" IsReadOnly="True" />
                                                             <DataGridTextColumn Header="相似度" Binding="{Binding SimilarityText}" Width="60" IsReadOnly="True" />
@@ -910,6 +914,16 @@
                                                                                        DataContextChanged="ResolutionText_DataContextChanged" />
                                                                         </DockPanel>
                                                                         <DockPanel Margin="0,2,0,0">
+                                                                            <DockPanel.Style>
+                                                                                <Style TargetType="DockPanel">
+                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsVideoMode, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </DockPanel.Style>
                                                                             <TextBlock Text="时长" Foreground="#66717C" DockPanel.Dock="Left" />
                                                                             <TextBlock Text="{Binding DurationText}" Foreground="#66717C"
                                                                                        HorizontalAlignment="Right" />

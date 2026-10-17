@@ -94,6 +94,21 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
     public bool HasDuplicateDirectories => DuplicateDirectoryGroups.Count > 0;
 
+    private bool _isVideoMode;
+
+    public bool IsVideoMode
+    {
+        get => _isVideoMode;
+        private set
+        {
+            if (_isVideoMode != value)
+            {
+                _isVideoMode = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsVideoMode)));
+            }
+        }
+    }
+
     private bool _isThumbnailMode;
 
     public bool IsThumbnailMode
@@ -198,6 +213,60 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
 
         return null;
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var descendant in FindVisualChildren<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private void ScanMode_Checked(object sender, RoutedEventArgs e)
+    {
+        IsVideoMode = sender is RadioButton { Name: nameof(VideoModeRadioButton) };
+        if (IsLoaded)
+        {
+            UpdateDurationColumnVisibility();
+        }
+    }
+
+    private void ResultDataGrid_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is DataGrid dataGrid)
+        {
+            SetDurationColumnVisibility(dataGrid);
+        }
+    }
+
+    private void UpdateDurationColumnVisibility()
+    {
+        foreach (var dataGrid in FindVisualChildren<DataGrid>(ResultsList))
+        {
+            SetDurationColumnVisibility(dataGrid);
+        }
+    }
+
+    private void SetDurationColumnVisibility(DataGrid dataGrid)
+    {
+        foreach (var column in dataGrid.Columns)
+        {
+            if (column.Header as string == "视频时长")
+            {
+                column.Visibility = IsVideoMode ? Visibility.Visible : Visibility.Collapsed;
+                break;
+            }
+        }
     }
 
     public static void ShowSingle()
@@ -323,18 +392,15 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
     private void AddDirectory_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog
+        var dialog = new OpenFolderDialog()
         {
-            CheckFileExists = false,
-            CheckPathExists = true,
-            FileName = "选择文件夹",
-            ValidateNames = false
+            FolderName = "选择文件夹",
+            ValidateNames = false,Multiselect = true
         };
 
         if (dialog.ShowDialog(this) == true)
         {
-            var path = Path.GetDirectoryName(dialog.FileName);
-            if (!string.IsNullOrWhiteSpace(path) && !Directories.Contains(path, StringComparer.OrdinalIgnoreCase))
+            foreach (var path in dialog.FolderNames.Where(path => !string.IsNullOrWhiteSpace(path) && !Directories.Contains(path, StringComparer.OrdinalIgnoreCase)))
             {
                 Directories.Add(path);
             }
@@ -401,17 +467,16 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
     private void AddExcludedDirectory_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog
+        var dialog = new OpenFolderDialog()
         {
-            CheckFileExists = false,
-            CheckPathExists = true,
-            FileName = "选择要排除的文件夹",
-            ValidateNames = false
+            FolderName = "选择要排除的文件夹",
+            ValidateNames = false,
+            Multiselect = true
         };
 
-        if (dialog.ShowDialog(this) == true && Path.GetDirectoryName(dialog.FileName) is { } path)
+        if (dialog.ShowDialog(this) == true )
         {
-            AddExcludedDirectories([path]);
+            AddExcludedDirectories(dialog.FolderNames);
         }
     }
 

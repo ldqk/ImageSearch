@@ -197,6 +197,15 @@ public sealed class ImageIndexService : Disposable
                     var size = new FileInfo(file).Length;
                     _totalCount++;
                     _totalSize += size;
+                    OnProgressChanged(new IndexProgressEventArgs
+                    {
+                        Filename = file,
+                        Message = $"{_totalCount}/{filesToIndex.Length}",
+                        Speed = _totalCount / sw.Elapsed.TotalSeconds,
+                        ThroughputMB = _totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
+                        ProcessedFiles = _totalCount,
+                        TotalFiles = filesToIndex.Length
+                    });
                 }
                 catch
                 {
@@ -331,7 +340,7 @@ public sealed class ImageIndexService : Disposable
                     }
                     else if (VideoFrameHelper.IsVideoFile(item.Path))
                     {
-                        Index[item.Path] = CreateVideoIndexItem(item.Path, item.Stream);
+                        Index[item.Path] = CreateVideoIndexItem(item.Path);
                     }
                     else
                     {
@@ -347,6 +356,15 @@ public sealed class ImageIndexService : Disposable
 
                     _totalCount++;
                     _totalSize += item.Length;
+                    OnProgressChanged(new IndexProgressEventArgs
+                    {
+                        Filename = item.Path,
+                        Message = $"{_totalCount}/{filesToIndex.Length}",
+                        Speed = _totalCount / sw.Elapsed.TotalSeconds,
+                        ThroughputMB = _totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
+                        ProcessedFiles = _totalCount,
+                        TotalFiles = filesToIndex.Length
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -437,44 +455,6 @@ public sealed class ImageIndexService : Disposable
             DctHash = [.. dctHashes],
             DctHash64 = [.. dctHash64s]
         };
-    }
-
-    private static readonly SemaphoreSlim Semaphore=new(Environment.ProcessorCount+2);
-    private static IndexItem CreateVideoIndexItem(string file, Stream stream)
-    {
-        Semaphore.Wait();
-        var temp = Path.Combine(Path.GetTempPath(), "imagesearch", $"video-{Guid.NewGuid():N}.mp4");
-        stream.SaveFile(temp);
-        try
-        {
-            var differenceHashes = new ConcurrentBag<ulong[]>();
-            var dctHashes = new ConcurrentBag<ulong>();
-            var dctHash64s = new ConcurrentBag<ulong>();
-            VideoFrameHelper.ForEachGrayFrame(temp, 160, frame =>
-            {
-                differenceHashes.Add(frame.DifferenceHash256());
-                dctHashes.Add(frame.DctHash());
-                dctHash64s.Add(frame.DctHash64());
-            });
-            return new IndexItem(file)
-            {
-                DifferenceHash = new HashSet<ulong[]>(differenceHashes, new ArrayComparer()),
-                DctHash = [.. dctHashes],
-                DctHash64 = [.. dctHash64s]
-            };
-        }
-        finally
-        {
-            Semaphore.Release();
-            try
-            {
-                File.Delete(temp);
-            }
-            catch (Exception e)
-            {
-                // ignored
-            }
-        }
     }
 
     private async Task WriteIndexAsync()
