@@ -109,19 +109,13 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
     }
 
-    private bool _isThumbnailMode;
+    public static readonly DependencyProperty IsThumbnailModeProperty =
+        DependencyProperty.Register(nameof(IsThumbnailMode), typeof(bool), typeof(SimilarFilesWindow), new PropertyMetadata(false));
 
     public bool IsThumbnailMode
     {
-        get => _isThumbnailMode;
-        private set
-        {
-            if (_isThumbnailMode != value)
-            {
-                _isThumbnailMode = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsThumbnailMode)));
-            }
-        }
+        get => (bool) GetValue(IsThumbnailModeProperty);
+        private set => SetValue(IsThumbnailModeProperty, value);
     }
 
     private double _thumbnailSize = 220;
@@ -644,7 +638,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     private const int SpeedSmoothingWindowSeconds = 2;
     private readonly List<double> _speedHistory = [];
     private readonly Queue<(long Ticks, long Done)> _speedSamples = [];
-    private readonly DispatcherTimer _progressTimer = new(DispatcherPriority.Background) {Interval = TimeSpan.FromMilliseconds(200)};
+    private readonly DispatcherTimer _progressTimer = new(DispatcherPriority.Background) {Interval = TimeSpan.FromMilliseconds(300)};
     private System.Windows.Shapes.Polygon? _speedPolygon;
     private readonly Stopwatch _scanStopwatch = new();
     private string _scanPhase = "准备中…";
@@ -737,6 +731,11 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         if (seconds > 0)
         {
             _lastSpeed = Math.Max(0, (done - oldestSample.Done) / seconds);
+        }
+
+        if (_lastSpeed == 0)
+        {
+            return;
         }
 
         _speedHistory.Add(_lastSpeed);
