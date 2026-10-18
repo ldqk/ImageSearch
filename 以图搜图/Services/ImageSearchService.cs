@@ -138,13 +138,13 @@ public class ImageSearchService
 
     private static List<IndexItem> CreateVideoSearchEntries(List<IndexItem> entries, CancellationToken cancellationToken)
     {
-        const int requiredFrameMatches = 100;
+        const int sampleFrames = 100;
         foreach (var entry in entries)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            entry.DctHash = entry.DctHash.Count>requiredFrameMatches?[.. entry.DctHash.OrderByRandom().Take(requiredFrameMatches)]: entry.DctHash;
-            entry.DctHash64 = entry.DctHash64.Count>requiredFrameMatches?[.. entry.DctHash64.OrderByRandom().Take(requiredFrameMatches)]: entry.DctHash64;
-            entry.DifferenceHash = entry.DifferenceHash.Count>requiredFrameMatches?[.. entry.DifferenceHash.OrderByRandom().Take(requiredFrameMatches)]: entry.DifferenceHash;
+            entry.DctHash = entry.DctHash.Count>sampleFrames?[.. entry.DctHash.OrderByRandom().Take(sampleFrames)]: entry.DctHash;
+            entry.DctHash64 = entry.DctHash64.Count>sampleFrames?[.. entry.DctHash64.OrderByRandom().Take(sampleFrames)]: entry.DctHash64;
+            entry.DifferenceHash = entry.DifferenceHash.Count>sampleFrames?[.. entry.DifferenceHash.OrderByRandom().Take(sampleFrames)]: entry.DifferenceHash;
         }
 
         return entries;
