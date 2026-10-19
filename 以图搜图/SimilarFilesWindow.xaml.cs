@@ -140,6 +140,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         InitializeComponent();
         DataContext = this;
         SimilaritySlider.ValueChanged += (_, _) => SimilarityLabel.Text = $"{SimilaritySlider.Value:F0}%";
+        VideoSampleFramesSlider.ValueChanged += (_, _) => VideoSampleFramesValue.Text = $"{VideoSampleFramesSlider.Value:F0}";
         _pathSearchDebounceTimer.Tick += (_, _) =>
         {
             _pathSearchDebounceTimer.Stop();
@@ -388,8 +389,9 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     {
         var dialog = new OpenFolderDialog()
         {
-            FolderName = "选择文件夹",
-            ValidateNames = false,Multiselect = true
+            Title = "选择扫描位置",
+            ValidateNames = false,
+            Multiselect = true
         };
 
         if (dialog.ShowDialog(this) == true)
@@ -463,7 +465,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     {
         var dialog = new OpenFolderDialog()
         {
-            FolderName = "选择要排除的文件夹",
+            Title = "选择要排除的文件夹",
             ValidateNames = false,
             Multiselect = true
         };
@@ -884,7 +886,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
                 SetStatus($"正在比较{(videoMode ? "视频" : "图片")}：{completed:N0}/{ScannedImageCount:N0}，请稍候…");
             });
             SetProgressPhase($"正在比较{(videoMode ? "视频" : "图片")}…", ScannedImageCount);
-            var pairs = await _searchService.FindSimilarPairsAsync(index, algorithm, threshold, IgnoreSameFolderCheckBox.IsChecked == true, progress, cancellationToken, videoMode);
+            var pairs = await _searchService.FindSimilarPairsAsync(index, algorithm, threshold, IgnoreSameFolderCheckBox.IsChecked == true, progress, cancellationToken, videoMode, (int) VideoSampleFramesSlider.Value);
             
             cancellationToken.ThrowIfCancellationRequested();
             var groups = await Task.Run(() => BuildGroups(indexedPaths, pairs, cancellationToken), cancellationToken);
@@ -1465,6 +1467,23 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             FrameworkElement {DataContext: SimilarFileItem targetFile} => targetFile,
             _ => null
         };
+    }
+
+    private void RemoveGroup_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetContextFile(sender) is { } contextFile)
+        {
+            Groups.Remove(contextFile.Group);
+            VisibleGroups.Remove(contextFile.Group);
+            _pendingFilterGroups.Remove(contextFile.Group);
+            foreach (var file in contextFile.Group.Files)
+            {
+                file.PropertyChanged -= FileItem_PropertyChanged;
+            }
+
+            NotifyResultSummary();
+            SetStatus($"已从扫描结果中移除“{contextFile.Group.Title}”；文件未删除。");
+        }
     }
 
     private void FileList_MouseDoubleClick(object sender, MouseButtonEventArgs e)

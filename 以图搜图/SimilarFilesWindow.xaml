@@ -13,6 +13,7 @@
         PreviewKeyDown="Window_PreviewKeyDown">
   <Window.Resources>
     <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
+    <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     <SolidColorBrush x:Key="AccentBrush" Color="#007ACC" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="#005A9E" />
     <SolidColorBrush x:Key="ControlBorderBrush" Color="#CCD7E2" />
@@ -578,31 +579,40 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <WrapPanel VerticalAlignment="Center">
-                <TextBlock Text="查找模式" Margin="0,0,8,0" />
+            <WrapPanel VerticalAlignment="Center">
+                <TextBlock Text="匹配算法" Margin="0,0,8,0" />
+                <ComboBox x:Name="AlgorithmCombo" Width="150"
+                          ItemsSource="{Binding MatchAlgorithms}"
+                          SelectedItem="{Binding SelectedAlgorithm}"
+                          Margin="0,0,20,0"
+                          VerticalAlignment="Center">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Text="相似度"  Margin="0,0,8,0" />
+                <Slider x:Name="SimilaritySlider" Width="120" Minimum="85" Maximum="100" Value="93"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" />
+                <TextBlock x:Name="SimilarityLabel" Text="93%" Width="40" Margin="5" />
+                <TextBlock Text="查找模式" Margin="10,0,8,0" />
                 <RadioButton x:Name="ImageModeRadioButton" Content="图片模式" IsChecked="True"
                              GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,10,0"
                              Checked="ScanMode_Checked" />
                 <RadioButton x:Name="VideoModeRadioButton" Content="视频模式"
-                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,18,0"
+                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,8,0"
                              Checked="ScanMode_Checked" />
-                <TextBlock Text="相似度"  Margin="0,0,8,0" />
-                <Slider x:Name="SimilaritySlider" Width="100" Minimum="85" Maximum="100" Value="93"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" />
-                <TextBlock x:Name="SimilarityLabel" Text="93%" Width="40" Margin="5" />
-                <TextBlock Text="匹配算法" Margin="0,0,8,0" />
-                <ComboBox x:Name="AlgorithmCombo" Width="125"
-                                          ItemsSource="{Binding MatchAlgorithms}"
-                                          SelectedItem="{Binding SelectedAlgorithm}"
-                                          Margin="0,0,18,0"
-                                          VerticalAlignment="Center">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                      <TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}" />
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0"
+                            Visibility="{Binding IsVideoMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                  <TextBlock Text="抽样帧" Margin="0,0,8,0" />
+                  <Slider x:Name="VideoSampleFramesSlider" Width="140" Minimum="10" Maximum="200" Value="64"
+                          TickFrequency="1" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}"
+                          VerticalAlignment="Center" />
+                  <TextBlock x:Name="VideoSampleFramesValue" Text="64" Width="30" Margin="5,0,0,0"
+                             VerticalAlignment="Center" />
+                </StackPanel>
                 <CheckBox x:Name="IncludeSubfoldersCheckBox" Content="包括子文件夹" IsChecked="True"
                                           VerticalAlignment="Center" Margin="0,0,14,0" />
                 <CheckBox x:Name="IgnoreSameFolderCheckBox" Content="忽略同一文件夹内的重复"
@@ -782,6 +792,7 @@
                                                                 <MenuItem Header="反选组内标记" Click="InvertGroup_Click" />
                                                                 <Separator />
                                                                 <MenuItem Header="使用此文件替换其他文件" Click="ReplaceGroupFiles_Click" />
+                                                                <MenuItem Header="移除该重复组" Click="RemoveGroup_Click" />
                                                             </ContextMenu>
                                                         </DataGrid.ContextMenu>
                                                         <DataGrid.Columns>
@@ -892,8 +903,9 @@
                                                                             <MenuItem Header="反选组内标记" Click="InvertGroup_Click" />
                                                                             <Separator />
                                                                             <MenuItem Header="使用此文件替换组内其他文件" Click="ReplaceGroupFiles_Click" />
-                                                                        </ContextMenu>
-                                                                    </Border.ContextMenu>
+                                                                        <MenuItem Header="移除该重复组" Click="RemoveGroup_Click" />
+                                                                    </ContextMenu>
+                                                                </Border.ContextMenu>
                                                                     <StackPanel>
                                                                         <controls:AsyncImage ImagePath="{Binding FilePath}"
                                                                                  CacheVersion="{Binding ImageVersion}"

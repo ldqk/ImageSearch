@@ -7,6 +7,7 @@ using Masuit.Tools.Systems;
 using SkiaSharp;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Windows;
@@ -200,7 +201,7 @@ public partial class MainViewModel : ObservableObject
     {
         var dialog = new OpenFolderDialog()
         {
-            FolderName = "选择文件夹",
+            Title = "选择文件夹",
             ValidateNames = false,Multiselect = false
         };
 
@@ -968,6 +969,12 @@ public partial class MainViewModel : ObservableObject
     {
         if (File.Exists(path))
         {
+            if (TryGetVideoInfo(path, out var videoInfo))
+            {
+                SourceImageInfo = videoInfo;
+                return;
+            }
+
             try
             {
                 if (TryGetImageInfo(path, out var width, out var height))
@@ -991,6 +998,12 @@ public partial class MainViewModel : ObservableObject
     {
         if (File.Exists(path))
         {
+            if (TryGetVideoInfo(path, out var videoInfo))
+            {
+                DestImageInfo = videoInfo;
+                return;
+            }
+
             try
             {
                 if (TryGetImageInfo(path, out var width, out var height))
@@ -1009,6 +1022,41 @@ public partial class MainViewModel : ObservableObject
             }
         }
     }
+
+    private static bool TryGetVideoInfo(string path, out string info)
+    {
+        info = string.Empty;
+        if (!VideoFrameHelper.IsVideoFile(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            var mediaInfo = VideoFrameHelper.Analyse(path);
+            var videoStream = mediaInfo.PrimaryVideoStream;
+            if (videoStream == null)
+            {
+                info = "无法加载媒体信息";
+            }
+            else
+            {
+                var fileInfo = new FileInfo(path);
+                var frameRate = double.IsFinite(videoStream.FrameRate) && videoStream.FrameRate > 0 ? videoStream.FrameRate.ToString("0.##", CultureInfo.InvariantCulture) : "不可用";
+                info = $"分辨率：{videoStream.Width}x{videoStream.Height} @ {frameRate}fps， 时长：{FormatDuration(mediaInfo.Duration)}， 大小：{fileInfo.Length / 1024}KB";
+            }
+        }
+        catch (Exception exception) when (exception is FFMpegCore.Exceptions.FFProbeException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            Debug.WriteLine($"Unable to read video metadata for '{path}': {exception.Message}");
+            info = "无法加载媒体信息";
+        }
+
+        return true;
+    }
+
+    private static string FormatDuration(TimeSpan duration) =>
+        $"{(int)duration.TotalHours:00}:{duration.Minutes:00}:{duration.Seconds:00}";
 
     private void InitializePerformanceMonitoring()
     {

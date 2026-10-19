@@ -30,6 +30,14 @@ internal static class VideoFrameHelper
                 var frames = Directory.GetFiles(directory, "frame-*.jpg");
                 if (frames.Length > 0)
                 {
+                    frames=frames.Length switch
+                    {
+                        > 1000 => frames[10..^5],
+                        > 100 => frames[5..^5],
+                        > 10 => frames[1..^1],
+                        _ => frames
+                    };
+
                     Parallel.ForEach(frames, new ParallelOptions { MaxDegreeOfParallelism = Math.Min(Environment.ProcessorCount * 4, frames.Length) }, framePath =>
                     {
                         using var frame = SkiaImageHelper.DecodeGrayThumb(framePath, size);
