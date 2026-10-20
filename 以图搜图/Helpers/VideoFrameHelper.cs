@@ -27,7 +27,7 @@ internal static class VideoFrameHelper
             for (int i = 50; i <= 110; i+=10)
             {
                 var succeeded = i>100?ExtractFrames(videoPath, size, directory):ExtractFrames(videoPath, size, directory, i);
-                var frames = Directory.GetFiles(directory, "frame-*.jpg");
+                var frames = Directory.GetFiles(directory, "frame-*.png");
                 if (frames.Length > 0)
                 {
                     frames=frames.Length switch
@@ -60,13 +60,14 @@ internal static class VideoFrameHelper
 
     private static bool ExtractFrames(string videoPath, int size, string directory, int pblack)
     {
-        var outputPattern = Path.Combine(directory, "frame-%08d.jpg");
-        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, options => options.WithCustomArgument($"-vf \"fps=1,blackframe=0,metadata=select:key=lavfi.blackframe.pblack:value={pblack}:function=less,scale={size}:{size}:force_original_aspect_ratio=decrease\"")).ProcessSynchronously(false);
+        var outputPattern = Path.Combine(directory, "frame-%08d.png");
+        var vf = $"fps=1,blackframe=0,metadata=select:key=lavfi.blackframe.pblack:value={pblack}:function=less,scale={size}:{size}:force_original_aspect_ratio=decrease";
+        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, opt => opt.WithCustomArgument($"-vf \"{vf}\"")).ProcessSynchronously(false);
     }
 
     private static bool ExtractFrames(string videoPath, int size, string directory)
     {
-        var outputPattern = Path.Combine(directory, "frame-%08d.jpg");
+        var outputPattern = Path.Combine(directory, "frame-%08d.png");
         return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, options => options.WithCustomArgument($"-vf \"fps=1,scale={size}:{size}:force_original_aspect_ratio=decrease\"")).ProcessSynchronously(false);
     }
 
