@@ -7,7 +7,7 @@
   xmlns:converters="clr-namespace:以图搜图.Converters"
   xmlns:controls="clr-namespace:以图搜图.Controls"
         mc:Ignorable="d"
-        Title="以图搜图 - 本地图像检索工具WPF版 by 懒得勤快 (评估版本)"
+        Title="媒鉴查重MediaTrace - 本地跨媒体互搜与查重引擎 WPF版 by 懒得勤快 (评估版本)"
         Height="850"
         Width="1100"
         MinHeight="750"
