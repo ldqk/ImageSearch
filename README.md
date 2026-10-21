@@ -25,11 +25,15 @@
 在主窗口点“相似文件查找”，可以一次扫描多个目录。扫描位置既可以浏览选择，也可以输入、粘贴或拖放目录；不想纳入扫描的目录可以放进排除列表。还可以选择是否扫描子文件夹，以及是否忽略同一文件夹里的重复项。扫描时可切换“图片模式”或“视频模式”；视频模式会只查找视频，并可设置每段视频参与比较的抽样帧数（10–200，默认 64）和最短时长（默认启用，10 秒）。时长筛选按索引帧数估算，视频抽帧约为每秒一帧。缺少索引的文件会在扫描时自动建立索引。
 <img width="1264" height="894" alt="image" src="https://github.com/user-attachments/assets/d79b3680-e438-46b3-945a-be8e3068b37c" />
 
+
 图片和视频模式都可以调整相似度，并选择 Difference Hash、DCT Hash 32、DCT Hash 64 或全部算法。视频比较会综合抽样画面的匹配情况；视频结果还会显示时长和画面预览。界面会显示扫描进度、当前速度、处理数量和耗时，扫描也可以随时停止。
 <img width="1265" height="891" alt="image" src="https://github.com/user-attachments/assets/6f005701-6859-410a-aa1d-58a7eac3cb4c" />
 
 结果按组显示，分为重复文件和重复目录（找到重复目录时才会出现这一项）。可以切换列表或缩略图视图、调整缩略图大小，再按文件所在文件夹、标记状态、路径、算法和最低相似度筛选。文件如果已经在资源管理器中删掉了，点“刷新结果”可以清理旧记录并更新分组。
 <img width="1267" height="891" alt="image" src="https://github.com/user-attachments/assets/c6dfaea5-f2eb-4d6b-ad83-4a8f0cab4f96" />
+<img width="1266" height="893" alt="image" src="https://github.com/user-attachments/assets/83fde7e1-7532-4299-9940-10d4ebb3f4fe" />
+<img width="1266" height="893" alt="image" src="https://github.com/user-attachments/assets/3367b891-66a6-44a3-a39f-c89edf60a83b" />
+
 
 整理时，可以手动标记要清理的文件，也可以按规则给每组挑选保留项：保留最大或最小的文件、最新或最早修改的文件，或文件名最短、最长的文件。除了批量取消或反选标记，还能一次标记组内其他文件，或标记某个目录、目录树、磁盘中找到的文件。
 <img width="1266" height="892" alt="image" src="https://github.com/user-attachments/assets/cc6f8d27-3eba-436a-8652-a04f514310ae" />
