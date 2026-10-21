@@ -180,7 +180,11 @@ public sealed class ImageIndexService : Disposable
                     }
                     else if (VideoFrameHelper.IsVideoFile(file))
                     {
-                        Index[file] = CreateVideoIndexItem(file);
+                        var item = CreateVideoIndexItem(file);
+                        if (item.DctHash.Count>0)
+                        {
+                            Index[file] = item;
+                        }
                     }
                     else
                     {
@@ -340,7 +344,11 @@ public sealed class ImageIndexService : Disposable
                     }
                     else if (VideoFrameHelper.IsVideoFile(item.Path))
                     {
-                        Index[item.Path] = CreateVideoIndexItem(item.Path);
+                        var hash = CreateVideoIndexItem(item.Path);
+                        if (hash.DctHash.Count>0)
+                        {
+                            Index[item.Path] = hash;
+                        }
                     }
                     else
                     {

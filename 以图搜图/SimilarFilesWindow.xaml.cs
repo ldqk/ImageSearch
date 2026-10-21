@@ -868,6 +868,18 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             var index = _indexService.Index.Values.Where(x => x.FilePath.StartsWith(scanDirectories)).ToList();
             index.RemoveAll(t => t.FilePath.StartsWith(ExcludedDirectories));
             index.RemoveAll(t => videoMode!=VideoFrameHelper.IsVideoFile(t.FilePath));
+            if (videoMode && EnableVideoMinDurationCheckBox.IsChecked == true)
+            {
+                if (!int.TryParse(VideoMinDurationSecondsBox.Text, out var minDurationSeconds) || minDurationSeconds <= 0)
+                {
+                    SetStatus("请输入有效的视频最短时长（正整数秒）。", true);
+                    return;
+                }
+
+                // 索引按 1fps 抽帧，使用索引帧数近似视频秒数进行过滤。
+                index.RemoveAll(item => item.DctHash.Count < minDurationSeconds);
+            }
+
             var indexedPaths = index.Select(item => item.FilePath).ToArray();
             ScannedImageCount = index.Count;
             if (ScannedImageCount < 2)

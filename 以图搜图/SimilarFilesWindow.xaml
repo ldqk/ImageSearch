@@ -602,8 +602,12 @@
                              GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,10,0"
                              Checked="ScanMode_Checked" />
                 <RadioButton x:Name="VideoModeRadioButton" Content="视频模式"
-                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,8,0"
+                             GroupName="ScanMode" VerticalAlignment="Center" Margin="0,0,18,0"
                              Checked="ScanMode_Checked" />
+                <CheckBox x:Name="IncludeSubfoldersCheckBox" Content="包括子文件夹" IsChecked="True"
+                                          VerticalAlignment="Center" Margin="0,0,14,0" />
+                <CheckBox x:Name="IgnoreSameFolderCheckBox" Content="忽略同一文件夹内的重复"
+                                          VerticalAlignment="Center" Margin="0,0,14,0" />
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0"
                             Visibility="{Binding IsVideoMode, Converter={StaticResource BooleanToVisibilityConverter}}">
                   <TextBlock Text="抽样帧" Margin="0,0,8,0" />
@@ -612,11 +616,12 @@
                           VerticalAlignment="Center" />
                   <TextBlock x:Name="VideoSampleFramesValue" Text="64" Width="30" Margin="5,0,0,0"
                              VerticalAlignment="Center" />
+                    <CheckBox x:Name="EnableVideoMinDurationCheckBox" Content="最短时长(秒)" IsChecked="True"
+                              VerticalAlignment="Center" Margin="14,0,6,0" />
+                  <TextBox x:Name="VideoMinDurationSecondsBox" Width="72" Height="30" Padding="7,3"
+                     VerticalContentAlignment="Center" Text="10"
+                     IsEnabled="{Binding IsChecked, ElementName=EnableVideoMinDurationCheckBox}" />
                 </StackPanel>
-                <CheckBox x:Name="IncludeSubfoldersCheckBox" Content="包括子文件夹" IsChecked="True"
-                                          VerticalAlignment="Center" Margin="0,0,14,0" />
-                <CheckBox x:Name="IgnoreSameFolderCheckBox" Content="忽略同一文件夹内的重复"
-                                          VerticalAlignment="Center" Margin="0,0,14,0" />
               </WrapPanel>
               <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
                                         Margin="16,0,0,0">
