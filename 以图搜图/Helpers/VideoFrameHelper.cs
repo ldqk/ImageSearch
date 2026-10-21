@@ -1,8 +1,9 @@
 ﻿using FFMpegCore;
+using Masuit.Tools.Files;
 using Masuit.Tools.Media;
+using Masuit.Tools.Systems;
 using SkiaSharp;
 using System.IO;
-using Masuit.Tools.Systems;
 
 namespace 以图搜图.Helpers;
 
@@ -58,17 +59,20 @@ internal static class VideoFrameHelper
         }
     }
 
+    private static readonly int Fps= new IniFile("config.ini").GetValue("Global", "VideoFrameRate", 1);
+
+
     private static bool ExtractFrames(string videoPath, int size, string directory, int pblack)
     {
         var outputPattern = Path.Combine(directory, "frame-%08d.png");
-        var vf = $"fps=1,blackframe=0,metadata=select:key=lavfi.blackframe.pblack:value={pblack}:function=less,scale={size}:{size}:force_original_aspect_ratio=decrease";
+        var vf = $"fps={Fps},blackframe=0,metadata=select:key=lavfi.blackframe.pblack:value={pblack}:function=less,scale={size}:{size}:force_original_aspect_ratio=decrease";
         return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, opt => opt.WithCustomArgument($"-vf \"{vf}\"")).ProcessSynchronously(false);
     }
 
     private static bool ExtractFrames(string videoPath, int size, string directory)
     {
         var outputPattern = Path.Combine(directory, "frame-%08d.png");
-        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, options => options.WithCustomArgument($"-vf \"fps=1,scale={size}:{size}:force_original_aspect_ratio=decrease\"")).ProcessSynchronously(false);
+        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, options => options.WithCustomArgument($"-vf \"fps={Fps},scale={size}:{size}:force_original_aspect_ratio=decrease\"")).ProcessSynchronously(false);
     }
 
     public static bool ExtractPreviewFrame(string videoPath, string outputPath, int size)
