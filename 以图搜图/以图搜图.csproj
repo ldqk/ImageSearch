@@ -24,6 +24,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="FFMpegCore" Version="5.5.0" />
     <PackageReference Include="Masuit.Tools.Abstractions" Version="2026.3.3" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
     <PackageReference Include="Scalar.AspNetCore.Swashbuckle" Version="2.18.0" />
   </ItemGroup>
   <ItemGroup>

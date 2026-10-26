@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
+using ModelContextProtocol.Server;
 using Scalar.AspNetCore;
 using System.IO;
 using System.Reflection;
+using 以图搜图.WebAPI.Mcp;
 
 namespace 以图搜图.WebAPI;
 
@@ -27,6 +29,10 @@ public class WebApiStartup
         var builder = WebApplication.CreateBuilder(args);
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
+        builder.Services
+            .AddMcpServer()
+            .WithHttpTransport()
+            .WithToolsFromAssembly(typeof(ImageSearchTools).Assembly);
         builder.Services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo
@@ -46,6 +52,7 @@ public class WebApiStartup
         app.UseSwagger(options => options.RouteTemplate = "/openapi/{documentName}.json");
         app.MapScalarApiReference("/api");
         app.MapControllers();
+        app.MapMcp("/mcp");
         return app.RunAsync("http://0.0.0.0:" + config.GetValue("Global", "HttpPort", 5000));
     }
 

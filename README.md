@@ -50,6 +50,126 @@
 - 相似度可以在界面中调整。Difference Hash 最低为 70，其他算法最低为 85；阈值越高，筛选越严格。具体匹配效果还和图片内容有关。
 - 删除、移入回收站或替换文件前，建议先核对路径和标记，避免误操作。
 
+## WebAPI
+
+程序内置 HTTP API。编辑程序目录下的 `config.ini`，将 `[Global]` 下的 `RunServer` 设置为 `true` 后启动程序。默认地址为 `http://127.0.0.1:5000`，端口可通过 `HttpPort` 修改。`RunServer` 默认是 `false`。
+
+- Scalar API 文档：`http://127.0.0.1:5000/api`
+- OpenAPI JSON：`http://127.0.0.1:5000/openapi/v1.json`
+
+### 更新索引
+
+`PATCH /index` 根据指定目录创建或更新索引。`dir` 为必填目录路径，`removeInvalid` 可选，默认 `false`；设为 `true` 时会移除目录中已失效的索引。
+
+```powershell
+curl.exe -X PATCH "http://127.0.0.1:5000/index?dir=D%3A%5CPictures&removeInvalid=false"
+```
+
+成功时返回 HTTP 200 和提示文本“已发送指令，请查看主程序窗口”。建议先建立索引，再调用单图搜索接口。
+
+### 以图搜索
+
+`POST /search` 使用 `multipart/form-data` 上传一张查询图像，表单字段名为 `file`。视频搜索可在桌面程序中使用；此接口用于上传图像。
+
+| 参数 | 位置 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- | --- |
+| `file` | 表单 | 文件 | 必填 | 查询图像 |
+| `similar` | Query | 数值，75–100 | 75 | 最低相似度百分比 |
+| `algorithm` | Query | 整数 | 7 | 匹配算法，见下表 |
+| `checkRotated` | Query | 布尔值 | `true` | 是否检查旋转后的图像 |
+| `checkFlip` | Query | 布尔值 | `false` | 是否检查翻转后的图像 |
+
+`algorithm` 的取值为 `1`（Difference Hash）、`2`（DCT Hash 32）、`4`（DCT Hash 64）或 `7`（全部）。示例：
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:5000/search?similar=85&algorithm=7&checkRotated=true&checkFlip=false" -F "file=@D:\Pictures\query.jpg"
+```
+
+成功时返回匹配结果数组，按匹配度排序；无匹配时返回空数组。每条结果包含路径、匹配度、匹配算法、文件大小和所属文件夹信息。匹配度为 `0` 到 `1` 的数值，例如 `0.97` 表示约 97%。
+
+响应示例：
+
+```json
+[
+  {
+    "路径": "D:\\Pictures\\match.jpg",
+    "匹配度": 0.97,
+    "匹配算法": "DCT Hash 64",
+    "大小": "123KB",
+    "所属文件夹大小": "32.00MB",
+    "所属文件夹文件数": 14
+  }
+]
+```
+
+### 相似查重
+
+`POST /similar-search` 使用 JSON 请求体，对指定目录中的图像或视频执行两两相似查重。请求示例：
+
+```json
+{
+  "directories": ["D:\\Pictures"],
+  "excludedDirectories": [],
+  "similarity": 93,
+  "algorithm": 7,
+  "ignoreSameFolder": false,
+  "includeSubfolders": true,
+  "videoMode": false,
+  "sampleFrames": 64,
+  "filterShortVideos": true,
+  "minimumVideoDurationSeconds": 10
+}
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `directories` | 字符串数组 | 必填 | 一个或多个已存在的扫描目录 |
+| `excludedDirectories` | 字符串数组 | `[]` | 要排除的目录 |
+| `similarity` | 数值，85–100 | 93 | 最低相似度百分比 |
+| `algorithm` | 整数 | 7 | `1` Difference Hash、`2` DCT Hash 32、`4` DCT Hash 64、`7` 全部 |
+| `ignoreSameFolder` | 布尔值 | `false` | 是否忽略同一文件夹中的相似文件 |
+| `includeSubfolders` | 布尔值 | `true` | 是否扫描子目录 |
+| `videoMode` | 布尔值 | `false` | `false` 查图像，`true` 查视频 |
+| `sampleFrames` | 整数，10–200 | 64 | 视频模式下每个视频参与比较的最大抽样帧数 |
+| `filterShortVideos` | 布尔值 | `true` | 视频模式下是否按最短时长过滤 |
+| `minimumVideoDurationSeconds` | 整数，1–86400 | 10 | 视频最短时长；按索引帧数估算 |
+
+缺失索引的媒体会在查重前自动建立索引。成功响应包含 `scannedFileCount`（参与比较的文件数）、`matchCount` 和 `matches`；每个匹配项包含两个文件路径、相似度（0–1）及算法。
+
+响应示例：
+
+```json
+{
+  "scannedFileCount": 2,
+  "matchCount": 1,
+  "matches": [
+    {
+      "firstPath": "D:\\Pictures\\first.jpg",
+      "secondPath": "D:\\Pictures\\second.jpg",
+      "similarity": 0.96,
+      "algorithms": 4
+    }
+  ]
+}
+```
+
+参数无效、目录不存在或符合条件的媒体少于两个时返回 HTTP 400；索引任务正在运行或已有查重任务时返回 HTTP 409；索引后仍有媒体无法建立索引时返回 HTTP 422。
+
+### 服务访问与安全
+
+HTTP 服务监听所有网络接口（`0.0.0.0`），目前没有身份验证。启用服务前请确认网络环境可信；否则应使用防火墙限制访问或保持 `RunServer=false`。
+
+## MCP 集成
+
+程序可通过 MCP（Streamable HTTP）向支持 MCP 的客户端提供本地媒体检索工具。启用上文的 `RunServer` 后，MCP 地址为 `http://127.0.0.1:5000/mcp`，端口随 `HttpPort` 配置变化。
+
+可用工具：
+
+- `get_image_index_status`：查看已索引文件数量及索引/写入状态。
+- `search_similar_images`：根据本机可访问的绝对文件路径搜索相似图像或视频；支持相似度阈值、匹配算法、旋转/翻转选项，最多返回 100 条结果。
+
+使用 `search_similar_images` 前请先建立索引。MCP 与 HTTP API 共用同一 HTTP 服务和访问范围，请一并遵守上面的网络安全提示。
+
 ## 环境要求
 
 - 开发环境：Visual Studio 2026

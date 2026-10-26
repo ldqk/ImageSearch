@@ -66,7 +66,7 @@ internal static class VideoFrameHelper
     {
         var outputPattern = Path.Combine(directory, "frame-%08d.png");
         var vf = $"fps={Fps},blackframe=0,metadata=select:key=lavfi.blackframe.pblack:value={pblack}:function=less,scale={size}:{size}:force_original_aspect_ratio=decrease";
-        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, opt => opt.WithCustomArgument($"-vf \"{vf}\"")).ProcessSynchronously(false);
+        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, opt => opt.WithCustomArgument($"-vf \"{vf}\"")).ProcessSynchronously();
     }
 
     private static bool ExtractFrames(string videoPath, int size, string directory)
