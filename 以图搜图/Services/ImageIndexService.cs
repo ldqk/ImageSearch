@@ -275,7 +275,7 @@ public sealed class ImageIndexService : Disposable
                                     var fileInfo = new FileInfo(file);
                                     var stream = fileInfo.OpenRead();
                                     queue.Enqueue((file, stream, fileInfo.Length));
-                                    Interlocked.Add(ref queuedBytes, fileInfo.Length);
+                                    Interlocked.Add(ref queuedBytes, fileInfo.Length/2);
                                 }
                                 else
                                 {
