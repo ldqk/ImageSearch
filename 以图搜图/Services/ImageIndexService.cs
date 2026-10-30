@@ -118,7 +118,7 @@ public sealed class ImageIndexService : Disposable
         }
 
         var regex = new Regex("\\.(" + EverythingHelper.Extensions.Replace(";", "|") + ")$", RegexOptions.IgnoreCase);
-        var filesToIndex = files.Except(Index.Keys).Where(path => regex.IsMatch(path)).Order().ToArray();
+        var filesToIndex = files.Where(path => regex.IsMatch(path) && !Index.ContainsKey(path)).ToArray();
         if (filesToIndex.Length == 0)
         {
             IsIndexing = false;
@@ -181,7 +181,7 @@ public sealed class ImageIndexService : Disposable
                     else if (VideoFrameHelper.IsVideoFile(file))
                     {
                         var item = CreateVideoIndexItem(file);
-                        if (item.DctHash.Count>0)
+                        if (item.DctHash.Count > 0)
                         {
                             Index[file] = item;
                         }
@@ -240,11 +240,11 @@ public sealed class ImageIndexService : Disposable
                                 var fileInfo = new FileInfo(file);
                                 var stream = fileInfo.OpenRead();
                                 queue.Enqueue((file, stream, fileInfo.Length));
-                                Interlocked.Add(ref queuedBytes, fileInfo.Length/2);
+                                Interlocked.Add(ref queuedBytes, fileInfo.Length / 2);
                             }
                             else
                             {
-                                var stream = new MemoryStream(File.ReadAllBytes(file));
+                                var stream = new PooledMemoryStream(File.ReadAllBytes(file));
                                 var length = stream.Length;
                                 queue.Enqueue((file, stream, length));
                                 Interlocked.Add(ref queuedBytes, length);
@@ -279,7 +279,7 @@ public sealed class ImageIndexService : Disposable
                                 }
                                 else
                                 {
-                                    var stream = new MemoryStream(File.ReadAllBytes(file));
+                                    var stream = new PooledMemoryStream(File.ReadAllBytes(file));
                                     var length = stream.Length;
                                     queue.Enqueue((file, stream, length));
                                     Interlocked.Add(ref queuedBytes, length);
@@ -345,7 +345,7 @@ public sealed class ImageIndexService : Disposable
                     else if (VideoFrameHelper.IsVideoFile(item.Path))
                     {
                         var hash = CreateVideoIndexItem(item.Path);
-                        if (hash.DctHash.Count>0)
+                        if (hash.DctHash.Count > 0)
                         {
                             Index[item.Path] = hash;
                         }
@@ -424,7 +424,7 @@ public sealed class ImageIndexService : Disposable
         }
     }
 
-    private static IndexItem CreateGifIndexItem(string file,Stream stream)
+    private static IndexItem CreateGifIndexItem(string file, Stream stream)
     {
         var differenceHashes = new ConcurrentBag<ulong[]>();
         var dctHashes = new ConcurrentBag<ulong>();
@@ -576,6 +576,7 @@ public record IndexItem(string FilePath)
     public HashSet<ulong[]> DifferenceHash { get; set; } = new HashSet<ulong[]>(new ArrayComparer());
     public HashSet<ulong> DctHash { get; set; } = [];
     public HashSet<ulong> DctHash64 { get; set; } = [];
+
     [JsonIgnore]
     public bool IsAnimated => DifferenceHash.Count > 1;
 }
