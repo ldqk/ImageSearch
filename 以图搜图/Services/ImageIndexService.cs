@@ -156,7 +156,7 @@ public sealed class ImageIndexService : Disposable
 
     private void UpdateIndexOnSSD(string[] filesToIndex, Stopwatch sw, List<string> errors)
     {
-        var parallelism = Environment.ProcessorCount * 4;
+        var parallelism = Math.Min(63,Environment.ProcessorCount * 4);
         filesToIndex.Where(s => DriveType[s[0]].type != "HDD").Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).ForAll(g =>
         {
             foreach (var file in g.Where(File.Exists).TakeWhile(_ => IsIndexing))
