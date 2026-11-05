@@ -757,11 +757,11 @@ public partial class MainViewModel : ObservableObject
 
                 if (modifiers == ModifierKeys.Shift)
                 {
-                    RecycleBinHelper.Delete(SelectedResult.路径);
+                    File.Delete(SelectedResult.路径);
                 }
                 else
                 {
-                    File.Delete(SelectedResult.路径);
+                    RecycleBinHelper.Delete(SelectedResult.路径);
                 }
             }
 

@@ -982,9 +982,9 @@
               <ContextMenu>
                 <MenuItem Header="📂 打开所在文件夹 (Ctrl+O)"
                           Command="{Binding OpenFolderCommand}" />
-                <MenuItem Header="🗑️ 删除 (Delete)"
+                <MenuItem Header="🗑️ 删除 (Shift+Delete)"
                           Command="{Binding DeleteCommand}" />
-                <MenuItem Header="♻️ 删除到回收站 (Shift+Delete)"
+                <MenuItem Header="♻️ 删除到回收站 (Delete)"
                           Command="{Binding DeleteToRecycleBinCommand}" />
               </ContextMenu>
             </DataGrid.ContextMenu>
