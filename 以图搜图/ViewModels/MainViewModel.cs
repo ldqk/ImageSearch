@@ -6,11 +6,13 @@ using Masuit.Tools.Media;
 using Masuit.Tools.Systems;
 using SkiaSharp;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Win32;
 using 以图搜图.Helpers;
@@ -51,6 +53,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]private bool removeInvalidIndex;
 
     [ObservableProperty]private ObservableCollection<SearchResult> searchResults = new();
+
+    [ObservableProperty]private string searchKeyword = string.Empty;
 
     [ObservableProperty]private SearchResult? selectedResult;
 
@@ -138,6 +142,8 @@ public partial class MainViewModel : ObservableObject
     {
         _indexService = ImageIndexService.Instance;
         _searchService = new ImageSearchService();
+        SearchResultsView = CollectionViewSource.GetDefaultView(SearchResults);
+        SearchResultsView.Filter = FilterSearchResult;
 
         _indexService.ProgressChanged += OnIndexProgressChanged;
         _indexService.IndexCompleted += OnIndexCompleted;
@@ -161,6 +167,24 @@ public partial class MainViewModel : ObservableObject
             };
             _updateIndexTimer.Start();
         }
+    }
+
+    public ICollectionView SearchResultsView { get; }
+
+    partial void OnSearchKeywordChanged(string value)
+    {
+        SearchResultsView.Refresh();
+    }
+
+    private bool FilterSearchResult(object item)
+    {
+        if (item is not SearchResult result)
+        {
+            return false;
+        }
+
+        var keyword = SearchKeyword.Trim();
+        return keyword.Length == 0 || result.路径.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
     partial void OnImagePathChanged(string value)

@@ -934,12 +934,24 @@
                   BorderBrush="#E0E0E0"
                   BorderThickness="0,0,0,1"
                   Padding="12,10">
-            <TextBlock Text="📊 搜索结果"
-                       Style="{StaticResource SectionHeaderStyle}"
-                       Margin="0" />
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="260" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="📊 搜索结果"
+                         Style="{StaticResource SectionHeaderStyle}"
+                         Margin="0"
+                         VerticalAlignment="Center" />
+              <TextBox Grid.Column="1"
+                       Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                       Style="{StaticResource ModernTextBoxStyle}"
+                       ToolTip="按路径、文件名或结果信息筛选"
+                       Margin="12,0,0,0" />
+            </Grid>
           </Border>
           <DataGrid Grid.Row="1"
-                    ItemsSource="{Binding SearchResults}"
+                    ItemsSource="{Binding SearchResultsView}"
                     SelectedItem="{Binding SelectedResult}"
                     Style="{StaticResource ModernDataGridStyle}"
                     RowStyle="{StaticResource ModernDataGridRowStyle}"
