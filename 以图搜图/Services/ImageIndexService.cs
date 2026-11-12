@@ -11,6 +11,7 @@ using System.Management;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using System.Windows;
 using Masuit.Tools.Files;
 using 以图搜图.Helpers;
 
@@ -412,6 +413,16 @@ public sealed class ImageIndexService : Disposable
 
         var removed = false;
         var removes = Index.Keys.Except(allPaths).ToList();
+        if (removes.Count>10000)
+        {
+            var result = Application.Current.Dispatcher.Invoke(() =>
+                MessageBox.Show(Application.Current.MainWindow, "检测到需要移除的索引数量超过10000，请确认是否需要继续移除无效索引？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.Warning));
+            if (result != MessageBoxResult.OK)
+            {
+                return;
+            }
+        }
+
         foreach (var key in removes)
         {
             Index.TryRemove(key, out _);
