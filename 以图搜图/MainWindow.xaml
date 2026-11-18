@@ -38,6 +38,7 @@
     <converters:SpeedHistoryToPathConverter x:Key="SpeedHistoryToPathConverter" />
     <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
     <converters:ServerStatusColorConverter x:Key="BoolToColorConverter" />
+    <converters:RowNumberConverter x:Key="RowNumberConverter" />
     <!-- 全局字体大小设置 -->
     <Style TargetType="TextBlock">
       <Setter Property="FontSize"
@@ -931,10 +932,21 @@
                     IsReadOnly="True"
                     SelectionMode="Extended"
                     CanUserAddRows="False"
+                    AlternationCount="2147483647"
                     KeyUp="DataGrid_KeyUp"
                     MouseDoubleClick="DataGrid_MouseDoubleClick"
                     BorderThickness="0">
             <DataGrid.Columns>
+              <DataGridTemplateColumn Header="序号"
+                                      Width="55">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=AlternationIndex, Converter={StaticResource RowNumberConverter}}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTemplateColumn Header="路径"
                                       Width="2*">
                 <DataGridTemplateColumn.CellTemplate>
