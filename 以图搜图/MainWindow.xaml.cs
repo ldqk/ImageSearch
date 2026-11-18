@@ -103,7 +103,7 @@ public partial class MainWindow
 
     private void Window_DragEnter(object sender, DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetDataPresent("FileContents") || e.Data.GetDataPresent(DataFormats.Bitmap) || e.Data.GetDataPresent(DataFormats.Text))
+        if (e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetDataPresent("FileContents") || e.Data.GetDataPresent(DataFormats.Bitmap) || e.Data.GetDataPresent("image/png", false) || e.Data.GetDataPresent("image/jpeg", false) || e.Data.GetDataPresent(DataFormats.Text))
         {
             e.Effects = DragDropEffects.Copy;
         }

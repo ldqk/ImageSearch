@@ -12,11 +12,57 @@ internal static class VirtualFileDrop
 {
     public static string? SaveFirstImage(System.Windows.IDataObject dataObject)
     {
-        if (!dataObject.GetDataPresent("FileGroupDescriptorW", false) || !dataObject.GetDataPresent("FileContents", false) || dataObject is not ComDataObject comDataObject)
+        if (dataObject.GetDataPresent("FileGroupDescriptorW", false) &&
+            dataObject.GetDataPresent("FileContents", false) &&
+            dataObject is ComDataObject comDataObject)
         {
-            return null;
+            try
+            {
+                var image = SaveVirtualImage(comDataObject);
+                if (image != null)
+                {
+                    return image;
+                }
+            }
+            catch (Exception ex) when (ex is COMException or IOException or UnauthorizedAccessException or NotSupportedException or InvalidCastException or System.ComponentModel.Win32Exception)
+            {
+                Debug.WriteLine($"读取拖放的虚拟文件失败，将尝试其他格式：{ex}");
+            }
         }
 
+        foreach (var imageFormat in new[] {"image/png", "image/jpeg"}.Where(imageFormat => dataObject.GetDataPresent(imageFormat, false)))
+        {
+            try
+            {
+                if (dataObject.GetData(imageFormat, false) is Stream stream)
+                {
+                    if (stream.CanSeek)
+                    {
+                        stream.Position = 0;
+                    }
+
+                    var image = SaveImage(stream.CopyTo);
+                    if (image != null)
+                    {
+                        return image;
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"拖放格式 {imageFormat} 未提供图片流。");
+                }
+            }
+            catch (Exception ex) when (ex is COMException or IOException or UnauthorizedAccessException or NotSupportedException)
+            {
+                Debug.WriteLine($"读取拖放格式 {imageFormat} 失败：{ex}");
+            }
+        }
+
+        return null;
+    }
+
+    private static string SaveVirtualImage(ComDataObject comDataObject)
+    {
         var format = new FORMATETC
         {
             cfFormat = unchecked((short) DataFormats.GetDataFormat("FileContents").Id),
@@ -24,14 +70,12 @@ internal static class VirtualFileDrop
             lindex = 0,
             tymed = TYMED.TYMED_ISTREAM | TYMED.TYMED_HGLOBAL
         };
-        var filename = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.tmp");
-        var keepFile = false;
+
+        comDataObject.GetData(ref format, out var medium);
         try
         {
-            comDataObject.GetData(ref format, out var medium);
-            try
+            return SaveImage(output =>
             {
-                using var output = new FileStream(filename, FileMode.CreateNew, FileAccess.Write);
                 switch (medium.tymed)
                 {
                     case TYMED.TYMED_ISTREAM:
@@ -43,10 +87,23 @@ internal static class VirtualFileDrop
                     default:
                         throw new NotSupportedException($"不支持的虚拟文件存储类型：{medium.tymed}");
                 }
-            }
-            finally
+            });
+        }
+        finally
+        {
+            ReleaseStgMedium(ref medium);
+        }
+    }
+
+    private static string? SaveImage(Action<Stream> copy)
+    {
+        var filename = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.tmp");
+        var keepFile = false;
+        try
+        {
+            using (var output = new FileStream(filename, FileMode.CreateNew, FileAccess.Write))
             {
-                ReleaseStgMedium(ref medium);
+                copy(output);
             }
 
             SKEncodedImageFormat imageFormat;
@@ -54,7 +111,7 @@ internal static class VirtualFileDrop
             {
                 if (codec == null)
                 {
-                    Debug.WriteLine("虚拟文件内容不是受支持的图片，尝试其他拖放格式。");
+                    Debug.WriteLine("拖放内容不是受支持的图片，尝试其他拖放格式。");
                     return null;
                 }
 
