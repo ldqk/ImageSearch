@@ -600,6 +600,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
         ScanButton.IsEnabled = false;
         DeleteMarkedButton.IsEnabled = false;
+        MoveMarkedButton.IsEnabled = false;
         RefreshResultsButton.IsEnabled = false;
         try
         {
@@ -644,6 +645,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         {
             ScanButton.IsEnabled = true;
             DeleteMarkedButton.IsEnabled = true;
+            MoveMarkedButton.IsEnabled = true;
             RefreshResultsButton.IsEnabled = true;
         }
     }
@@ -1886,6 +1888,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         _isDeleting = true;
         ScanButton.IsEnabled = false;
         DeleteMarkedButton.IsEnabled = false;
+        MoveMarkedButton.IsEnabled = false;
         HashSet<SimilarFileItem> deleted;
         List<string> errors;
         try
@@ -1939,6 +1942,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             _isDeleting = false;
             ScanButton.IsEnabled = true;
             DeleteMarkedButton.IsEnabled = true;
+            MoveMarkedButton.IsEnabled = true;
             DeleteProgressPanel.Visibility = Visibility.Collapsed;
         }
 
@@ -1970,6 +1974,126 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
         RefreshVisibleGroups();
         SetStatus(errors.Count == 0 ? $"已{(toRecycleBin ? "移入回收站" : "永久删除")} {deleted.Count} 个文件。" : $"已处理 {deleted.Count} 个文件，{errors.Count} 个失败：{errors[0]}", errors.Count > 0);
+    }
+
+    private async void MoveMarked_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingMarks || _isDeleting || !ScanButton.IsEnabled)
+        {
+            return;
+        }
+
+        var markedFiles = VisibleGroups.SelectMany(group => group.VisibleFiles).Where(file => file.IsMarked).ToArray();
+        if (markedFiles.Length == 0)
+        {
+            SetStatus("当前列表中没有已标记的文件。", true);
+            return;
+        }
+
+        var dialog = new OpenFolderDialog
+        {
+            Title = "选择移动目标文件夹",
+            ValidateNames = false,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        var destination = dialog.FolderName;
+        if (string.IsNullOrWhiteSpace(destination) || !Directory.Exists(destination))
+        {
+            SetStatus("所选目标文件夹不存在。", true);
+            return;
+        }
+
+        DeleteProgressBar.Value = 0;
+        DeleteProgressText.Text = $"正在移动 0/{markedFiles.Length:N0}";
+        DeleteProgressPanel.Visibility = Visibility.Visible;
+        IProgress<int> progress = new Progress<int>(completed =>
+        {
+            if (!_isDeleting)
+            {
+                return;
+            }
+
+            DeleteProgressBar.Value = completed * 100d / markedFiles.Length;
+            DeleteProgressText.Text = $"正在移动 {completed:N0}/{markedFiles.Length:N0}";
+        });
+        SetStatus($"正在移动 {markedFiles.Length:N0} 个文件…");
+        _isDeleting = true;
+        ScanButton.IsEnabled = false;
+        DeleteMarkedButton.IsEnabled = false;
+        MoveMarkedButton.IsEnabled = false;
+        HashSet<SimilarFileItem> moved;
+        List<string> errors;
+        try
+        {
+            (moved, errors) = await Task.Run(() =>
+            {
+                var completedFiles = new HashSet<SimilarFileItem>();
+                var failures = new List<string>();
+                int count = 0;
+                foreach (var file in markedFiles)
+                {
+                    try
+                    {
+                        var targetPath = Path.Combine(destination, file.Name);
+                        File.Move(file.FilePath, targetPath);
+                        _indexService.RemoveFromIndex(file.FilePath);
+                        completedFiles.Add(file);
+                    }
+                    catch (Exception ex)
+                    {
+                        failures.Add($"{file.Name}: {ex.Message}");
+                    }
+
+                    progress.Report(++count);
+                }
+
+                return (completedFiles, failures);
+            });
+        }
+        finally
+        {
+            _isDeleting = false;
+            ScanButton.IsEnabled = true;
+            DeleteMarkedButton.IsEnabled = true;
+            MoveMarkedButton.IsEnabled = true;
+            DeleteProgressPanel.Visibility = Visibility.Collapsed;
+        }
+
+        var remainingGroups = new List<SimilarFileGroup>(Groups.Count);
+        foreach (var group in Groups)
+        {
+            foreach (var file in group.Files.Where(moved.Contains).ToArray())
+            {
+                group.Files.Remove(file);
+                group.VisibleFiles.Remove(file);
+                file.PropertyChanged -= FileItem_PropertyChanged;
+            }
+
+            if (group.Files.Count >= 2)
+            {
+                remainingGroups.Add(group);
+            }
+            else
+            {
+                foreach (var file in group.Files)
+                {
+                    file.PropertyChanged -= FileItem_PropertyChanged;
+                }
+            }
+        }
+
+        Groups.ReplaceAll(remainingGroups);
+        await RefreshDuplicateDirectoryGroupsAsync(moved.Select(file => file.FilePath));
+        RefreshVisibleGroups();
+        SetStatus(errors.Count == 0
+            ? $"已移动 {moved.Count:N0} 个文件。"
+            : $"已移动 {moved.Count:N0} 个文件，{errors.Count} 个失败：{errors[0]}",
+            errors.Count > 0);
     }
 
     private async void DeleteFile_Click(object sender, RoutedEventArgs e)
@@ -2008,6 +2132,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         _isDeleting = true;
         ScanButton.IsEnabled = false;
         DeleteMarkedButton.IsEnabled = false;
+        MoveMarkedButton.IsEnabled = false;
         SetStatus($"正在删除“{file.Name}”…");
         try
         {
@@ -2067,6 +2192,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             _isDeleting = false;
             ScanButton.IsEnabled = true;
             DeleteMarkedButton.IsEnabled = true;
+            MoveMarkedButton.IsEnabled = true;
         }
     }
 
@@ -2093,6 +2219,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         _isDeleting = true;
         ScanButton.IsEnabled = false;
         DeleteMarkedButton.IsEnabled = false;
+        MoveMarkedButton.IsEnabled = false;
         RefreshResultsButton.IsEnabled = false;
         ReplacementResult result;
         try
@@ -2104,6 +2231,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
             _isDeleting = false;
             ScanButton.IsEnabled = true;
             DeleteMarkedButton.IsEnabled = true;
+            MoveMarkedButton.IsEnabled = true;
             RefreshResultsButton.IsEnabled = true;
         }
 

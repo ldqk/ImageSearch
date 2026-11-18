@@ -721,6 +721,8 @@
                             <Button x:Name="DeleteMarkedButton" Content="删除已标记"
                                     Click="DeleteMarked_Click"
                                     Style="{StaticResource DangerWindowButtonStyle}" />
+                            <Button x:Name="MoveMarkedButton" Content="移动已标记"
+                                    Click="MoveMarked_Click" />
 
                             <CheckBox x:Name="SuppressConfirmationsCheckBox" Content="抑制所有确认提示"
                         VerticalAlignment="Center" Margin="16,0,0,0"
