@@ -14,6 +14,7 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using 以图搜图.Helpers;
 using 以图搜图.Models;
@@ -112,13 +113,11 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]private string indexSpeedText = string.Empty;
 
-    [ObservableProperty]private string indexThroughputText = string.Empty;
-
-    [ObservableProperty]private string maxThroughputText = string.Empty;
-
     [ObservableProperty]private string estimatedRemainingTimeText = string.Empty;
 
     [ObservableProperty]private string processingFilename = string.Empty;
+
+    [ObservableProperty]private string processingQueueText = string.Empty;
 
     [ObservableProperty]private ObservableCollection<double> speedHistory = new();
 
@@ -128,20 +127,31 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]private double memoryUsage;
 
+    [ObservableProperty]private string diskReadRate = "0 B/s";
+
+    [ObservableProperty]private string diskWriteRate = "0 B/s";
+
     [ObservableProperty]private string webApiServer;
 
     [ObservableProperty]private bool webApiServerRunning;
 
     private Process? _currentProcess;
     private PerformanceCounter? _cpuCounter;
-    private Timer? _performanceTimer;
+    private PerformanceCounter? _ioReadCounter;
+    private PerformanceCounter? _ioWriteCounter;
+    private Thread? _performanceThread;
+    private PerformanceMetrics _latestPerformanceMetrics = new(0, 0, "0 B/s", "0 B/s");
+    private int _performanceUpdatePending;
     private Timer? _updateIndexTimer;
     private readonly IniFile _config = new IniFile("config.ini");
+
+    private sealed record PerformanceMetrics(double CpuUsage, double MemoryUsage, string DiskReadRate, string DiskWriteRate);
 
     public MainViewModel()
     {
         _indexService = ImageIndexService.Instance;
         _searchService = new ImageSearchService();
+        _indexSpeedSamplingTimer.Tick += (_, _) => SampleIndexSpeed();
         SearchResultsView = CollectionViewSource.GetDefaultView(SearchResults);
         SearchResultsView.Filter = FilterSearchResult;
 
@@ -149,8 +159,12 @@ public partial class MainViewModel : ObservableObject
         _indexService.IndexCompleted += OnIndexCompleted;
         _indexService.IndexUpdated += (sender, args) => Application.Current.Dispatcher.Invoke(UpdateIndexCount);
 
-        // 异步初始化性能监测，避免阻塞 UI 线程
-        _ = Task.Run(InitializePerformanceMonitoring);
+        _performanceThread = new Thread(InitializePerformanceMonitoring)
+        {
+            IsBackground = true,
+            Name = "Performance monitor"
+        };
+        _performanceThread.Start();
         WebApiServerRunning = WebApiStartup.ServerRunning;
         LoadIndexAsync();
         HomeController.MainViewModel = this;
@@ -866,34 +880,103 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private double _maxThroughput;
+    private const int IndexSpeedHistoryLimit = 10000;
+    private const int IndexSpeedSmoothingWindowSeconds = 2;
+    private readonly Queue<(long Ticks, long Done)> _indexSpeedSamples = [];
+    private readonly DispatcherTimer _indexSpeedSamplingTimer = new(DispatcherPriority.Background)
+    {
+        Interval = TimeSpan.FromMilliseconds(1000)
+    };
+    private readonly Stopwatch _indexSpeedStopwatch = new();
+    private long _indexSpeedProcessedFiles;
+    private double _indexSpeed;
+
+    private void StartIndexSpeedSampling(long processedFiles)
+    {
+        SpeedHistory.Clear();
+        _indexSpeedSamples.Clear();
+        _indexSpeed = 0;
+        _indexSpeedProcessedFiles = processedFiles;
+        _indexSpeedStopwatch.Restart();
+        _indexSpeedSamples.Enqueue((_indexSpeedStopwatch.ElapsedTicks, processedFiles));
+        IndexSpeedText = string.Empty;
+        _indexSpeedSamplingTimer.Start();
+    }
+
+    private void SampleIndexSpeed()
+    {
+        UpdateProcessingQueueText();
+
+        var done = _indexSpeedProcessedFiles;
+        var ticks = _indexSpeedStopwatch.ElapsedTicks;
+        _indexSpeedSamples.Enqueue((ticks, done));
+        var cutoffTicks = ticks - IndexSpeedSmoothingWindowSeconds * Stopwatch.Frequency;
+        while (_indexSpeedSamples.Count > 2 && _indexSpeedSamples.ElementAt(1).Ticks < cutoffTicks)
+        {
+            _indexSpeedSamples.Dequeue();
+        }
+
+        var oldestSample = _indexSpeedSamples.Peek();
+        var seconds = (ticks - oldestSample.Ticks) / (double) Stopwatch.Frequency;
+        if (seconds > 0)
+        {
+            _indexSpeed = Math.Max(0, (done - oldestSample.Done) / seconds);
+        }
+
+        if (_indexSpeed == 0)
+        {
+            return;
+        }
+
+        SpeedHistory.Add(_indexSpeed);
+        if (SpeedHistory.Count > IndexSpeedHistoryLimit)
+        {
+            SpeedHistory.RemoveAt(0);
+        }
+
+        IndexSpeed = $"索引速度: {_indexSpeed:F0} items/s";
+        IndexSpeedText = $"{_indexSpeed:F0} items/s";
+    }
+
+    private void UpdateProcessingQueueText()
+    {
+        var processingFiles = _indexService.ProcessingFiles;
+        ProcessingQueueText = processingFiles.Count > 0 ? $"正在计算索引的文件（{processingFiles.Count}）{Environment.NewLine}{string.Join(Environment.NewLine, processingFiles)}" : "当前没有正在计算索引的文件";
+    }
 
     private void OnIndexProgressChanged(object? sender, IndexProgressEventArgs e)
     {
         Application.Current.Dispatcher.Invoke(() =>
         {
+            if (e.TotalFiles > 0)
+            {
+                if (!_indexSpeedSamplingTimer.IsEnabled)
+                {
+                    StartIndexSpeedSampling(e.ProcessedFiles);
+                }
+
+                _indexSpeedProcessedFiles = e.ProcessedFiles;
+                UpdateProcessingQueueText();
+            }
+
             UpdateIndexButtonText = "⏸️ 停止索引";
             ProcessStatus = e.Message;
             IndexProgress = e.ProgressPercentage;
             IndexProgressText = $"{e.ProcessedFiles:#,0} / {e.TotalFiles:#,0}";
             IndexProgressVisibility = Visibility.Visible;
 
-            if (e.ProcessedFiles > 0)
+            if (!string.IsNullOrEmpty(e.Filename))
             {
                 ProcessingFilename = "正在处理：" + e.Filename;
-                IndexSpeed = $"索引速度: {e.Speed:F0} items/s ({e.ThroughputMB:F2}MB/s)";
-                IndexSpeedText = $"{e.Speed:F0} items/s";
-                IndexThroughputText = $"{e.ThroughputMB:F2} MB/s";
+            }
 
-                // 计算最大吞吐量
-                _maxThroughput = Math.Max(e.ThroughputMB, _maxThroughput);
-                MaxThroughputText = $"{_maxThroughput:F2} MB/s";
-
+            if (e.ProcessedFiles > 0)
+            {
                 // 计算预估剩余时间
                 var remainingFiles = e.TotalFiles - e.ProcessedFiles;
-                if (remainingFiles > 0 && e.Speed > 0)
+                if (remainingFiles > 0 && e.AverageSpeed > 0)
                 {
-                    var estimatedSeconds = remainingFiles / e.Speed / 0.9;
+                    var estimatedSeconds = remainingFiles / e.AverageSpeed / 0.9;
                     EstimatedRemainingTimeText = FormatTimespan(TimeSpan.FromSeconds(estimatedSeconds));
                 }
                 else
@@ -901,16 +984,6 @@ public partial class MainViewModel : ObservableObject
                     EstimatedRemainingTimeText = "--";
                 }
 
-                // 添加速度数据点到历史记录 - 显示整个索引过程
-                switch (e.TotalFiles)
-                {
-                    case <= 1000:
-                    case <= 10000 when e.ProcessedFiles % 10 == 0:
-                    case <= 100000 when e.ProcessedFiles % 100 == 0:
-                    case > 100000 when e.ProcessedFiles % 200 == 0:
-                        SpeedHistory.Add(e.ThroughputMB);
-                        break;
-                }
             }
         });
     }
@@ -935,6 +1008,11 @@ public partial class MainViewModel : ObservableObject
     {
         Application.Current.Dispatcher.Invoke(() =>
         {
+            _indexSpeedSamplingTimer.Stop();
+            _indexSpeedStopwatch.Stop();
+            _indexSpeedSamples.Clear();
+            _indexSpeed = 0;
+
             //UpdateIndexCount();
 
             if (e.Errors.Count > 0)
@@ -951,13 +1029,11 @@ public partial class MainViewModel : ObservableObject
             IndexProgress = 0;
             IndexProgressText = string.Empty;
             IndexSpeedText = string.Empty;
-            IndexThroughputText = string.Empty;
-            MaxThroughputText = string.Empty;
             EstimatedRemainingTimeText = string.Empty;
             UpdateIndexButtonText = "🔄 更新索引";
             UpdateIndexButtonEnabled = true;
             ProcessingFilename = string.Empty;
-            _maxThroughput = 0;
+            ProcessingQueueText = string.Empty;
             SpeedHistory.Clear();
         });
     }
@@ -1066,11 +1142,11 @@ public partial class MainViewModel : ObservableObject
             else
             {
                 var fileInfo = new FileInfo(path);
-                var frameRate = double.IsFinite(videoStream.FrameRate) && videoStream.FrameRate > 0 ? videoStream.FrameRate.ToString("0.##", CultureInfo.InvariantCulture) : "不可用";
+                var frameRate = double.IsFinite(videoStream.RealFrameRate) && videoStream.RealFrameRate > 0 ? videoStream.RealFrameRate.ToString("0.##", CultureInfo.InvariantCulture) : "不可用";
                 info = $"分辨率：{videoStream.Width}x{videoStream.Height} @ {frameRate}fps， 时长：{FormatDuration(mediaInfo.Duration)}， 大小：{fileInfo.Length / 1024}KB";
             }
         }
-        catch (Exception exception) when (exception is FFMpegCore.Exceptions.FFProbeException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        catch (Exception exception) when (exception is FFMpegCore.Exceptions.FFProbeException or Win32Exception or IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
         {
             Debug.WriteLine($"Unable to read video metadata for '{path}': {exception.Message}");
             info = "无法加载媒体信息";
@@ -1092,11 +1168,16 @@ public partial class MainViewModel : ObservableObject
             _cpuCounter = new PerformanceCounter("Process", "% Processor Time", _currentProcess.ProcessName, true);
             _cpuCounter.NextValue(); // 初始化
 
-            // 创建定时器，每秒更新一次
-            _performanceTimer = new System.Timers.Timer(1000);
-            _performanceTimer.Elapsed += UpdatePerformanceMetrics;
-            _performanceTimer.AutoReset = true;
-            _performanceTimer.Start();
+            _ioReadCounter = new PerformanceCounter("Process", "IO Read Bytes/sec", _currentProcess.ProcessName, true);
+            _ioReadCounter.NextValue();
+            _ioWriteCounter = new PerformanceCounter("Process", "IO Write Bytes/sec", _currentProcess.ProcessName, true);
+            _ioWriteCounter.NextValue();
+
+            while (true)
+            {
+                Thread.Sleep(1000);
+                UpdatePerformanceMetrics();
+            }
         }
         catch (Exception ex)
         {
@@ -1104,7 +1185,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private void UpdatePerformanceMetrics(object? sender, System.Timers.ElapsedEventArgs e)
+    private void UpdatePerformanceMetrics()
     {
         try
         {
@@ -1118,13 +1199,15 @@ public partial class MainViewModel : ObservableObject
 
                 // 获取内存使用量（转换为 MB）
                 var memoryUsage = _currentProcess.WorkingSet64 / (1024.0 * 1024.0);
+                var diskReadRate = _ioReadCounter?.NextValue() ?? 0;
+                var diskWriteRate = _ioWriteCounter?.NextValue() ?? 0;
 
-                // 切回 UI 线程更新 UI
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    CpuUsage = cpuUsageValue / Environment.ProcessorCount;
-                    MemoryUsage = memoryUsage;
-                });
+                Volatile.Write(ref _latestPerformanceMetrics, new PerformanceMetrics(
+                    cpuUsageValue / Environment.ProcessorCount,
+                    memoryUsage,
+                    FormatIoRate(diskReadRate),
+                    FormatIoRate(diskWriteRate)));
+                QueuePerformanceMetricsUpdate();
             }
         }
         catch (Exception ex)
@@ -1133,10 +1216,58 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    private void QueuePerformanceMetricsUpdate()
+    {
+        if (Interlocked.Exchange(ref _performanceUpdatePending, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
+            {
+                try
+                {
+                    var metrics = Volatile.Read(ref _latestPerformanceMetrics);
+                    CpuUsage = metrics.CpuUsage;
+                    MemoryUsage = metrics.MemoryUsage;
+                    DiskReadRate = metrics.DiskReadRate;
+                    DiskWriteRate = metrics.DiskWriteRate;
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _performanceUpdatePending, 0);
+                }
+            }));
+        }
+        catch
+        {
+            Interlocked.Exchange(ref _performanceUpdatePending, 0);
+            throw;
+        }
+    }
+
+    private static string FormatIoRate(float bytesPerSecond)
+    {
+        string[] units = ["B/s", "KB/s", "MB/s", "GB/s"];
+        var value = Math.Max(0, bytesPerSecond);
+        var unitIndex = 0;
+
+        while (value >= 1024 && unitIndex < units.Length - 1)
+        {
+            value /= 1024;
+            unitIndex++;
+        }
+
+        return $"{value:0.0} {units[unitIndex]}";
+    }
+
     ~MainViewModel()
     {
-        _performanceTimer?.Dispose();
         _cpuCounter?.Dispose();
+        _ioReadCounter?.Dispose();
+        _ioWriteCounter?.Dispose();
         _currentProcess?.Dispose();
         _updateIndexTimer?.Dispose();
     }

@@ -19,7 +19,7 @@ public static class ImageSearchTools
     }
 
     [McpServerTool(Name = "search_similar_images"), Description("根据本机可访问的图像或视频文件，在本地索引中搜索相似媒体。")]
-    public static async Task<IReadOnlyList<ImageSearchMatch>> SearchSimilarImages([Description("运行本程序的计算机可访问的图像或视频文件绝对路径。")]string imagePath, [Description("最低相似度百分比，范围为 75 到 100。")]int minimumSimilarity = 75, [Description("匹配算法，可选 all、differenceHash、dctHash32 或 dctHash64。")]string algorithm = "all", [Description("最多返回的相似结果数量，范围为 1 到 100。")]int maxResults = 50, [Description("是否查找源图像旋转后的匹配项。")]bool checkRotated = true, [Description("是否查找源图像翻转后的匹配项。")]bool checkFlipped = false)
+    public static async Task<IReadOnlyList<ImageSearchMatch>> SearchSimilarImages([Description("运行本程序的计算机可访问的图像或视频文件绝对路径。")]string imagePath, [Description("最低相似度百分比，范围为 75 到 100。")]int minimumSimilarity = 75, [Description("匹配算法，可选 all、differenceHash、dctHash32、dctHash64、dctHash256 或 mHHash256。")]string algorithm = "all", [Description("最多返回的相似结果数量，范围为 1 到 100。")]int maxResults = 50, [Description("是否查找源图像旋转后的匹配项。")]bool checkRotated = true, [Description("是否查找源图像翻转后的匹配项。")]bool checkFlipped = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(imagePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(algorithm);
@@ -49,7 +49,9 @@ public static class ImageSearchTools
             "differencehash" => MatchAlgorithm.DifferenceHash,
             "dcthash32" => MatchAlgorithm.DctHash32,
             "dcthash64" => MatchAlgorithm.DctHash64,
-            _ => throw new ArgumentException("匹配算法必须为 all、differenceHash、dctHash32 或 dctHash64。", nameof(algorithm))
+            "dcthash256" => MatchAlgorithm.DctHash256,
+            "mhhash256" => MatchAlgorithm.MHHash256,
+            _ => throw new ArgumentException("匹配算法必须为 all、differenceHash、dctHash32、dctHash64、dctHash256 或 mHHash256。", nameof(algorithm))
         };
 
         var results = await SearchService.SearchAsync(imagePath, IndexService.Index, matchAlgorithm, minimumSimilarity / 100f, checkRotated, checkFlipped);

@@ -4,17 +4,21 @@ namespace 以图搜图.Services;
 
 internal sealed class HashCandidateIndex
 {
-    private const int DifferenceHashBucketCount = 32;
-    private const int DctHashBucketCount = 8;
-    private readonly Dictionary<byte, List<int>>[]? _differenceHashBuckets;
-    private readonly Dictionary<byte, List<int>>[]? _dctHashBuckets;
-    private readonly Dictionary<byte, List<int>>[]? _dctHash64Buckets;
+    // Register each algorithm here; bit counts must match comparison and be multiples of eight.
+    private static readonly HashDefinition[] Definitions =
+    [
+        new HashDefinition<ulong[], ArrayHash>(MatchAlgorithm.DifferenceHash, 256, static item => item.DifferenceHash),
+        new HashDefinition<ulong, ScalarHash>(MatchAlgorithm.DctHash32, 64, static item => item.DctHash),
+        new HashDefinition<ulong, ScalarHash>(MatchAlgorithm.DctHash64, 64, static item => item.DctHash64),
+        new HashDefinition<ulong[], ArrayHash>(MatchAlgorithm.DctHash256, 256, static item => item.DctHash256),
+        new HashDefinition<ulong[], ArrayHash>(MatchAlgorithm.MHHash256, 256, static item => item.MHHash256)
+    ];
 
-    private HashCandidateIndex(Dictionary<byte, List<int>>[]? differenceHashBuckets, Dictionary<byte, List<int>>[]? dctHashBuckets, Dictionary<byte, List<int>>[]? dctHash64Buckets)
+    private readonly BucketIndex[] _indexes;
+
+    private HashCandidateIndex(BucketIndex[] indexes)
     {
-        _differenceHashBuckets = differenceHashBuckets;
-        _dctHashBuckets = dctHashBuckets;
-        _dctHash64Buckets = dctHash64Buckets;
+        _indexes = indexes;
     }
 
     public static int MinimumSharedBuckets(int bitCount, int bucketCount, float similarity)
@@ -23,148 +27,143 @@ internal sealed class HashCandidateIndex
         return bucketCount - maximumChangedBits;
     }
 
+    public static bool CanUseIndex(MatchAlgorithm algorithm, float similarity)
+    {
+        var supported = (MatchAlgorithm) 0;
+        foreach (var definition in Definitions)
+        {
+            supported |= definition.Algorithm;
+            if (algorithm.HasFlag(definition.Algorithm) && MinimumSharedBuckets(definition.BitCount, definition.BucketCount, similarity) <= 0)
+            {
+                return false;
+            }
+        }
+
+        return (algorithm & ~supported) == 0;
+    }
+
     public static HashCandidateIndex Build(IReadOnlyList<IndexItem> entries, MatchAlgorithm algorithm, CancellationToken cancellationToken)
     {
-        var differenceHashBuckets = algorithm.HasFlag(MatchAlgorithm.DifferenceHash) ? BuildDifferenceHashBuckets(entries, cancellationToken) : null;
-        var dctHashBuckets = algorithm.HasFlag(MatchAlgorithm.DctHash32) ? BuildDctHashBuckets(entries, static item => item.DctHash.ToList(), cancellationToken) : null;
-        var dctHash64Buckets = algorithm.HasFlag(MatchAlgorithm.DctHash64) ? BuildDctHashBuckets(entries, static item => item.DctHash64.ToList(), cancellationToken) : null;
+        var indexes = new List<BucketIndex>(Definitions.Length);
+        foreach (var definition in Definitions)
+        {
+            if (algorithm.HasFlag(definition.Algorithm))
+            {
+                indexes.Add(definition.Build(entries, cancellationToken));
+            }
+        }
 
-        return new HashCandidateIndex(differenceHashBuckets, dctHashBuckets, dctHash64Buckets);
+        return new HashCandidateIndex(indexes.ToArray());
     }
 
     public void AddCandidates(IndexItem source, float similarity, CandidateCollector collector, CancellationToken cancellationToken)
     {
-        if (_differenceHashBuckets != null)
+        foreach (var index in _indexes)
         {
-            var minimumSharedBuckets = MinimumSharedBuckets(256, DifferenceHashBucketCount, similarity);
-            foreach (var hash in source.DifferenceHash)
+            index.AddCandidates(source, similarity, collector, cancellationToken);
+        }
+    }
+
+    private abstract class HashDefinition(MatchAlgorithm algorithm, int bitCount)
+    {
+        public MatchAlgorithm Algorithm { get; } = algorithm;
+        public int BitCount { get; } = bitCount;
+        public int BucketCount { get; } = bitCount / 8;
+        public abstract BucketIndex Build(IReadOnlyList<IndexItem> entries, CancellationToken cancellationToken);
+    }
+
+    private sealed class HashDefinition<THash, TBucket>(MatchAlgorithm algorithm, int bitCount, Func<IndexItem, HashSet<THash>> getHashes) : HashDefinition(algorithm, bitCount)
+        where TBucket : struct, IHashBucket<THash>
+    {
+        public override BucketIndex Build(IReadOnlyList<IndexItem> entries, CancellationToken cancellationToken)
+        {
+            return new BucketIndex<THash, TBucket>(entries, getHashes, BitCount, BucketCount, cancellationToken);
+        }
+    }
+
+    private abstract class BucketIndex
+    {
+        public abstract void AddCandidates(IndexItem source, float similarity, CandidateCollector collector, CancellationToken cancellationToken);
+    }
+
+    private sealed class BucketIndex<THash, TBucket> : BucketIndex where TBucket : struct, IHashBucket<THash>
+    {
+        private readonly Func<IndexItem, HashSet<THash>> _getHashes;
+        private readonly int _bitCount;
+        private readonly Dictionary<byte, List<int>>[] _buckets;
+
+        public BucketIndex(IReadOnlyList<IndexItem> entries, Func<IndexItem, HashSet<THash>> getHashes, int bitCount, int bucketCount, CancellationToken cancellationToken)
+        {
+            _getHashes = getHashes;
+            _bitCount = bitCount;
+            _buckets = Enumerable.Range(0, bucketCount).Select(_ => new Dictionary<byte, List<int>>()).ToArray();
+            var lastAddedPosition = new int[bucketCount * (byte.MaxValue + 1)];
+            for (var position = 0; position < entries.Count; position++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                foreach (var hash in getHashes(entries[position]))
+                {
+                    for (var table = 0; table < bucketCount; table++)
+                    {
+                        var bucket = TBucket.GetBucket(hash, table);
+                        ref var lastPosition = ref lastAddedPosition[table * (byte.MaxValue + 1) + bucket];
+                        if (lastPosition == position + 1)
+                        {
+                            continue;
+                        }
+
+                        lastPosition = position + 1;
+                        if (!_buckets[table].TryGetValue(bucket, out var positions))
+                        {
+                            positions = [];
+                            _buckets[table][bucket] = positions;
+                        }
+
+                        positions.Add(position);
+                    }
+                }
+            }
+        }
+
+        public override void AddCandidates(IndexItem source, float similarity, CandidateCollector collector, CancellationToken cancellationToken)
+        {
+            var minimumSharedBuckets = MinimumSharedBuckets(_bitCount, _buckets.Length, similarity);
+            foreach (var hash in _getHashes(source))
             {
                 var generation = collector.BeginHash();
-                for (var table = 0; table < DifferenceHashBucketCount; table++)
+                for (var table = 0; table < _buckets.Length; table++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var bucket = GetDifferenceHashBucket(hash, table);
-                    if (_differenceHashBuckets[table].TryGetValue(bucket, out var positions))
+                    if (_buckets[table].TryGetValue(TBucket.GetBucket(hash, table), out var positions))
                     {
                         collector.AddBucket(positions, generation, minimumSharedBuckets);
                     }
                 }
             }
         }
+    }
 
-        if (_dctHashBuckets != null)
-        {
-            var minimumSharedBuckets = MinimumSharedBuckets(64, DctHashBucketCount, similarity);
-            foreach (var hash in source.DctHash)
-            {
-                var generation = collector.BeginHash();
-                for (var table = 0; table < DctHashBucketCount; table++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (_dctHashBuckets[table].TryGetValue(GetDctHashBucket(hash, table), out var positions))
-                    {
-                        collector.AddBucket(positions, generation, minimumSharedBuckets);
-                    }
-                }
-            }
-        }
+    private interface IHashBucket<THash>
+    {
+        static abstract byte GetBucket(THash hash, int table);
+    }
 
-        if (_dctHash64Buckets != null)
+    private readonly struct ArrayHash : IHashBucket<ulong[]>
+    {
+        public static byte GetBucket(ulong[] hash, int table)
         {
-            var minimumSharedBuckets = MinimumSharedBuckets(64, DctHashBucketCount, similarity);
-            foreach (var hash in source.DctHash64)
-            {
-                var generation = collector.BeginHash();
-                for (var table = 0; table < DctHashBucketCount; table++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (_dctHash64Buckets[table].TryGetValue(GetDctHashBucket(hash, table), out var positions))
-                    {
-                        collector.AddBucket(positions, generation, minimumSharedBuckets);
-                    }
-                }
-            }
+            var word = table / 8;
+            var bitOffset = table % 8 * 8;
+            return word < hash.Length ? (byte) (hash[word] >> bitOffset) : (byte) 0;
         }
     }
 
-    private static Dictionary<byte, List<int>>[] BuildDifferenceHashBuckets(IReadOnlyList<IndexItem> entries, CancellationToken cancellationToken)
+    private readonly struct ScalarHash : IHashBucket<ulong>
     {
-        var buckets = CreateBuckets(DifferenceHashBucketCount);
-        var lastAddedPosition = new int[DifferenceHashBucketCount, byte.MaxValue + 1];
-        for (var position = 0; position < entries.Count; position++)
+        public static byte GetBucket(ulong hash, int table)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            foreach (var hash in entries[position].DifferenceHash)
-            {
-                for (var table = 0; table < DifferenceHashBucketCount; table++)
-                {
-                    var bucket = GetDifferenceHashBucket(hash, table);
-                    if (lastAddedPosition[table, bucket] == position + 1)
-                    {
-                        continue;
-                    }
-
-                    lastAddedPosition[table, bucket] = position + 1;
-                    Add(buckets[table], bucket, position);
-                }
-            }
+            return (byte) (hash >> (table * 8));
         }
-
-        return buckets;
-    }
-
-    private static Dictionary<byte, List<int>>[] BuildDctHashBuckets(IReadOnlyList<IndexItem> entries, Func<IndexItem, List<ulong>> getHashes, CancellationToken cancellationToken)
-    {
-        var buckets = CreateBuckets(DctHashBucketCount);
-        var lastAddedPosition = new int[DctHashBucketCount, byte.MaxValue + 1];
-        for (var position = 0; position < entries.Count; position++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            foreach (var hash in getHashes(entries[position]))
-            {
-                for (var table = 0; table < DctHashBucketCount; table++)
-                {
-                    var bucket = GetDctHashBucket(hash, table);
-                    if (lastAddedPosition[table, bucket] == position + 1)
-                    {
-                        continue;
-                    }
-
-                    lastAddedPosition[table, bucket] = position + 1;
-                    Add(buckets[table], bucket, position);
-                }
-            }
-        }
-
-        return buckets;
-    }
-
-    private static Dictionary<byte, List<int>>[] CreateBuckets(int count)
-    {
-        return Enumerable.Range(0, count).Select(_ => new Dictionary<byte, List<int>>()).ToArray();
-    }
-
-    private static void Add(Dictionary<byte, List<int>> buckets, byte bucket, int position)
-    {
-        if (!buckets.TryGetValue(bucket, out var positions))
-        {
-            positions = [];
-            buckets[bucket] = positions;
-        }
-
-        positions.Add(position);
-    }
-
-    private static byte GetDifferenceHashBucket(ulong[] hash, int table)
-    {
-        var word = table / 8;
-        var bitOffset = table % 8 * 8;
-        return word < hash.Length ? (byte) (hash[word] >> bitOffset) : (byte) 0;
-    }
-
-    private static byte GetDctHashBucket(ulong hash, int table)
-    {
-        return (byte) (hash >> (table * 8));
     }
 
     internal sealed class CandidateCollector

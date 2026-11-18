@@ -32,8 +32,10 @@ public class ImageSearchService
             var useDifferenceHash = algorithm.HasFlag(MatchAlgorithm.DifferenceHash);
             var useDctHash32 = algorithm.HasFlag(MatchAlgorithm.DctHash32);
             var useDctHash64 = algorithm.HasFlag(MatchAlgorithm.DctHash64);
+            var useDctHash256 = algorithm.HasFlag(MatchAlgorithm.DctHash256);
+            var useMHHash256 = algorithm.HasFlag(MatchAlgorithm.MHHash256);
             var searchEntries = videoMode ? CreateVideoSearchEntries(entries, sampleFrames, cancellationToken) : entries;
-            var canUseCandidateIndex = (!useDifferenceHash || HashCandidateIndex.MinimumSharedBuckets(256, 32, similarity) > 0) && (!(useDctHash32 || useDctHash64) || HashCandidateIndex.MinimumSharedBuckets(64, 8, similarity) > 0);
+            var canUseCandidateIndex = HashCandidateIndex.CanUseIndex(algorithm, similarity);
             var candidateIndex = canUseCandidateIndex ? HashCandidateIndex.Build(searchEntries, algorithm, cancellationToken) : null;
             var folderIds = ignoreSameFolder ? BuildFolderIds(entries, cancellationToken) : null;
             var parallelOptions = new ParallelOptions
@@ -97,19 +99,29 @@ public class ImageSearchService
 
                         var bestMatch = 0f;
                         var bestAlgorithms = (MatchAlgorithm) 0;
-                        if (useDctHash64)
-                        {
-                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash64, candidate.DctHash64, similarity, cancellationToken) : MaxCompare(source.DctHash64, candidate.DctHash64), MatchAlgorithm.DctHash64);
-                        }
-
                         if (useDifferenceHash)
                         {
                             UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DifferenceHash, candidate.DifferenceHash, similarity, cancellationToken) : MaxCompare(source.DifferenceHash, candidate.DifferenceHash), MatchAlgorithm.DifferenceHash);
                         }
 
+                        if (useDctHash256)
+                        {
+                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash256, candidate.DctHash256, similarity, cancellationToken) : MaxCompare(source.DctHash256, candidate.DctHash256), MatchAlgorithm.DctHash256);
+                        }
+
+                        if (useDctHash64)
+                        {
+                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash64, candidate.DctHash64, similarity, cancellationToken) : MaxCompare(source.DctHash64, candidate.DctHash64), MatchAlgorithm.DctHash64);
+                        }
+
                         if (useDctHash32)
                         {
                             UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.DctHash, candidate.DctHash, similarity, cancellationToken) : MaxCompare(source.DctHash, candidate.DctHash), MatchAlgorithm.DctHash32);
+                        }
+
+                        if (useMHHash256)
+                        {
+                            UpdateBestMatch(videoMode ? AverageTopFrameMatches(source.MHHash256, candidate.MHHash256, similarity, cancellationToken) : MaxCompare(source.MHHash256, candidate.MHHash256), MatchAlgorithm.MHHash256);
                         }
 
                         if (bestMatch >= similarity)
@@ -142,6 +154,8 @@ public class ImageSearchService
             entry.DctHash = entry.DctHash.Count>sampleFrames?[.. entry.DctHash.OrderByRandom().Take(sampleFrames)]: entry.DctHash;
             entry.DctHash64 = entry.DctHash64.Count>sampleFrames?[.. entry.DctHash64.OrderByRandom().Take(sampleFrames)]: entry.DctHash64;
             entry.DifferenceHash = entry.DifferenceHash.Count>sampleFrames?[.. entry.DifferenceHash.OrderByRandom().Take(sampleFrames)]: entry.DifferenceHash;
+            entry.DctHash256 = entry.DctHash256.Count > sampleFrames ? [.. entry.DctHash256.OrderByRandom().Take(sampleFrames)] : entry.DctHash256;
+            entry.MHHash256 = entry.MHHash256.Count > sampleFrames ? [.. entry.MHHash256.OrderByRandom().Take(sampleFrames)] : entry.MHHash256;
         }
 
         return entries;
@@ -183,7 +197,17 @@ public class ImageSearchService
             var defHashs = new ConcurrentHashSet<ulong[]>(new ArrayComparer());
             var dctHashs = new ConcurrentHashSet<ulong>();
             var pHashs = new ConcurrentHashSet<ulong>();
+            var dctHash256s = new ConcurrentHashSet<ulong[]>(new ArrayComparer());
+            var mhHash256s = new ConcurrentHashSet<ulong[]>(new ArrayComparer());
             var actions = new List<Action>();
+
+            void AddWaveletAndMarrHildrethHashes(SKBitmap bitmap)
+            {
+                if (algorithm.HasFlag(MatchAlgorithm.MHHash256))
+                {
+                    mhHash256s.Add(bitmap.MHHash256());
+                }
+            }
 
             if (filename.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
             {
@@ -207,6 +231,13 @@ public class ImageSearchService
                             pHashs.Add(frame.DctHash64());
                         }
 
+                        if (algorithm.HasFlag(MatchAlgorithm.DctHash256))
+                        {
+                            dctHash256s.Add(frame.DctHash256());
+                        
+                        }
+
+                        AddWaveletAndMarrHildrethHashes(frame);
                         frame.Dispose();
                     });
                 }
@@ -231,6 +262,14 @@ public class ImageSearchService
                     {
                         pHashs.Add(frame.DctHash64());
                     }
+
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash256))
+                    {
+                        dctHash256s.Add(frame.DctHash256());
+                    
+                    }
+
+                    AddWaveletAndMarrHildrethHashes(frame);
                 });
             }
             else
@@ -252,6 +291,13 @@ public class ImageSearchService
                         actions.Add(() => pHashs.Add(image.DctHash64()));
                     }
 
+                    if (algorithm.HasFlag(MatchAlgorithm.DctHash256))
+                    {
+                        actions.Add(() => dctHash256s.Add(image.DctHash256()));
+                    }
+
+                    actions.Add(() => AddWaveletAndMarrHildrethHashes(image));
+
                     if (checkRotated)
                     {
                         actions.Add(() =>
@@ -271,6 +317,11 @@ public class ImageSearchService
                             {
                                 pHashs.Add(clone.DctHash64());
                             }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash256))
+                            {
+                                dctHash256s.Add(clone.DctHash256());
+                            }
+                            AddWaveletAndMarrHildrethHashes(clone);
                         });
                         actions.Add(() =>
                         {
@@ -289,6 +340,11 @@ public class ImageSearchService
                             {
                                 pHashs.Add(clone.DctHash64());
                             }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash256))
+                            {
+                                dctHash256s.Add(clone.DctHash256());
+                            }
+                            AddWaveletAndMarrHildrethHashes(clone);
                         });
                         actions.Add(() =>
                         {
@@ -307,6 +363,11 @@ public class ImageSearchService
                             {
                                 pHashs.Add(clone.DctHash64());
                             }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash256))
+                            {
+                                dctHash256s.Add(clone.DctHash256());
+                            }
+                            AddWaveletAndMarrHildrethHashes(clone);
                         });
                     }
 
@@ -329,6 +390,11 @@ public class ImageSearchService
                             {
                                 pHashs.Add(clone.DctHash64());
                             }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash256))
+                            {
+                                dctHash256s.Add(clone.DctHash256());
+                            }
+                            AddWaveletAndMarrHildrethHashes(clone);
                         });
                         actions.Add(() =>
                         {
@@ -347,6 +413,11 @@ public class ImageSearchService
                             {
                                 pHashs.Add(clone.DctHash64());
                             }
+                            if (algorithm.HasFlag(MatchAlgorithm.DctHash256))
+                            {
+                                dctHash256s.Add(clone.DctHash256());
+                            }
+                            AddWaveletAndMarrHildrethHashes(clone);
                         });
                     }
 
@@ -358,29 +429,19 @@ public class ImageSearchService
             var queryDifferenceHashes = defHashs.OrderByRandom().Take(requiredFrameMatches).ToHashSet();
             var queryDctHashes = dctHashs.OrderByRandom().Take(requiredFrameMatches).ToHashSet();
             var queryDctHash64s = pHashs.OrderByRandom().Take(requiredFrameMatches).ToHashSet();
+            var queryDctHash256s = dctHash256s.OrderByRandom().Take(requiredFrameMatches).ToHashSet();
+            var queryMHHash256s = mhHash256s.OrderByRandom().Take(requiredFrameMatches).ToHashSet();
             var useDifferenceHash = algorithm.HasFlag(MatchAlgorithm.DifferenceHash);
             var useDctHash32 = algorithm.HasFlag(MatchAlgorithm.DctHash32);
             var useDctHash64 = algorithm.HasFlag(MatchAlgorithm.DctHash64);
+            var useDctHash256 = algorithm.HasFlag(MatchAlgorithm.DctHash256);
+            var useMHHash256 = algorithm.HasFlag(MatchAlgorithm.MHHash256);
             var resultBatches = new ConcurrentBag<List<SearchResult>>();
             Parallel.ForEach(index, new ParallelOptions {MaxDegreeOfParallelism = parallelism}, () => new List<SearchResult>(), (entry, _, items) =>
             {
                 var key = entry.Key;
                 var value = entry.Value;
                 var useFrameScore = isAnimatedQuery || VideoFrameHelper.IsVideoFile(key);
-                if (useDctHash64)
-                {
-                    var match = useFrameScore ? AverageTopFrameMatches(value.DctHash64, queryDctHash64s, similarity) : MaxCompare(value.DctHash64, queryDctHash64s);
-                    if (match >= similarity)
-                    {
-                        items.Add(new SearchResult
-                        {
-                            路径 = key,
-                            匹配度 = match,
-                            匹配算法 = "DCT Hash 64"
-                        });
-                    }
-                }
-
                 if (useDifferenceHash)
                 {
                     var match = useFrameScore ? AverageTopFrameMatches(value.DifferenceHash, queryDifferenceHashes, similarity) : MaxCompare(value.DifferenceHash, queryDifferenceHashes);
@@ -391,6 +452,34 @@ public class ImageSearchService
                             路径 = key,
                             匹配度 = match,
                             匹配算法 = "Difference Hash"
+                        });
+                    }
+                }
+
+                if (useDctHash256)
+                {
+                    var match = useFrameScore ? AverageTopFrameMatches(value.DctHash256, queryDctHash256s, similarity) : MaxCompare(value.DctHash256, queryDctHash256s);
+                    if (match >= similarity)
+                    {
+                        items.Add(new SearchResult
+                        {
+                            路径 = key,
+                            匹配度 = match,
+                            匹配算法 = "DCT Hash 256"
+                        });
+                    }
+                }
+
+                if (useDctHash64)
+                {
+                    var match = useFrameScore ? AverageTopFrameMatches(value.DctHash64, queryDctHash64s, similarity) : MaxCompare(value.DctHash64, queryDctHash64s);
+                    if (match >= similarity)
+                    {
+                        items.Add(new SearchResult
+                        {
+                            路径 = key,
+                            匹配度 = match,
+                            匹配算法 = "DCT Hash 64"
                         });
                     }
                 }
@@ -409,6 +498,20 @@ public class ImageSearchService
                     }
                 }
 
+                if (useMHHash256)
+                {
+                    var match = useFrameScore ? AverageTopFrameMatches(value.MHHash256, queryMHHash256s, similarity) : MaxCompare(value.MHHash256, queryMHHash256s);
+                    if (match >= similarity)
+                    {
+                        items.Add(new SearchResult
+                        {
+                            路径 = key,
+                            匹配度 = match,
+                            匹配算法 = "Marr-Hildreth Hash 256"
+                        });
+                    }
+                }
+                
                 return items;
             }, resultBatches.Add);
             list.AddRange(resultBatches.SelectMany(items => items));

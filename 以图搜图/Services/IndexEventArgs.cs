@@ -6,7 +6,7 @@ public class IndexProgressEventArgs : EventArgs
 
     public string Message { get; set; } = string.Empty;
     public double Speed { get; set; }
-    public double ThroughputMB { get; set; }
+    public double AverageSpeed { get; set; }
     public int ProcessedFiles { get; set; }
     public int TotalFiles { get; set; }
     public double ProgressPercentage => TotalFiles > 0 ? (double)ProcessedFiles / TotalFiles * 100 : 0;

@@ -12,7 +12,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Windows;
-using Masuit.Tools.Files;
 using 以图搜图.Helpers;
 
 namespace 以图搜图.Services;
@@ -69,12 +68,13 @@ public sealed class ImageIndexService : Disposable
 
     public bool IsIndexing { get; private set; }
     public bool IsWriting { get; private set; }
+    public ICollection<string> ProcessingFiles => _processingFiles.Keys;
 
-    public event EventHandler<IndexProgressEventArgs>? ProgressChanged;
+    public event EventHandler<IndexProgressEventArgs> ProgressChanged;
 
-    public event EventHandler<IndexCompletedEventArgs>? IndexCompleted;
+    public event EventHandler<IndexCompletedEventArgs> IndexCompleted;
 
-    public event EventHandler? IndexUpdated;
+    public event EventHandler IndexUpdated;
 
     public async Task LoadIndexAsync()
     {
@@ -99,13 +99,27 @@ public sealed class ImageIndexService : Disposable
     }
 
     private int _totalCount;
-    private long _totalSize;
+    private readonly ConcurrentDictionary<string, long> _processingFiles = new(StringComparer.OrdinalIgnoreCase);
+    private long _processingSequence;
+    private static readonly TimeSpan ProgressSamplingInterval = TimeSpan.FromSeconds(1);
+    private readonly Lock _progressSampleLock = new();
+    private double _lastProgressSampleSeconds;
+    private int _lastProgressSampleCount;
+    private double _sampledProgressSpeed;
 
     public async Task UpdateIndexAsync(string[] directories, bool removeInvalid)
     {
         var files = EverythingHelper.GetFiles(directories);
         _totalCount = 0;
-        _totalSize = 0;
+        _processingFiles.Clear();
+        _processingSequence = 0;
+        lock (_progressSampleLock)
+        {
+            _lastProgressSampleSeconds = 0;
+            _lastProgressSampleCount = 0;
+            _sampledProgressSpeed = 0;
+        }
+
         IsIndexing = true;
         if (removeInvalid)
         {
@@ -127,7 +141,7 @@ public sealed class ImageIndexService : Disposable
             return;
         }
 
-        var errors = new List<string>();
+        var errors = new ConcurrentBag<string>();
         var sw = Stopwatch.StartNew();
 
         await Task.Run(() =>
@@ -151,11 +165,11 @@ public sealed class ImageIndexService : Disposable
         {
             ElapsedSeconds = sw.Elapsed.TotalSeconds,
             FilesProcessed = _totalCount,
-            Errors = errors
+            Errors = errors.ToList()
         });
     }
 
-    private void UpdateIndexOnSSD(string[] filesToIndex, Stopwatch sw, List<string> errors)
+    private void UpdateIndexOnSSD(string[] filesToIndex, Stopwatch sw, ConcurrentBag<string> errors)
     {
         var parallelism = Math.Min(63,Environment.ProcessorCount * 4);
         filesToIndex.Where(s => DriveType[s[0]].type != "HDD").Chunk(parallelism).AsParallel().WithDegreeOfParallelism(parallelism).ForAll(g =>
@@ -164,15 +178,7 @@ public sealed class ImageIndexService : Disposable
             {
                 try
                 {
-                    OnProgressChanged(new IndexProgressEventArgs
-                    {
-                        Filename = file,
-                        Message = $"{_totalCount}/{filesToIndex.Length}",
-                        Speed = _totalCount / sw.Elapsed.TotalSeconds,
-                        ThroughputMB = _totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
-                        ProcessedFiles = _totalCount,
-                        TotalFiles = filesToIndex.Length
-                    });
+                    ReportIndexProgress(file, filesToIndex.Length, sw);
 
                     if (file.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase))
                     {
@@ -194,66 +200,71 @@ public sealed class ImageIndexService : Disposable
                         {
                             DctHash = [image.DctHash()],
                             DifferenceHash = [image.DifferenceHash256()],
-                            DctHash64 = [image.DctHash64()]
+                            DctHash64 = [image.DctHash64()],
+                            DctHash256 = [image.DctHash256()],
+                            MHHash256 = [image.MHHash256()],
                         };
                         Index[file] = indexItem;
                     }
 
-                    var size = new FileInfo(file).Length;
-                    _totalCount++;
-                    _totalSize += size;
-                    OnProgressChanged(new IndexProgressEventArgs
-                    {
-                        Filename = file,
-                        Message = $"{_totalCount}/{filesToIndex.Length}",
-                        Speed = _totalCount / sw.Elapsed.TotalSeconds,
-                        ThroughputMB = _totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
-                        ProcessedFiles = _totalCount,
-                        TotalFiles = filesToIndex.Length
-                    });
+                    Interlocked.Increment(ref _totalCount);
                 }
-                catch
+                catch (Exception ex)
                 {
                     errors.Add(file);
+                    LogManager.Error(ex);
+                }
+                finally
+                {
+                    RemoveProcessingFile(file);
                 }
             }
         });
     }
 
-    private void UpdateIndexOnHDD(string[] filesToIndex, Stopwatch sw, List<string> errors)
+    private void UpdateIndexOnHDD(string[] filesToIndex, Stopwatch sw, ConcurrentBag<string> errors)
     {
         var queue = new ConcurrentQueue<(string Path, Stream Stream, long Length)>();
+        using var videoQueue = new BlockingCollection<(string Path, long Length)>();
         long queuedBytes = 0;
-        bool loading = true;
-        Task.Run(() =>
+        var producer = Task.Run(() =>
         {
-            var memoryAvailable = Math.Min(RamInfo.Local.MemoryAvailable / 2, 8589934592d);
-            var diskCount = DriveType.Values.Where(t => t.type == "HDD").Select(t => t.index).Distinct().Count();
-            switch (diskCount)
+            try
             {
-                case 1:
-                    foreach (var file in filesToIndex.Where(s => DriveType[s[0]].type == "HDD").Order().TakeWhile(_ => IsIndexing).Where(File.Exists))
+                var memoryAvailable = Math.Min(RamInfo.Local.MemoryAvailable / 2, 8589934592d);
+                var diskCount = filesToIndex.Select(s => s[0]).Distinct().Count(s => DriveType[s].type == "HDD");
+                switch (diskCount)
+                {
+                    case 1:
+                        ReadFiles(filesToIndex.Where(s => DriveType[s[0]].type == "HDD").Order());
+                        break;
+
+                    case > 1:
+                        filesToIndex.Where(s => DriveType[s[0]].type == "HDD").GroupBy(s => DriveType[s[0]].index).AsParallel().WithDegreeOfParallelism(diskCount).ForAll(grouping => ReadFiles(grouping.Order()));
+                        break;
+                }
+
+                void ReadFiles(IEnumerable<string> files)
+                {
+                    foreach (var file in files.TakeWhile(_ => IsIndexing).Where(File.Exists))
                     {
                         try
                         {
                             if (VideoFrameHelper.IsVideoFile(file))
                             {
-                                var fileInfo = new FileInfo(file);
-                                var stream = fileInfo.OpenRead();
-                                queue.Enqueue((file, stream, fileInfo.Length));
-                                Interlocked.Add(ref queuedBytes, fileInfo.Length / 2);
+                                videoQueue.Add((file, new FileInfo(file).Length));
                             }
                             else
                             {
-                                var stream = new PooledMemoryStream(File.ReadAllBytes(file));
+                                var stream = new MemoryStream(File.ReadAllBytes(file));
                                 var length = stream.Length;
-                                queue.Enqueue((file, stream, length));
                                 Interlocked.Add(ref queuedBytes, length);
-                            }
+                                queue.Enqueue((file, stream, length));
 
-                            while (Volatile.Read(ref queuedBytes) > memoryAvailable)
-                            {
-                                Thread.Sleep(200);
+                                while (IsIndexing && Volatile.Read(ref queuedBytes) > memoryAvailable)
+                                {
+                                    Thread.Yield();
+                                }
                             }
                         }
                         catch
@@ -261,119 +272,32 @@ public sealed class ImageIndexService : Disposable
                             errors.Add(file);
                         }
                     }
-
-                    break;
-
-                case > 1:
-                    filesToIndex.Where(s => DriveType[s[0]].type == "HDD").GroupBy(s => DriveType[s[0]].index).AsParallel().WithDegreeOfParallelism(diskCount).ForAll(grouping =>
-                    {
-                        foreach (var file in grouping.Order().TakeWhile(_ => IsIndexing).Where(File.Exists))
-                        {
-                            try
-                            {
-                                if (VideoFrameHelper.IsVideoFile(file))
-                                {
-                                    var fileInfo = new FileInfo(file);
-                                    var stream = fileInfo.OpenRead();
-                                    queue.Enqueue((file, stream, fileInfo.Length));
-                                    Interlocked.Add(ref queuedBytes, fileInfo.Length/2);
-                                }
-                                else
-                                {
-                                    var stream = new PooledMemoryStream(File.ReadAllBytes(file));
-                                    var length = stream.Length;
-                                    queue.Enqueue((file, stream, length));
-                                    Interlocked.Add(ref queuedBytes, length);
-                                }
-
-                                while (Volatile.Read(ref queuedBytes) > memoryAvailable)
-                                {
-                                    Thread.Sleep(200);
-                                }
-                            }
-                            catch
-                            {
-                                errors.Add(file);
-                            }
-                        }
-                    });
-                    break;
+                }
             }
-
-            loading = false;
-        }).ContinueWith(t =>
-        {
-            if (t.IsFaulted)
+            finally
             {
-                LogManager.Error(t.Exception);
+                videoQueue.CompleteAdding();
             }
         });
-        while (loading || queue.Count > 0)
+        var videoConsumers = Enumerable.Range(0, Math.Min(Environment.ProcessorCount /2, 7)).Select(_ => Task.Run(() =>
         {
-            Parallel.For(0, Math.Min(Environment.ProcessorCount * 4, queue.Count), _ =>
+            foreach (var item in videoQueue.GetConsumingEnumerable())
             {
-                if (!queue.TryDequeue(out var item))
-                {
-                    return;
-                }
-
-                if (item.Stream != null)
-                {
-                    Interlocked.Add(ref queuedBytes, -item.Length);
-                }
-
                 if (!IsIndexing)
                 {
-                    return;
+                    continue;
                 }
 
                 try
                 {
-                    OnProgressChanged(new IndexProgressEventArgs
+                    ReportIndexProgress(item.Path, filesToIndex.Length, sw);
+                    var hash = CreateVideoIndexItem(item.Path);
+                    if (hash.DctHash.Count > 0)
                     {
-                        Filename = item.Path,
-                        Message = $"{_totalCount}/{filesToIndex.Length}",
-                        Speed = _totalCount / sw.Elapsed.TotalSeconds,
-                        ThroughputMB = _totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
-                        ProcessedFiles = _totalCount,
-                        TotalFiles = filesToIndex.Length
-                    });
-
-                    if (item.Path.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        Index[item.Path] = CreateGifIndexItem(item.Path, item.Stream);
-                    }
-                    else if (VideoFrameHelper.IsVideoFile(item.Path))
-                    {
-                        var hash = CreateVideoIndexItem(item.Path);
-                        if (hash.DctHash.Count > 0)
-                        {
-                            Index[item.Path] = hash;
-                        }
-                    }
-                    else
-                    {
-                        using var image = SkiaImageHelper.DecodeGrayThumb(item.Stream!, 160);
-                        var indexItem = new IndexItem(item.Path)
-                        {
-                            DctHash = [image.DctHash()],
-                            DifferenceHash = [image.DifferenceHash256()],
-                            DctHash64 = [image.DctHash64()]
-                        };
-                        Index[item.Path] = indexItem;
+                        Index[item.Path] = hash;
                     }
 
-                    _totalCount++;
-                    _totalSize += item.Length;
-                    OnProgressChanged(new IndexProgressEventArgs
-                    {
-                        Filename = item.Path,
-                        Message = $"{_totalCount}/{filesToIndex.Length}",
-                        Speed = _totalCount / sw.Elapsed.TotalSeconds,
-                        ThroughputMB = _totalSize / 1048576.0 / sw.Elapsed.TotalSeconds,
-                        ProcessedFiles = _totalCount,
-                        TotalFiles = filesToIndex.Length
-                    });
+                    Interlocked.Increment(ref _totalCount);
                 }
                 catch (Exception ex)
                 {
@@ -382,11 +306,104 @@ public sealed class ImageIndexService : Disposable
                 }
                 finally
                 {
+                    RemoveProcessingFile(item.Path);
+                }
+            }
+        })).ToArray();
+        while (!producer.IsCompleted || !queue.IsEmpty)
+        {
+            Parallel.For(0, Math.Min(Environment.ProcessorCount * 4, queue.Count), _ =>
+            {
+                if (!queue.TryDequeue(out var item))
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (!IsIndexing)
+                    {
+                        return;
+                    }
+
+                    ReportIndexProgress(item.Path, filesToIndex.Length, sw);
+                    if (item.Path.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        Index[item.Path] = CreateGifIndexItem(item.Path, item.Stream);
+                    }
+                    else
+                    {
+                        using var image = SkiaImageHelper.DecodeGrayThumb(item.Stream!, 160);
+                        var indexItem = new IndexItem(item.Path)
+                        {
+                            DctHash = [image.DctHash()],
+                            DifferenceHash = [image.DifferenceHash256()],
+                            DctHash64 = [image.DctHash64()],
+                            DctHash256 = [image.DctHash256()],
+                            MHHash256 = [image.MHHash256()],
+                        };
+                        Index[item.Path] = indexItem;
+                    }
+
+                    Interlocked.Increment(ref _totalCount);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(item.Path);
+                    LogManager.Error(ex);
+                }
+                finally
+                {
+                    RemoveProcessingFile(item.Path);
+                    Interlocked.Add(ref queuedBytes, -item.Length);
                     item.Stream?.Dispose();
                 }
             });
-            Thread.Yield();
+            if (queue.IsEmpty && !producer.IsCompleted)
+            {
+                Thread.Yield();
+            }
         }
+
+        Task.WaitAll(videoConsumers.Append(producer).ToArray());
+    }
+
+    private void ReportIndexProgress(string file, int totalFiles, Stopwatch sw)
+    {
+        _processingFiles.TryAdd(file, Interlocked.Increment(ref _processingSequence));
+        var count = Volatile.Read(ref _totalCount);
+        var elapsedSeconds = sw.Elapsed.TotalSeconds;
+        double speed;
+        lock (_progressSampleLock)
+        {
+            var sampleDuration = elapsedSeconds - _lastProgressSampleSeconds;
+            if (sampleDuration >= ProgressSamplingInterval.TotalSeconds)
+            {
+                speed = Math.Max(0, count - _lastProgressSampleCount) / sampleDuration;
+                _lastProgressSampleSeconds = elapsedSeconds;
+                _lastProgressSampleCount = count;
+                _sampledProgressSpeed = speed;
+            }
+            else
+            {
+                speed = _sampledProgressSpeed;
+            }
+        }
+
+        OnProgressChanged(new IndexProgressEventArgs
+        {
+            Filename = file,
+            Message = $"{count}/{totalFiles}",
+            Speed = speed,
+            AverageSpeed = elapsedSeconds > 0 ? count / elapsedSeconds : 0,
+            ProcessedFiles = count,
+            TotalFiles = totalFiles
+        });
+    }
+
+    private void RemoveProcessingFile(string file)
+    {
+        _processingFiles.TryRemove(file, out var sequence);
     }
 
     public void StopIndexing()
@@ -440,19 +457,25 @@ public sealed class ImageIndexService : Disposable
         var differenceHashes = new ConcurrentBag<ulong[]>();
         var dctHashes = new ConcurrentBag<ulong>();
         var dctHash64s = new ConcurrentBag<ulong>();
+        var dctHash256s = new ConcurrentBag<ulong[]>();
+        var mhHashes256 = new ConcurrentBag<ulong[]>();
         using var frames = new DisposeCollection<SKBitmap>(SkiaImageHelper.DecodeGrayFrames(stream, 160));
         frames.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount).ForAll(frame =>
         {
             differenceHashes.Add(frame.DifferenceHash256());
             dctHashes.Add(frame.DctHash());
             dctHash64s.Add(frame.DctHash64());
+            dctHash256s.Add(frame.DctHash256());
+            mhHashes256.Add(frame.MHHash256());
         });
 
         return new IndexItem(file)
         {
             DifferenceHash = new HashSet<ulong[]>(differenceHashes, new ArrayComparer()),
             DctHash = [.. dctHashes],
-            DctHash64 = [.. dctHash64s]
+            DctHash64 = [.. dctHash64s],
+            DctHash256 = [.. dctHash256s],
+            MHHash256 = [.. mhHashes256]
         };
     }
 
@@ -461,18 +484,24 @@ public sealed class ImageIndexService : Disposable
         var differenceHashes = new ConcurrentBag<ulong[]>();
         var dctHashes = new ConcurrentBag<ulong>();
         var dctHash64s = new ConcurrentBag<ulong>();
+        var dctHash256s = new ConcurrentBag<ulong[]>();
+        var mhHashes256 = new ConcurrentBag<ulong[]>();
         VideoFrameHelper.ForEachGrayFrame(file, 160, frame =>
         {
             differenceHashes.Add(frame.DifferenceHash256());
             dctHashes.Add(frame.DctHash());
             dctHash64s.Add(frame.DctHash64());
+            dctHash256s.Add(frame.DctHash256());
+            mhHashes256.Add(frame.MHHash256());
         });
 
         return new IndexItem(file)
         {
             DifferenceHash = new HashSet<ulong[]>(differenceHashes, new ArrayComparer()),
             DctHash = [.. dctHashes],
-            DctHash64 = [.. dctHash64s]
+            DctHash64 = [.. dctHash64s],
+            DctHash256 = [.. dctHash256s],
+            MHHash256 = [.. mhHashes256]
         };
     }
 
@@ -538,7 +567,7 @@ public sealed class ImageIndexService : Disposable
 
     private void OnProgressChanged(IndexProgressEventArgs e)
     {
-        if (e.ProcessedFiles % 100 == 0)
+        if (e.ProcessedFiles % 1000 == 0)
         {
             _writeQueue.Enqueue(1);
         }
@@ -587,6 +616,8 @@ public record IndexItem(string FilePath)
     public HashSet<ulong[]> DifferenceHash { get; set; } = new HashSet<ulong[]>(new ArrayComparer());
     public HashSet<ulong> DctHash { get; set; } = [];
     public HashSet<ulong> DctHash64 { get; set; } = [];
+    public HashSet<ulong[]> DctHash256 { get; set; } = [];
+    public HashSet<ulong[]> MHHash256 { get; set; } = [];
 
     [JsonIgnore]
     public bool IsAnimated => DifferenceHash.Count > 1;

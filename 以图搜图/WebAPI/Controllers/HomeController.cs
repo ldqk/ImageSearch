@@ -45,7 +45,7 @@ public class HomeController : Controller
     /// </summary>
     /// <param name="file">需要搜索的图片</param>
     /// <param name="similar">相似度</param>
-    /// <param name="algorithm">匹配算法，1：DifferenceHash，2：DctHash，4：DctHash64，7：所有</param>
+    /// <param name="algorithm">匹配算法，支持 DifferenceHash、DctHash32、DctHash64、DctHash256、MHHash256，All 表示全部。</param>
     /// <param name="checkRotated">查找旋转</param>
     /// <param name="checkFlip">查找翻转</param>
     /// <returns></returns>

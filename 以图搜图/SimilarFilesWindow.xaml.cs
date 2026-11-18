@@ -45,13 +45,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
     public BulkObservableCollection<SimilarFileGroup> Groups { get; } = [];
     public BulkObservableCollection<SimilarFileGroup> VisibleGroups { get; } = [];
     public BulkObservableCollection<SimilarDirectoryGroup> DuplicateDirectoryGroups { get; } = [];
-    public IReadOnlyList<MatchAlgorithm> MatchAlgorithms { get; } =
-    [
-        MatchAlgorithm.All,
-        MatchAlgorithm.DifferenceHash,
-        MatchAlgorithm.DctHash32,
-        MatchAlgorithm.DctHash64
-    ];
+    public IReadOnlyList<MatchAlgorithm> MatchAlgorithms { get; } = Enum.GetValues<MatchAlgorithm>();
 
     private MatchAlgorithm _selectedAlgorithm = MatchAlgorithm.All;
 
@@ -67,6 +61,24 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
             _selectedAlgorithm = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedAlgorithm)));
+        }
+    }
+
+    private MatchAlgorithm _selectedFilterAlgorithm = MatchAlgorithm.All;
+
+    public MatchAlgorithm SelectedFilterAlgorithm
+    {
+        get => _selectedFilterAlgorithm;
+        set
+        {
+            if (_selectedFilterAlgorithm == value)
+            {
+                return;
+            }
+
+            _selectedFilterAlgorithm = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedFilterAlgorithm)));
+            RefreshVisibleGroups();
         }
     }
 
@@ -1162,7 +1174,7 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
 
     private static string FormatMatchAlgorithms(MatchAlgorithm algorithms)
     {
-        var names = new List<string>(3);
+        var names = new List<string>(6);
         if (algorithms.HasFlag(MatchAlgorithm.DifferenceHash))
         {
             names.Add("DifferenceHash");
@@ -1176,6 +1188,16 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         if (algorithms.HasFlag(MatchAlgorithm.DctHash64))
         {
             names.Add("DCTHash64");
+        }
+
+        if (algorithms.HasFlag(MatchAlgorithm.DctHash256))
+        {
+            names.Add("DCTHash256");
+        }
+
+        if (algorithms.HasFlag(MatchAlgorithm.MHHash256))
+        {
+            names.Add("MHHash256");
         }
 
         return names.Count == 0 ? "—" : string.Join(", ", names);
@@ -1199,11 +1221,8 @@ public partial class SimilarFilesWindow : INotifyPropertyChanged
         }
     }
 
-    private string GetAlgorithmFilter()
-    {
-        var index = FilterAlgorithmCombo?.SelectedIndex ?? 0;
-        return index > 0 ? ((ComboBoxItem) FilterAlgorithmCombo!.SelectedItem).Content.ToString()! : string.Empty;
-    }
+    private string GetAlgorithmFilter() =>
+        SelectedFilterAlgorithm == MatchAlgorithm.All ? string.Empty : FormatMatchAlgorithms(SelectedFilterAlgorithm);
 
     private bool IsFileLevelFilterActive(string filter) => filter is "仅已标记文件" or "仅未标记文件" || GetAlgorithmFilter().Length > 0 || FilterSimilarityCheck?.IsChecked == true;
 

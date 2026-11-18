@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "以图搜图", "以图搜�
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Straper", "Straper\Straper.csproj", "{5C17B0E6-08E5-4833-B2B8-C03F6437275F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Masuit.Tools.Abstractions", "..\Masuit.Tools\Masuit.Tools.Abstractions\Masuit.Tools.Abstractions.csproj", "{48099D9D-0FF4-2E5F-04E0-4A1F18E627F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{5C17B0E6-08E5-4833-B2B8-C03F6437275F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C17B0E6-08E5-4833-B2B8-C03F6437275F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5C17B0E6-08E5-4833-B2B8-C03F6437275F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{48099D9D-0FF4-2E5F-04E0-4A1F18E627F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{48099D9D-0FF4-2E5F-04E0-4A1F18E627F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{48099D9D-0FF4-2E5F-04E0-4A1F18E627F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{48099D9D-0FF4-2E5F-04E0-4A1F18E627F9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

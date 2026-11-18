@@ -660,12 +660,15 @@
                        ToolTip="筛选至少包含一个路径匹配项的文件组"
                        TextChanged="FilterPathSearchBox_TextChanged" />
               <TextBlock Text="匹配算法" Margin="16,0,6,0" />
-              <ComboBox x:Name="FilterAlgorithmCombo" Width="140" SelectedIndex="0"
-                        VerticalAlignment="Center" SelectionChanged="FilterCombo_SelectionChanged">
-                <ComboBoxItem Content="全部算法" />
-                <ComboBoxItem Content="DifferenceHash" />
-                <ComboBoxItem Content="DCTHash32" />
-                <ComboBoxItem Content="DCTHash64" />
+              <ComboBox x:Name="FilterAlgorithmCombo" Width="140"
+                        ItemsSource="{Binding MatchAlgorithms}"
+                        SelectedItem="{Binding SelectedFilterAlgorithm}"
+                        VerticalAlignment="Center">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
               </ComboBox>
               <CheckBox x:Name="FilterSimilarityCheck" Content="相似度 ≥" Margin="16,0,6,0"
                         VerticalAlignment="Center"

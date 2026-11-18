@@ -66,21 +66,21 @@ internal static class VideoFrameHelper
     {
         var outputPattern = Path.Combine(directory, "frame-%08d.png");
         var vf = $"fps={Fps},blackframe=0,metadata=select:key=lavfi.blackframe.pblack:value={pblack}:function=less,scale={size}:{size}:force_original_aspect_ratio=decrease";
-        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, opt => opt.WithCustomArgument($"-vf \"{vf}\"")).ProcessSynchronously();
+        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, opt => opt.WithCustomArgument($"-vf \"{vf}\"")).ProcessSynchronously(false).Success;
     }
 
     private static bool ExtractFrames(string videoPath, int size, string directory)
     {
         var outputPattern = Path.Combine(directory, "frame-%08d.png");
-        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, options => options.WithCustomArgument($"-vf \"fps={Fps},scale={size}:{size}:force_original_aspect_ratio=decrease\"")).ProcessSynchronously(false);
+        return FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPattern, true, options => options.WithCustomArgument($"-vf \"fps={Fps},scale={size}:{size}:force_original_aspect_ratio=decrease\"")).ProcessSynchronously(false).Success;
     }
 
     public static bool ExtractPreviewFrame(string videoPath, string outputPath, int size)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size);
 
-        var succeeded = FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPath, true, options => options.WithCustomArgument($"-vf \"thumbnail=300,scale={size}:-2\" -frames:v 1 -q:v 2")).ProcessSynchronously();
-        return succeeded && File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
+        var result = FFMpegArguments.FromFileInput(videoPath).OutputToFile(outputPath, true, options => options.WithCustomArgument($"-vf \"thumbnail=300,scale={size}:-2\" -frames:v 1 -q:v 2")).ProcessSynchronously();
+        return result.Success && File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
     }
     public static IMediaAnalysis Analyse(string videoPath) => FFProbe.Analyse(videoPath);
 }
