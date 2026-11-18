@@ -89,11 +89,9 @@ public partial class MainViewModel : ObservableObject
 
     public int SimilarityMinimum => MatchAlgorithm.HasFlag(ModelsMatchAlgorithm.DifferenceHash) ? 70 : 85;
 
-    [ObservableProperty]
-    private string sourceImageInfo = string.Empty;
+    [ObservableProperty]private string sourceImageInfo = string.Empty;
 
-    [ObservableProperty]
-    private string sourceImagePath = string.Empty;
+    [ObservableProperty]private string sourceImagePath = string.Empty;
 
     [ObservableProperty]private string updateIndexButtonText = "🔄 更新索引";
 
@@ -240,7 +238,8 @@ public partial class MainViewModel : ObservableObject
         var dialog = new OpenFolderDialog()
         {
             Title = "选择文件夹",
-            ValidateNames = false,Multiselect = false
+            ValidateNames = false,
+            Multiselect = false
         };
 
         // Workaround for folder selection
@@ -528,6 +527,32 @@ public partial class MainViewModel : ObservableObject
                 }
             }
 
+            string virtualImage = null;
+            try
+            {
+                virtualImage = VirtualFileDrop.SaveFirstImage(dataObject);
+            }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or IOException or UnauthorizedAccessException or NotSupportedException or InvalidCastException or Win32Exception)
+            {
+                Debug.WriteLine($"读取拖放的虚拟文件失败，将尝试其他格式：{ex}");
+            }
+
+            if (virtualImage != null)
+            {
+                try
+                {
+                    OnImagePathChanged(virtualImage);
+                    await SearchCore(virtualImage);
+                    await Task.Delay(1000);
+                }
+                finally
+                {
+                    File.Delete(virtualImage);
+                }
+
+                return;
+            }
+
             // 2. 直接获取位图数据（优先处理，避免格式转换问题）
             if (dataObject.GetDataPresent(DataFormats.Bitmap))
             {
@@ -708,6 +733,7 @@ public partial class MainViewModel : ObservableObject
                             catch (Exception ex)
                             {
                                 Debug.WriteLine($"URL 处理异常: {ex.Message}");
+                                Application.Current.Dispatcher.Invoke(() => MessageBox.Show(Application.Current.MainWindow!, $"无法下载拖放的图片：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error));
                             }
                         });
                         return;
@@ -883,10 +909,12 @@ public partial class MainViewModel : ObservableObject
     private const int IndexSpeedHistoryLimit = 10000;
     private const int IndexSpeedSmoothingWindowSeconds = 2;
     private readonly Queue<(long Ticks, long Done)> _indexSpeedSamples = [];
+
     private readonly DispatcherTimer _indexSpeedSamplingTimer = new(DispatcherPriority.Background)
     {
         Interval = TimeSpan.FromMilliseconds(1000)
     };
+
     private readonly Stopwatch _indexSpeedStopwatch = new();
     private long _indexSpeedProcessedFiles;
     private double _indexSpeed;
@@ -983,7 +1011,6 @@ public partial class MainViewModel : ObservableObject
                 {
                     EstimatedRemainingTimeText = "--";
                 }
-
             }
         });
     }
@@ -1155,8 +1182,7 @@ public partial class MainViewModel : ObservableObject
         return true;
     }
 
-    private static string FormatDuration(TimeSpan duration) =>
-        $"{(int)duration.TotalHours:00}:{duration.Minutes:00}:{duration.Seconds:00}";
+    private static string FormatDuration(TimeSpan duration) => $"{(int) duration.TotalHours:00}:{duration.Minutes:00}:{duration.Seconds:00}";
 
     private void InitializePerformanceMonitoring()
     {
@@ -1202,11 +1228,7 @@ public partial class MainViewModel : ObservableObject
                 var diskReadRate = _ioReadCounter?.NextValue() ?? 0;
                 var diskWriteRate = _ioWriteCounter?.NextValue() ?? 0;
 
-                Volatile.Write(ref _latestPerformanceMetrics, new PerformanceMetrics(
-                    cpuUsageValue / Environment.ProcessorCount,
-                    memoryUsage,
-                    FormatIoRate(diskReadRate),
-                    FormatIoRate(diskWriteRate)));
+                Volatile.Write(ref _latestPerformanceMetrics, new PerformanceMetrics(cpuUsageValue / Environment.ProcessorCount, memoryUsage, FormatIoRate(diskReadRate), FormatIoRate(diskWriteRate)));
                 QueuePerformanceMetricsUpdate();
             }
         }
