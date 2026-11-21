@@ -38,7 +38,6 @@
     <converters:SpeedHistoryToPathConverter x:Key="SpeedHistoryToPathConverter" />
     <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
     <converters:ServerStatusColorConverter x:Key="BoolToColorConverter" />
-    <converters:RowNumberConverter x:Key="RowNumberConverter" />
     <!-- 全局字体大小设置 -->
     <Style TargetType="TextBlock">
       <Setter Property="FontSize"
@@ -924,6 +923,7 @@
             </Grid>
           </Border>
           <DataGrid Grid.Row="1"
+                    x:Name="SearchResultsGrid"
                     ItemsSource="{Binding SearchResultsView}"
                     SelectedItem="{Binding SelectedResult}"
                     Style="{StaticResource ModernDataGridStyle}"
@@ -932,8 +932,8 @@
                     IsReadOnly="True"
                     SelectionMode="Extended"
                     CanUserAddRows="False"
-                    AlternationCount="2147483647"
                     KeyUp="DataGrid_KeyUp"
+                    LoadingRow="SearchResultsGrid_LoadingRow"
                     MouseDoubleClick="DataGrid_MouseDoubleClick"
                     BorderThickness="0">
             <DataGrid.Columns>
@@ -941,7 +941,7 @@
                                       Width="55">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=AlternationIndex, Converter={StaticResource RowNumberConverter}}"
+                    <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=Header}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center" />
                   </DataTemplate>

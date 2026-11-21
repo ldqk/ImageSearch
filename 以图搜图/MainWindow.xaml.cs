@@ -1,10 +1,13 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.Collections.Specialized;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using 以图搜图.ViewModels;
 
 namespace 以图搜图;
@@ -16,9 +19,31 @@ public partial class MainWindow
     public MainWindow()
     {
         InitializeComponent();
+        ((INotifyCollectionChanged)SearchResultsGrid.Items).CollectionChanged += SearchResultsGrid_ItemsChanged;
 
         // 订阅 ViewModel 的 SpeedHistory 变化
         Loaded += MainWindow_Loaded;
+    }
+
+    private void SearchResultsGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+    {
+        e.Row.Header = e.Row.GetIndex() + 1;
+    }
+
+    private void SearchResultsGrid_ItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdateSearchResultRowNumbers));
+    }
+
+    private void UpdateSearchResultRowNumbers()
+    {
+        for (var index = 0; index < SearchResultsGrid.Items.Count; index++)
+        {
+            if (SearchResultsGrid.ItemContainerGenerator.ContainerFromIndex(index) is DataGridRow row)
+            {
+                row.Header = index + 1;
+            }
+        }
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)

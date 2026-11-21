@@ -433,7 +433,7 @@ public sealed class ImageIndexService : Disposable
         if (removes.Count>10000)
         {
             var result = Application.Current.Dispatcher.Invoke(() =>
-                MessageBox.Show(Application.Current.MainWindow, "检测到需要移除的索引数量超过10000，请确认是否需要继续移除无效索引？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.Warning));
+                MessageBox.Show(Application.Current.MainWindow, $"检测到需要移除的索引数量为{removes.Count}，请确认是否需要继续移除无效索引？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.Warning));
             if (result != MessageBoxResult.OK)
             {
                 return;
