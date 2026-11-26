@@ -10,10 +10,11 @@ namespace 以图搜图.Helpers;
 internal static class VideoFrameHelper
 {
 
-    private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
+    private static readonly HashSet<string> VideoExtensions =
+    [
+        with(StringComparer.OrdinalIgnoreCase),
         ".3gp", ".avi", ".flv", ".m4v", ".mkv", ".mov", ".mp4", ".mpeg", ".mpg", ".mts", ".m2ts", ".ts", ".webm", ".wmv"
-    };
+    ];
 
     public static bool IsVideoFile(string path) => VideoExtensions.Contains(Path.GetExtension(path));
 

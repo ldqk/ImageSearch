@@ -113,6 +113,8 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]private string estimatedRemainingTimeText = string.Empty;
 
+    [ObservableProperty]private string indexElapsedTimeText = string.Empty;
+
     [ObservableProperty]private string processingFilename = string.Empty;
 
     [ObservableProperty]private string processingQueueText = string.Empty;
@@ -906,13 +908,13 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private const int IndexSpeedHistoryLimit = 10000;
+    private const int IndexSpeedHistoryLimit = 2000;
     private const int IndexSpeedSmoothingWindowSeconds = 2;
     private readonly Queue<(long Ticks, long Done)> _indexSpeedSamples = [];
 
     private readonly DispatcherTimer _indexSpeedSamplingTimer = new(DispatcherPriority.Background)
     {
-        Interval = TimeSpan.FromMilliseconds(1000)
+        Interval = TimeSpan.FromMilliseconds(2000)
     };
 
     private readonly Stopwatch _indexSpeedStopwatch = new();
@@ -928,12 +930,14 @@ public partial class MainViewModel : ObservableObject
         _indexSpeedStopwatch.Restart();
         _indexSpeedSamples.Enqueue((_indexSpeedStopwatch.ElapsedTicks, processedFiles));
         IndexSpeedText = string.Empty;
+        IndexElapsedTimeText = FormatTimespan(_indexSpeedStopwatch.Elapsed);
         _indexSpeedSamplingTimer.Start();
     }
 
     private void SampleIndexSpeed()
     {
         UpdateProcessingQueueText();
+        IndexElapsedTimeText = FormatTimespan(_indexSpeedStopwatch.Elapsed);
 
         var done = _indexSpeedProcessedFiles;
         var ticks = _indexSpeedStopwatch.ElapsedTicks;
@@ -1057,6 +1061,7 @@ public partial class MainViewModel : ObservableObject
             IndexProgressText = string.Empty;
             IndexSpeedText = string.Empty;
             EstimatedRemainingTimeText = string.Empty;
+            IndexElapsedTimeText = string.Empty;
             UpdateIndexButtonText = "🔄 更新索引";
             UpdateIndexButtonEnabled = true;
             ProcessingFilename = string.Empty;
